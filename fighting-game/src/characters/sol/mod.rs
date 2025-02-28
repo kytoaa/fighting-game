@@ -213,7 +213,12 @@ where
             &Action::Pressed(Button::Light),
         ) {
             return Box::new(self.transition(GunFlameStartup(0)));
+        } else if input.move_dir().y == Vector2::DOWN.y
+            && input.has_action(&Action::Pressed(Button::Heavy))
+        {
+            return Box::new(self.transition(CrouchHeavyStartup(0)));
         }
+
         if input.has_action(&Action::DoublePress(self.forward_dir())) {
             return Box::new(self.transition(RunState));
         }
@@ -248,10 +253,19 @@ where
         }
     }
     fn air_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
-        if input.has_action(&Action::Pressed(Button::Mid)) {
-            return Box::new(self.transition(JumpMidStartup(0)));
+        match self.air_attack_options(input) {
+            Ok(s) => s,
+            Err(s) => s.air_movement_state(input),
         }
-        self.air_movement_state(input)
+    }
+    fn air_attack_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if input.has_action(&Action::Pressed(Button::Mid)) {
+            return Ok(Box::new(self.transition(JumpMidStartup(0))));
+        }
+        Err(self)
     }
     fn air_movement_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
         let dir = input.move_dir();
@@ -423,8 +437,8 @@ where
 }
 impl SolDamageableState for Air<false> {}
 
-const AIRDASH_LENGTH: usize = 15;
-const AIRDASH_SPEED: f32 = 110.0;
+const AIRDASH_LENGTH: usize = 12;
+const AIRDASH_SPEED: f32 = 140.0;
 
 #[derive(Debug)]
 struct Airdash(usize);
@@ -435,7 +449,10 @@ impl Entity for Sol<Airdash> {
         if self.state.0 > AIRDASH_LENGTH {
             Box::new(self.transition(Air::<false>))
         } else {
-            self
+            match self.air_attack_options(input) {
+                Ok(s) => s,
+                Err(s) => s,
+            }
         }
     }
 }
@@ -476,6 +493,17 @@ impl Entity for Sol<Tumble> {
                 KnockdownType::Soft => Box::new(self.transition(SoftKnockdown(0))),
             };
         }
+
+        // TODO: maybe remove this in future
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(self.collider.clone()),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         self.state.frame += 1;
         if self.state.frame > self.state.length {
             self.air_actionable_state(input)
