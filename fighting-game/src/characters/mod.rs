@@ -20,6 +20,9 @@ pub trait Entity:
     fn frame_name(&self) -> Option<Box<str>> {
         None
     }
+    fn actionable(&self) -> bool {
+        true
+    }
 }
 pub trait Damageable {
     fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity>;

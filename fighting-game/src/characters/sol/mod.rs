@@ -111,12 +111,15 @@ impl<S> Grounded for Sol<S> {
         self.grounded
     }
 }
-impl<S> Direction for Sol<S> {
+impl<S> Direction for Sol<S>
+where
+    Sol<S>: Entity,
+{
     fn get_direction(&self) -> bool {
         self.direction
     }
     fn set_direction(&mut self, direction: bool) {
-        if self.grounded {
+        if self.actionable() && self.grounded {
             self.direction = direction
         }
     }
@@ -208,12 +211,24 @@ where
     Sol<S>: Entity + 'static,
 {
     fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+        // NOTE: fafnir
+        if input.has_motion_input(
+            &Motion::half_circle().direction(self.direction),
+            &Action::Pressed(Button::Heavy),
+        ) {
+            return Box::new(self.transition(FafnirStartup(0)));
+        }
+
+        // NOTE: gun flame
         if input.has_motion_input(
             &Motion::quarter_circle().direction(self.direction),
             &Action::Pressed(Button::Light),
         ) {
             return Box::new(self.transition(GunFlameStartup(0)));
-        } else if input.move_dir().y == Vector2::DOWN.y
+        }
+
+        // NOTE: 2h
+        if input.move_dir().y == Vector2::DOWN.y
             && input.has_action(&Action::Pressed(Button::Heavy))
         {
             return Box::new(self.transition(CrouchHeavyStartup(0)));
@@ -483,10 +498,10 @@ struct Tumble {
 impl Entity for Sol<Tumble> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.gravity();
-        println!(
+        /*println!(
             "grounded: {}, velocity: {:?}, frame: {}",
             self.grounded, self.velocity, self.state.frame
-        );
+        );*/
         if self.grounded {
             return match self.state.knockdown {
                 KnockdownType::Hard => Box::new(self.transition(HardKnockdown(0))),

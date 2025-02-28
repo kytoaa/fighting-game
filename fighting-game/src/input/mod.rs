@@ -34,6 +34,11 @@ impl InputHandler {
         }
     }
 }
+impl Default for InputHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl InputHandler {
     pub fn has_motion(&self, motion: &Motion) -> bool {
@@ -55,19 +60,14 @@ impl InputHandler {
                 }
             }
         }
-        if motion_index == motion.directions.len() {
-            true
-        } else {
-            false
-        }
+        motion_index == motion.directions.len()
     }
     pub fn has_action(&self, action: &Action) -> bool {
         self.buffered_actions
             .as_ref()
             .unwrap()
             .iter()
-            .find(|a| &a.action == action)
-            .is_some()
+            .any(|a| &a.action == action)
     }
     pub fn has_motion_input(&self, motion: &Motion, action: &Action) -> bool {
         self.has_motion(motion) && self.has_action(action)

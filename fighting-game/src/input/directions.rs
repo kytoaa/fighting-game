@@ -48,8 +48,11 @@ impl Motion {
     pub fn quarter_circle() -> Self {
         motion![frames: 10; 2, 3, 6]
     }
+    pub fn half_circle() -> Self {
+        motion![frames: 18; 4, 1, 2, 3, 6]
+    }
     pub fn dp() -> Self {
-        motion![frames: 10; 6, 2, 3]
+        motion![frames: 20; 6, 2, 3]
     }
 }
 
