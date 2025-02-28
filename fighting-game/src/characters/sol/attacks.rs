@@ -39,7 +39,7 @@ impl SolDamageableState for GunFlame {}
 
 const JUMP_MID_STARTUP: usize = 5;
 const JUMP_MID_ACTIVE: usize = 5;
-const JUMP_MID_ENDLAG: usize = 14;
+const JUMP_MID_RECOVERY: usize = 14;
 
 pub struct JumpMidStartup(pub usize);
 impl Entity for Sol<JumpMidStartup> {
@@ -78,7 +78,7 @@ impl Entity for Sol<JumpMid> {
                     damage: 30,
                     attack_type: crate::collision::AttackType::High,
                     hit_effect: HitEffect::Launcher(
-                        Vector2::new(40.0 * self.dir(), 50.0),
+                        Vector2::new(80.0 * self.dir(), 50.0),
                         KnockdownType::Soft,
                     ),
                     hitstun: 100,
@@ -91,7 +91,7 @@ impl Entity for Sol<JumpMid> {
         );
 
         if self.state.0 > JUMP_MID_ACTIVE {
-            Box::new(self.transition(JumpMidEndlag(0)))
+            Box::new(self.transition(JumpMidRecovery(0)))
         } else {
             self
         }
@@ -102,27 +102,27 @@ impl Entity for Sol<JumpMid> {
 }
 impl SolDamageableState for JumpMid {}
 
-struct JumpMidEndlag(usize);
-impl Entity for Sol<JumpMidEndlag> {
+struct JumpMidRecovery(usize);
+impl Entity for Sol<JumpMidRecovery> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.gravity();
         if self.grounded {
             return self.grounded_actionable_state(input);
         }
         self.state.0 += 1;
-        if self.state.0 > JUMP_MID_ENDLAG {
+        if self.state.0 > JUMP_MID_RECOVERY {
             self.air_actionable_state(input)
         } else {
             self
         }
     }
 }
-impl SolDamageableState for JumpMidEndlag {}
+impl SolDamageableState for JumpMidRecovery {}
 
 const CROUCH_HEAVY_STARTUP: usize = 7;
 const CROUCH_HEAVY_ACTIVE: usize = 3;
-const CROUCH_HEAVY_ENDLAG_CANCEL_FRAMES: usize = 6;
-const CROUCH_HEAVY_ENDLAG: usize = 17;
+const CROUCH_HEAVY_RECOVERY_CANCEL_FRAMES: usize = 6;
+const CROUCH_HEAVY_RECOVERY: usize = 17;
 
 pub struct CrouchHeavyStartup(pub usize);
 impl Entity for Sol<CrouchHeavyStartup> {
@@ -174,7 +174,7 @@ impl Entity for Sol<CrouchHeavy> {
                     damage: 30,
                     attack_type: crate::collision::AttackType::Mid,
                     hit_effect: HitEffect::Launcher(
-                        Vector2::new(10.0 * self.dir(), 80.0),
+                        Vector2::new(10.0 * self.dir(), 90.0),
                         KnockdownType::Soft,
                     ),
                     hitstun: 100,
@@ -187,7 +187,7 @@ impl Entity for Sol<CrouchHeavy> {
         );
 
         if self.state.0 > CROUCH_HEAVY_ACTIVE {
-            Box::new(self.transition(CrouchHeavyEndlag(0)))
+            Box::new(self.transition(CrouchHeavyRecovery(0)))
         } else {
             self
         }
@@ -201,10 +201,10 @@ impl Entity for Sol<CrouchHeavy> {
 }
 impl SolDamageableState for CrouchHeavy {}
 
-struct CrouchHeavyEndlag(usize);
-impl Entity for Sol<CrouchHeavyEndlag> {
+struct CrouchHeavyRecovery(usize);
+impl Entity for Sol<CrouchHeavyRecovery> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        if self.state.0 < CROUCH_HEAVY_ENDLAG_CANCEL_FRAMES && self.has_hit {
+        if self.state.0 < CROUCH_HEAVY_RECOVERY_CANCEL_FRAMES && self.has_hit {
             // NOTE: fafnir
             if input.has_motion_input(
                 &Motion::half_circle().direction(self.direction),
@@ -225,7 +225,7 @@ impl Entity for Sol<CrouchHeavyEndlag> {
         }
 
         self.state.0 += 1;
-        if self.state.0 > CROUCH_HEAVY_ENDLAG {
+        if self.state.0 > CROUCH_HEAVY_RECOVERY {
             self.grounded_actionable_state(input)
         } else {
             self
@@ -235,18 +235,19 @@ impl Entity for Sol<CrouchHeavyEndlag> {
         false
     }
 }
-impl SolDamageableState for CrouchHeavyEndlag {}
+impl SolDamageableState for CrouchHeavyRecovery {}
 
-const FAFNIR_STARTUP: usize = 5;
+const FAFNIR_STARTUP: usize = 18;
 const FAFNIR_DASH: usize = 7;
 const FAFNIR_VELOCITY: f32 = 170.0;
 const FAFNIR_ACTIVE: usize = 3;
 const FAFNIR_STOP_VELOCITY: f32 = 20.0;
-const FAFNIR_ENDLAG: usize = 10;
+const FAFNIR_RECOVERY: usize = 12;
 
 pub struct FafnirStartup(pub usize);
 impl Entity for Sol<FafnirStartup> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        self.velocity = Vector2::ZERO;
         self.state.0 += 1;
         if self.state.0 > FAFNIR_STARTUP {
             Box::new(self.transition(FafnirDash(0)))
@@ -301,7 +302,7 @@ impl Entity for Sol<Fafnir> {
                     ),
                     hitstun: 100,
                     priority: 5,
-                    blockstun: 30,
+                    blockstun: 20,
                 },
             },
             self.position + Vector2::new(10.0 * self.dir(), 0.0),
@@ -309,7 +310,7 @@ impl Entity for Sol<Fafnir> {
         );
 
         if self.state.0 > FAFNIR_ACTIVE {
-            Box::new(self.transition(FafnirEndlag(0)))
+            Box::new(self.transition(FafnirRecovery(0)))
         } else {
             self
         }
@@ -320,14 +321,14 @@ impl Entity for Sol<Fafnir> {
 }
 impl SolDamageableState for Fafnir {}
 
-struct FafnirEndlag(usize);
-impl Entity for Sol<FafnirEndlag> {
+struct FafnirRecovery(usize);
+impl Entity for Sol<FafnirRecovery> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.state.0 += 1;
 
         self.velocity = Vector2::ZERO;
 
-        if self.state.0 > FAFNIR_ENDLAG {
+        if self.state.0 > FAFNIR_RECOVERY {
             self.grounded_actionable_state(input)
         } else {
             self
@@ -337,4 +338,4 @@ impl Entity for Sol<FafnirEndlag> {
         false
     }
 }
-impl SolDamageableState for FafnirEndlag {}
+impl SolDamageableState for FafnirRecovery {}
