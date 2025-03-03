@@ -1,5 +1,5 @@
 mod characters;
-mod collision;
+pub mod collision;
 pub mod datatypes;
 pub mod initialization;
 pub mod input;

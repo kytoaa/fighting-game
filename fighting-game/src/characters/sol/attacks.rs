@@ -71,7 +71,7 @@ impl Entity for Sol<JumpMid> {
             crate::collision::Hitbox {
                 shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
                     Vector2::ZERO,
-                    Vector2::new(20.0, 10.0),
+                    Vector2::new(20.0, 5.0),
                 )),
                 owner: self.player,
                 info: HitInfo {
@@ -86,7 +86,7 @@ impl Entity for Sol<JumpMid> {
                     blockstun: 15,
                 },
             },
-            self.position + Vector2::new(10.0 * self.dir(), 0.0),
+            self.position + Vector2::new(10.0 * self.dir(), 4.0),
             1,
         );
 
@@ -237,9 +237,9 @@ impl Entity for Sol<CrouchHeavyRecovery> {
 }
 impl SolDamageableState for CrouchHeavyRecovery {}
 
-const FAFNIR_STARTUP: usize = 18;
-const FAFNIR_DASH: usize = 7;
-const FAFNIR_VELOCITY: f32 = 170.0;
+const FAFNIR_STARTUP: usize = 12;
+const FAFNIR_DASH: usize = 9;
+const FAFNIR_VELOCITY: f32 = 200.0;
 const FAFNIR_ACTIVE: usize = 3;
 const FAFNIR_STOP_VELOCITY: f32 = 20.0;
 const FAFNIR_RECOVERY: usize = 12;
@@ -290,14 +290,14 @@ impl Entity for Sol<Fafnir> {
             crate::collision::Hitbox {
                 shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
                     Vector2::ZERO,
-                    Vector2::new(20.0, 10.0),
+                    Vector2::new(20.0, 5.0),
                 )),
                 owner: self.player,
                 info: HitInfo {
                     damage: 80,
                     attack_type: crate::collision::AttackType::Mid,
                     hit_effect: HitEffect::Launcher(
-                        Vector2::new(80.0 * self.dir(), 10.0),
+                        Vector2::new(100.0 * self.dir(), 10.0),
                         KnockdownType::Hard,
                     ),
                     hitstun: 100,

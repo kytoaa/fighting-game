@@ -1,4 +1,5 @@
-use fighting_game::datatypes::Vector2;
+use fighting_game::collision::{CollisionShape, Hitbox, Hurtbox};
+use fighting_game::datatypes::{BoundingBox, Vector2};
 use fighting_game::initialization::{create_world, Character};
 use fighting_game::input::{Button, ButtonState, InputDir, InputHandler};
 use fighting_game::world::World;
@@ -113,34 +114,43 @@ fn print_world<W: std::io::Write>(world: &World, buffer: &mut W) {
 
     for player in players.iter() {
         let collider = player.get_collider_world_space();
-        //println!("collider at {:?}, {:?}", collider.min, collider.max);
-        let min = position_to_buf_pos(collider.min);
-        let max = position_to_buf_pos(collider.max);
-        //println!("buf space: {:?}, {:?}", min, max);
-        if min.x >= PRINT_WIDTH as f32 || max.x < 0.0 {
-            continue;
-        }
-        if max.y >= PRINT_HEIGHT as f32 || min.y < 0.0 {
-            continue;
-        }
-        let start_x = min.x.clamp(0.0, PRINT_WIDTH as f32).round();
-        let end_x = max.x.clamp(0.0, PRINT_WIDTH as f32).round();
-        let start_y = max.y.clamp(0.0, PRINT_HEIGHT as f32).round();
-        let end_y = min.y.clamp(0.0, PRINT_HEIGHT as f32).round();
-        //println!("start x: {start_x}, start y: {start_y}, end x: {end_x}, end y: {end_y}");
-        for y in (start_y as usize)..(end_y as usize) {
-            buf.replace_range(
-                buf_pos_index(Vector2::new(start_x, y as f32))
-                    ..buf_pos_index(Vector2::new(end_x, y as f32)),
-                &std::iter::repeat('#')
-                    .take((end_x - start_x) as usize)
-                    .collect::<String>(),
-            )
+        draw_box_to_buf(&mut buf, &collider, '#');
+    }
+    for hitbox in world.get_hitboxes() {
+        if let CollisionShape::Box(aabb) = &hitbox.shape {
+            draw_box_to_buf(&mut buf, aabb, '%');
         }
     }
 
     write!(buffer, "{}", buf).unwrap();
 }
+fn draw_box_to_buf(buf: &mut String, aabb: &BoundingBox, c: char) {
+    //println!("collider at {:?}, {:?}", collider.min, collider.max);
+    let min = position_to_buf_pos(aabb.min);
+    let max = position_to_buf_pos(aabb.max);
+    //println!("buf space: {:?}, {:?}", min, max);
+    if min.x >= PRINT_WIDTH as f32 || max.x < 0.0 {
+        return;
+    }
+    if max.y >= PRINT_HEIGHT as f32 || min.y < 0.0 {
+        return;
+    }
+    let start_x = min.x.clamp(0.0, PRINT_WIDTH as f32).round();
+    let end_x = max.x.clamp(0.0, PRINT_WIDTH as f32).round();
+    let start_y = max.y.clamp(0.0, PRINT_HEIGHT as f32).round();
+    let end_y = min.y.clamp(0.0, PRINT_HEIGHT as f32).round();
+    //println!("start x: {start_x}, start y: {start_y}, end x: {end_x}, end y: {end_y}");
+    for y in (start_y as usize)..(end_y as usize) {
+        buf.replace_range(
+            buf_pos_index(Vector2::new(start_x, y as f32))
+                ..buf_pos_index(Vector2::new(end_x, y as f32)),
+            &std::iter::repeat(c)
+                .take((end_x - start_x) as usize)
+                .collect::<String>(),
+        )
+    }
+}
+
 const fn position_to_buf_pos(pos: Vector2) -> Vector2 {
     Vector2::new(ORIGIN.x + pos.x, ORIGIN.y - pos.y)
 }

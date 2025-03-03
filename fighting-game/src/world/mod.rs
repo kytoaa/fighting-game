@@ -258,4 +258,10 @@ impl World {
             self.players[1].as_ref().unwrap().as_ref(),
         ])
     }
+    pub fn get_hurtboxes(&self) -> impl Iterator<Item = &Hurtbox> {
+        self.hurtboxes.iter().map(|s| &s.0)
+    }
+    pub fn get_hitboxes(&self) -> impl Iterator<Item = &Hitbox> {
+        self.hitboxes.iter().map(|s| &s.0)
+    }
 }

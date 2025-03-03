@@ -1,0 +1,12 @@
+[package]
+name = "vulkan-renderer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fighting-game = { path = "../fighting-game" }
+winit = { version = "0.30.5", features = ["rwh_06"] }
+ash = { version = "0.38.0", features = ["linked", "debug", "std"] }
+ash-window = "0.13.0"
+gilrs = "0.11.0"
+macros = { path = "./macros" }
