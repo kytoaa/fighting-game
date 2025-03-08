@@ -1,16 +1,68 @@
 use fighting_game::datatypes::Vector2;
-use macros::my_proc_macro;
+use winit::window::Window;
 
 pub mod renderer;
 
-#[derive(Clone, Copy)]
-pub struct SpriteHandle(usize);
+const WINDOW_WIDTH: u32 = 1280;
+const WINDOW_HEIGHT: u32 = 720;
 
-pub struct Image {
-    size: (usize, usize),
-    data: Box<[u8]>,
+static STATIC_ASSETS: asset_manager::static_data::StaticAssets =
+    asset_manager_macros::generate_static_asset_manager_from_dir!("./assets/");
+
+pub struct App {
+    state: GameState,
+    renderer: Option<renderer::Renderer>,
+    window: Option<Window>,
 }
 
-fn f() {
-    my_proc_macro!();
+impl winit::application::ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.window = Some(
+            event_loop
+                .create_window(
+                    winit::window::WindowAttributes::default()
+                        .with_inner_size(winit::dpi::PhysicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
+                        .with_resizable(false),
+                )
+                .unwrap(),
+        );
+        self.renderer = Some(
+            renderer::Renderer::init(
+                &self.window.as_ref().unwrap(),
+                &self.window.as_ref().unwrap(),
+                (WINDOW_WIDTH, WINDOW_HEIGHT),
+            )
+            .unwrap(),
+        );
+    }
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+    }
+}
+
+impl App {
+    pub fn init() {
+        let event_loop = winit::event_loop::EventLoop::new().unwrap();
+
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+
+        event_loop
+            .run_app(&mut App {
+                state: GameState::Game(()),
+                renderer: None,
+                window: None,
+            })
+            .unwrap();
+    }
+    pub fn run(self) -> Result<(), ()> {
+        todo!();
+    }
+}
+
+enum GameState {
+    Game(()),
 }

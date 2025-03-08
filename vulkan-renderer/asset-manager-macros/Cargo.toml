@@ -1,5 +1,5 @@
 [package]
-name = "macros"
+name = "asset-manager-macros"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-image = { path = "./image" }
 quote = "1.0.39"
 syn = "2.0.99"
+image = "0.25.5"
+asset-manager = { path = "../asset-manager" }

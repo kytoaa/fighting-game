@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
-members = [ "debug-terminal-render","fighting-game", "vulkan-renderer", "vulkan-renderer/macros" ]
+members = [ "debug-terminal-render","fighting-game", "vulkan-renderer", "vulkan-renderer/asset-manager-macros", "vulkan-renderer/asset-manager" ]
 default-members = [ "fighting-game", "vulkan-renderer"]
-#members = [ "debug-terminal-render","fighting-game" ]
+#default-members = [ "debug-terminal-render","fighting-game" ]

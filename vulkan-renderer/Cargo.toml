@@ -9,4 +9,5 @@ winit = { version = "0.30.5", features = ["rwh_06"] }
 ash = { version = "0.38.0", features = ["linked", "debug", "std"] }
 ash-window = "0.13.0"
 gilrs = "0.11.0"
-macros = { path = "macros" }
+asset-manager = { path = "./asset-manager" }
+asset-manager-macros = { path = "./asset-manager-macros" }
