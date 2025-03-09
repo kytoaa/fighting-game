@@ -2,6 +2,35 @@ use ash::{vk, Device, Entry, Instance};
 
 use super::*;
 
+pub fn create_framebuffers(
+    core: &CoreRenderData,
+    render_pass: &vk::RenderPass,
+) -> Vec<vk::Framebuffer> {
+    let framebuffers: Vec<_> = core
+        .present_images
+        .iter()
+        .map(|image| image.1)
+        .map(|image| {
+            let attachments = [image, core.depth_image.0 .1];
+
+            let framebuffer_create_info = vk::FramebufferCreateInfo::default()
+                .render_pass(*render_pass)
+                .attachments(&attachments)
+                .width(core.swapchain_info.extent.width)
+                .height(core.swapchain_info.extent.height)
+                .layers(1);
+
+            unsafe {
+                core.device
+                    .create_framebuffer(&framebuffer_create_info, None)
+            }
+            .expect("failed to create framebuffer")
+        })
+        .collect();
+
+    framebuffers
+}
+
 impl CoreRenderData {
     pub fn init(
         display_handle: &dyn winit::raw_window_handle::HasDisplayHandle,
@@ -90,10 +119,6 @@ impl CoreRenderData {
                 .expect("Physical device error");
             let surface_instance = ash::khr::surface::Instance::new(&entry, &instance);
 
-            struct QueueFamilyInfo {
-                graphics: Option<usize>,
-                transfer: Option<usize>,
-            }
             let (physical_device, queue_family_index, transfer_queue_family_index) =
                 find_physical_device(&instance, &surface_instance, &surface, &pdevices)
                     .expect("couldnt find suitable physical device");
@@ -145,7 +170,11 @@ impl CoreRenderData {
 
                 let desired_image_count = u32::min(
                     surface_capabilities.min_image_count + 1,
-                    surface_capabilities.max_image_count,
+                    if surface_capabilities.max_image_count == 0 {
+                        u32::MAX
+                    } else {
+                        surface_capabilities.max_image_count
+                    },
                 );
                 surface_resolution = match surface_capabilities.current_extent.width {
                     u32::MAX => vk::Extent2D {
@@ -219,6 +248,7 @@ impl CoreRenderData {
                     present_image_views,
                     SwapchainInfo {
                         format: surface_format.format,
+                        extent: surface_resolution,
                     },
                 )
             };
@@ -247,7 +277,7 @@ impl CoreRenderData {
             let (depth_image, depth_image_memory, depth_image_view) = {
                 let depth_image_create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
-                    .format(vk::Format::D16_UNORM)
+                    .format(find_render_pass_depth_format(&instance, &physical_device))
                     .extent(surface_resolution.into())
                     .mip_levels(1)
                     .array_layers(1)
@@ -296,6 +326,17 @@ impl CoreRenderData {
                 (depth_image, depth_image_memory, depth_image_view)
             };
 
+            let command_buffers = {
+                let alloc_info = vk::CommandBufferAllocateInfo::default()
+                    .command_pool(command_pool)
+                    .level(vk::CommandBufferLevel::PRIMARY)
+                    .command_buffer_count(MAX_FRAMES_IN_FLIGHT as u32);
+
+                device
+                    .allocate_command_buffers(&alloc_info)
+                    .expect("failed to allocate command buffers")
+            };
+
             // TODO: maybe more initialization needed
             CoreRenderData {
                 instance,
@@ -320,6 +361,8 @@ impl CoreRenderData {
 
                 command_pool,
                 transfer_pool,
+
+                command_buffers,
 
                 depth_image: VulkanObject(
                     VulkanImage(depth_image, depth_image_view),
@@ -452,6 +495,9 @@ impl Drop for CoreRenderData {
             });
             self.swapchain_device
                 .destroy_swapchain(self.swapchain, None);
+
+            self.device
+                .free_command_buffers(self.command_pool, &self.command_buffers);
 
             self.device.destroy_command_pool(self.command_pool, None);
             self.device.destroy_command_pool(self.transfer_pool, None);

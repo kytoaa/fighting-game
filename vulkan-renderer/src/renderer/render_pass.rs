@@ -70,32 +70,3 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
 
     render_pass
 }
-
-fn find_render_pass_depth_format(
-    instance: &ash::Instance,
-    physical_device: &vk::PhysicalDevice,
-) -> vk::Format {
-    let formats = [
-        vk::Format::D32_SFLOAT,
-        vk::Format::D32_SFLOAT_S8_UINT,
-        vk::Format::D24_UNORM_S8_UINT,
-    ];
-    let tiling = vk::ImageTiling::OPTIMAL;
-    let features = vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
-
-    for format in formats {
-        let properties =
-            unsafe { instance.get_physical_device_format_properties(*physical_device, format) };
-
-        if tiling == vk::ImageTiling::LINEAR
-            && (properties.linear_tiling_features & features) == features
-        {
-            return format;
-        } else if tiling == vk::ImageTiling::OPTIMAL
-            && (properties.optimal_tiling_features & features) == features
-        {
-            return format;
-        }
-    }
-    panic!("could not find supported depth format");
-}

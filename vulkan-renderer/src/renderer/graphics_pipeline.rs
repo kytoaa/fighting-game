@@ -29,19 +29,17 @@ pub fn create_graphics_pipeline(
     let dynamic_state_stage_info =
         vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_states);
 
-    let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default()
-        .vertex_binding_descriptions(std::slice::from_ref(
-            &vk::VertexInputBindingDescription::default()
-                .binding(0)
-                .stride((size_of::<f32>() * 3) as u32)
-                .input_rate(vk::VertexInputRate::VERTEX),
-        ))
-        .vertex_attribute_descriptions(std::slice::from_ref(
-            &vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(0)
-                .format(vk::Format::R32G32B32_SFLOAT),
-        ));
+    let vertex_input_binding_description = vk::VertexInputBindingDescription::default()
+        .binding(0)
+        .stride((size_of::<f32>() * 3) as u32)
+        .input_rate(vk::VertexInputRate::VERTEX);
+    let vertex_input_attribute_description = vk::VertexInputAttributeDescription::default()
+        .binding(0)
+        .location(0)
+        .format(vk::Format::R32G32B32_SFLOAT);
+    let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default();
+    //.vertex_binding_descriptions(std::slice::from_ref(&vertex_input_binding_description))
+    //.vertex_attribute_descriptions(std::slice::from_ref(&vertex_input_attribute_description));
 
     let input_assembly_info_stage = vk::PipelineInputAssemblyStateCreateInfo::default()
         .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
