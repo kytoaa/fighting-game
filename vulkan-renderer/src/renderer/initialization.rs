@@ -132,7 +132,7 @@ impl CoreRenderData {
 
             let surface_resolution;
             // NOTE: swapchain creation
-            let (swapchain, present_images, present_image_views) = {
+            let (swapchain, present_images, present_image_views, swapchain_info) = {
                 let surface_format = surface_instance
                     .get_physical_device_surface_formats(physical_device, surface)
                     .unwrap()[0];
@@ -213,7 +213,14 @@ impl CoreRenderData {
                     })
                     .collect();
 
-                (swapchain, present_images, present_image_views)
+                (
+                    swapchain,
+                    present_images,
+                    present_image_views,
+                    SwapchainInfo {
+                        format: surface_format.format,
+                    },
+                )
             };
 
             let (command_pool, transfer_pool) = {
@@ -304,6 +311,7 @@ impl CoreRenderData {
 
                 swapchain_device,
                 swapchain,
+                swapchain_info,
                 present_images: present_images
                     .into_iter()
                     .zip(present_image_views.into_iter())

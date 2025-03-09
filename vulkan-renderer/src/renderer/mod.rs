@@ -1,9 +1,12 @@
 use ash::{vk, Device, Entry, Instance};
 
+mod graphics_pipeline;
 mod initialization;
+mod render_pass;
+mod shaders;
 
 use super::Vector2;
-use asset_manager::{ShaderHandle, SpriteHandle};
+use asset_manager::SpriteHandle;
 
 struct VulkanImage(vk::Image, vk::ImageView);
 struct VulkanObject<T>(T, vk::DeviceMemory);
@@ -11,6 +14,10 @@ struct VulkanObject<T>(T, vk::DeviceMemory);
 struct Queues {
     graphics: vk::Queue,
     transfer: vk::Queue,
+}
+
+struct SwapchainInfo {
+    format: vk::Format,
 }
 
 struct CoreRenderData {
@@ -24,6 +31,7 @@ struct CoreRenderData {
 
     swapchain_device: ash::khr::swapchain::Device,
     swapchain: vk::SwapchainKHR,
+    swapchain_info: SwapchainInfo,
     present_images: Vec<VulkanImage>,
 
     command_pool: vk::CommandPool,
@@ -37,6 +45,8 @@ struct CoreRenderData {
 
 pub struct Renderer {
     core: CoreRenderData,
+
+    render_pass: vk::RenderPass,
 }
 
 impl Renderer {
@@ -47,7 +57,9 @@ impl Renderer {
     ) -> Result<Renderer, Box<dyn std::error::Error>> {
         let core = CoreRenderData::init(display_handle, window_handle, window_size);
 
-        Ok(Renderer { core })
+        let render_pass = render_pass::create_render_pass(&core);
+
+        Ok(Renderer { core, render_pass })
     }
 }
 

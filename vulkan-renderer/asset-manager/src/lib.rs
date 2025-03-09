@@ -2,15 +2,9 @@ pub mod static_data;
 
 #[derive(Clone, Copy)]
 pub struct SpriteHandle(usize);
-#[derive(Clone, Copy)]
-pub struct ShaderHandle(usize);
 
 pub struct Image {
     size: (usize, usize),
-    data: AssetData,
-}
-
-pub struct Shader {
     data: AssetData,
 }
 
@@ -27,13 +21,6 @@ impl Image {
         }
     }
 }
-impl Shader {
-    pub const fn from(data: &'static [u8]) -> Self {
-        Self {
-            data: AssetData::Static(data),
-        }
-    }
-}
 impl AssetData {
     pub const fn data<'a>(&'a self) -> &'a [u8] {
         match self {
@@ -45,7 +32,6 @@ impl AssetData {
 
 pub struct AssetManager {
     images: Vec<(AssetNames, Image)>,
-    shaders: Vec<(AssetNames, Shader)>,
 }
 
 impl AssetManager {}
@@ -73,24 +59,6 @@ impl AssetManager {
                         .is_some()
             })
             .map(|v| SpriteHandle(v.0))
-    }
-    pub fn get_shader(&self, handle: ShaderHandle) -> &Shader {
-        &self.shaders[handle.0].1
-    }
-    pub fn get_shader_handle(&self, shader_name: &str) -> Option<ShaderHandle> {
-        self.shaders
-            .iter()
-            .enumerate()
-            .find(|(_, shader)| {
-                shader.0.name == shader_name
-                    || shader
-                        .0
-                        .aliases
-                        .iter()
-                        .find(|alias| alias.as_ref() == shader_name)
-                        .is_some()
-            })
-            .map(|v| ShaderHandle(v.0))
     }
 }
 

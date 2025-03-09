@@ -1,0 +1,101 @@
+use ash::vk;
+
+use super::*;
+
+pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
+    let color_attachment = vk::AttachmentDescription::default()
+        .format(core.swapchain_info.format)
+        .samples(vk::SampleCountFlags::TYPE_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR);
+
+    let color_attachment_ref = vk::AttachmentReference::default()
+        .attachment(0)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+    let depth_attachment = vk::AttachmentDescription::default()
+        .format(find_render_pass_depth_format(
+            &core.instance,
+            &core.physical_device,
+        ))
+        .samples(vk::SampleCountFlags::TYPE_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    let depth_attachment_ref = vk::AttachmentReference::default()
+        .attachment(1)
+        .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    let subpass = vk::SubpassDescription::default()
+        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+        .color_attachments(std::slice::from_ref(&color_attachment_ref))
+        .depth_stencil_attachment(&depth_attachment_ref);
+
+    let dependency = vk::SubpassDependency::default()
+        .src_subpass(vk::SUBPASS_EXTERNAL)
+        .dst_subpass(0)
+        .src_stage_mask(
+            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+                | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+        )
+        .src_access_mask(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE)
+        .dst_stage_mask(
+            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+                | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+        )
+        .dst_access_mask(
+            vk::AccessFlags::COLOR_ATTACHMENT_WRITE
+                | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+        );
+
+    let attachments = [color_attachment, depth_attachment];
+    let render_pass_create_info = vk::RenderPassCreateInfo::default()
+        .attachments(&attachments)
+        .subpasses(std::slice::from_ref(&subpass))
+        .dependencies(std::slice::from_ref(&dependency));
+
+    let render_pass = unsafe {
+        core.device
+            .create_render_pass(&render_pass_create_info, None)
+    }
+    .expect("failed to create render pass");
+
+    render_pass
+}
+
+fn find_render_pass_depth_format(
+    instance: &ash::Instance,
+    physical_device: &vk::PhysicalDevice,
+) -> vk::Format {
+    let formats = [
+        vk::Format::D32_SFLOAT,
+        vk::Format::D32_SFLOAT_S8_UINT,
+        vk::Format::D24_UNORM_S8_UINT,
+    ];
+    let tiling = vk::ImageTiling::OPTIMAL;
+    let features = vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
+
+    for format in formats {
+        let properties =
+            unsafe { instance.get_physical_device_format_properties(*physical_device, format) };
+
+        if tiling == vk::ImageTiling::LINEAR
+            && (properties.linear_tiling_features & features) == features
+        {
+            return format;
+        } else if tiling == vk::ImageTiling::OPTIMAL
+            && (properties.optimal_tiling_features & features) == features
+        {
+            return format;
+        }
+    }
+    panic!("could not find supported depth format");
+}

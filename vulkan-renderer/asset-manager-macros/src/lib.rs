@@ -33,7 +33,7 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
     };
     let addresses: Vec<_> = find_image_paths(&root_dir)
         .filter(|file| match file.extension().unwrap().to_str().unwrap() {
-            "png" | "spv" => true,
+            "png" => true,
             _ => false,
         })
         .collect();
@@ -47,10 +47,9 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
     }
 
     let mut images = vec![];
-    let mut shaders = vec![];
     for addr in addresses.iter() {
         match addr.extension().unwrap().to_str().unwrap() {
-            ext if ext == "png" => {
+            "png" => {
                 let file = image::ImageReader::open(addr).expect("could not read file");
                 let image = file.decode().expect("failed to decode image").into_rgba8();
 
@@ -66,18 +65,6 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
                     )
                 });
             }
-            ext if ext == "spv" => {
-                let data = std::fs::read(addr).expect("could not read file");
-
-                let addr = addr.to_str().unwrap();
-
-                shaders.push(quote! {
-                    (
-                        #addr,
-                        asset_manager::Shader::from(&[#(#data),*])
-                    )
-                });
-            }
             _ => unreachable!(),
         }
     }
@@ -85,7 +72,6 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
     quote! {
         asset_manager::static_data::StaticAssets {
             images: &[#(#images),*],
-            shaders: &[#(#shaders),*],
         }
     }
     .into()

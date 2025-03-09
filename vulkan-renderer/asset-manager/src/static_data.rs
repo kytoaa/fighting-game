@@ -1,8 +1,7 @@
-use super::{AssetData, AssetManager, AssetNames, Image, Shader};
+use super::{AssetData, AssetManager, AssetNames, Image};
 
 pub struct StaticAssets {
     pub images: &'static [(&'static str, Image)],
-    pub shaders: &'static [(&'static str, Shader)],
 }
 
 impl Into<AssetManager> for StaticAssets {
@@ -17,22 +16,6 @@ impl Into<AssetManager> for StaticAssets {
                         Image {
                             size: image.size,
                             data: match image.data {
-                                AssetData::Static(v) => AssetData::Static(v),
-                                AssetData::Dynamic(_) => unreachable!(),
-                            },
-                        },
-                    )
-                })
-                .collect(),
-
-            shaders: self
-                .shaders
-                .into_iter()
-                .map(|(name, shader)| {
-                    (
-                        AssetNames::with_name(name),
-                        Shader {
-                            data: match shader.data {
                                 AssetData::Static(v) => AssetData::Static(v),
                                 AssetData::Dynamic(_) => unreachable!(),
                             },
