@@ -41,6 +41,17 @@ impl winit::application::ApplicationHandler for App {
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
+        match event {
+            winit::event::WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+            winit::event::WindowEvent::RedrawRequested => {
+                self.renderer.as_mut().unwrap().draw_frame();
+
+                self.window.as_ref().unwrap().request_redraw();
+            }
+            _ => {}
+        }
     }
 }
 

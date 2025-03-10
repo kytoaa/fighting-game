@@ -77,10 +77,23 @@ impl Renderer {
                 vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
                 vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
             */
+            /*self.core.device.cmd_bind_vertex_buffers(
+                *command_buffer,
+                0,
+                &[vk::Buffer::null()],
+                &[0],
+            );
+            self.core.device.cmd_bind_index_buffer(
+                *command_buffer,
+                vk::Buffer::null(),
+                0,
+                vk::IndexType::UINT32,
+            );*/
 
-            self.core
-                .device
-                .cmd_draw_indexed(*command_buffer, 3, 1, 0, 0, 0);
+            /*self.core
+            .device
+            .cmd_draw_indexed(*command_buffer, 3, 1, 0, 0, 0);*/
+            self.core.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 

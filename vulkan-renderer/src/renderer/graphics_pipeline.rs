@@ -6,7 +6,7 @@ use super::*;
 pub fn create_graphics_pipeline(
     core: &CoreRenderData,
     render_pass: &vk::RenderPass,
-) -> vk::Pipeline {
+) -> (vk::Pipeline, vk::PipelineLayout) {
     let vert_shader = shaders::HELLO_TRIANGLE_VERT_SHADER;
     let frag_shader = shaders::HELLO_TRIANGLE_FRAG_SHADER;
 
@@ -37,7 +37,9 @@ pub fn create_graphics_pipeline(
         .binding(0)
         .location(0)
         .format(vk::Format::R32G32B32_SFLOAT);
-    let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default();
+    let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default()
+        .vertex_binding_descriptions(&[])
+        .vertex_attribute_descriptions(&[]);
     //.vertex_binding_descriptions(std::slice::from_ref(&vertex_input_binding_description))
     //.vertex_attribute_descriptions(std::slice::from_ref(&vertex_input_attribute_description));
 
@@ -54,7 +56,7 @@ pub fn create_graphics_pipeline(
         .rasterizer_discard_enable(false)
         .polygon_mode(vk::PolygonMode::FILL)
         .line_width(1.0)
-        .cull_mode(vk::CullModeFlags::BACK)
+        .cull_mode(vk::CullModeFlags::NONE)
         .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
         .depth_bias_enable(false)
         .depth_bias_constant_factor(0.0)
@@ -122,7 +124,7 @@ pub fn create_graphics_pipeline(
         core.device.destroy_shader_module(frag_shader_module, None);
     }
 
-    pipeline
+    (pipeline, pipeline_layout)
 }
 
 fn create_shader_module(device: &Device, code: &[u32]) -> vk::ShaderModule {

@@ -1,5 +1,6 @@
-use ash::{vk, Device, Entry, Instance};
+use ash::{vk, Device, Instance};
 
+mod deinitialization;
 mod frame_recording;
 mod graphics_pipeline;
 mod initialization;
@@ -55,10 +56,13 @@ pub struct Renderer {
     render_pass: vk::RenderPass,
     framebuffers: Vec<vk::Framebuffer>,
     pipeline: vk::Pipeline,
+    pipeline_layout: vk::PipelineLayout,
 
     image_available_semaphores: Vec<vk::Semaphore>,
     render_finished_semaphores: Vec<vk::Semaphore>,
     in_flight_fences: Vec<vk::Fence>,
+
+    frame: u32,
 }
 
 impl Renderer {
@@ -73,7 +77,8 @@ impl Renderer {
 
         let framebuffers = initialization::create_framebuffers(&core, &render_pass);
 
-        let pipeline = graphics_pipeline::create_graphics_pipeline(&core, &render_pass);
+        let (pipeline, pipeline_layout) =
+            graphics_pipeline::create_graphics_pipeline(&core, &render_pass);
 
         let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
             let semaphore_create_info = vk::SemaphoreCreateInfo::default();
@@ -106,12 +111,15 @@ impl Renderer {
             core,
             render_pass,
             pipeline,
+            pipeline_layout,
 
             framebuffers,
 
             image_available_semaphores,
             render_finished_semaphores,
             in_flight_fences,
+
+            frame: 0,
         })
     }
 }
@@ -121,8 +129,8 @@ impl Renderer {
         todo!();
     }
 
-    pub fn draw_frame(&self, frame: usize) {
-        let frame = frame % MAX_FRAMES_IN_FLIGHT;
+    pub fn draw_frame(&mut self) {
+        let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
 
         unsafe {
             self.core
@@ -140,7 +148,7 @@ impl Renderer {
                 .acquire_next_image(
                     self.core.swapchain,
                     u64::MAX,
-                    self.render_finished_semaphores[frame],
+                    self.image_available_semaphores[frame],
                     vk::Fence::null(),
                 )
                 .unwrap();
@@ -160,13 +168,37 @@ impl Renderer {
 
             self.record_command_buffer(&self.core.command_buffers[frame], image_index);
 
-            let submit_info = vk::SubmitInfo::default()
-                .wait_semaphores(&[self.image_available_semaphores[frame]])
-                .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
-                .command_buffers(std::slice::from_ref(&self.core.command_buffers[frame]));
+            let signal_semaphores = [self.render_finished_semaphores[frame]];
+            let wait_semaphores = [self.image_available_semaphores[frame]];
 
-            todo!();
+            let submit_info = vk::SubmitInfo::default()
+                .wait_semaphores(&wait_semaphores)
+                .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
+                .command_buffers(std::slice::from_ref(&self.core.command_buffers[frame]))
+                .signal_semaphores(&signal_semaphores);
+
+            self.core
+                .device
+                .queue_submit(
+                    self.core.queues.graphics,
+                    &[submit_info],
+                    self.in_flight_fences[frame],
+                )
+                .expect("failed to submit draw command buffer");
+
+            let present_info = vk::PresentInfoKHR::default()
+                .wait_semaphores(&signal_semaphores)
+                .swapchains(std::slice::from_ref(&self.core.swapchain))
+                .image_indices(std::slice::from_ref(&image_index));
+
+            self.core
+                .swapchain_device
+                .queue_present(self.core.queues.graphics, &present_info)
+                .expect("failed to aquire swapchain image");
         }
+
+        //println!("{}, {}", self.frame, frame);
+        self.frame += 1;
     }
 }
 

@@ -1,4 +1,4 @@
-use ash::{vk, Device, Entry, Instance};
+use ash::{vk, Entry, Instance};
 
 use super::*;
 
@@ -478,40 +478,6 @@ unsafe extern "system" fn vulkan_debug_callback(
     );
 
     vk::FALSE
-}
-
-impl Drop for CoreRenderData {
-    fn drop(&mut self) {
-        unsafe {
-            self.device.device_wait_idle().unwrap();
-
-            self.device.destroy_image_view(self.depth_image.0 .1, None);
-            self.device.destroy_image(self.depth_image.0 .0, None);
-            self.device.free_memory(self.depth_image.1, None);
-
-            self.present_images.iter().for_each(|image| {
-                self.device.destroy_image_view(image.1, None);
-                self.device.destroy_image(image.0, None);
-            });
-            self.swapchain_device
-                .destroy_swapchain(self.swapchain, None);
-
-            self.device
-                .free_command_buffers(self.command_pool, &self.command_buffers);
-
-            self.device.destroy_command_pool(self.command_pool, None);
-            self.device.destroy_command_pool(self.transfer_pool, None);
-
-            self.surface_instance.destroy_surface(self.surface, None);
-
-            self.device.destroy_device(None);
-
-            self.debug_utils_instance
-                .destroy_debug_utils_messenger(self.debug_callback, None);
-
-            self.instance.destroy_instance(None);
-        }
-    }
 }
 
 #[cfg(test)]
