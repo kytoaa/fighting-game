@@ -93,7 +93,12 @@ impl Renderer {
             /*self.core
             .device
             .cmd_draw_indexed(*command_buffer, 3, 1, 0, 0, 0);*/
-            self.core.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
+            /* NOTE: draws a quad
+                self.core
+                    .device
+                    .cmd_draw_indexed(*command_buffer, 4, 1, 0, 0, 0);
+            */
+            self.core.device.cmd_draw(*command_buffer, 6, 1, 0, 0);
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 

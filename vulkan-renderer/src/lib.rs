@@ -13,6 +13,8 @@ pub struct App {
     state: GameState,
     renderer: Option<renderer::Renderer>,
     window: Option<Window>,
+
+    asset_manager: asset_manager::AssetManager,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -46,7 +48,10 @@ impl winit::application::ApplicationHandler for App {
                 event_loop.exit();
             }
             winit::event::WindowEvent::RedrawRequested => {
-                self.renderer.as_mut().unwrap().draw_frame();
+                self.renderer
+                    .as_mut()
+                    .unwrap()
+                    .draw_frame(&self.asset_manager, vec![]);
 
                 self.window.as_ref().unwrap().request_redraw();
             }
@@ -66,6 +71,8 @@ impl App {
                 state: GameState::Game(()),
                 renderer: None,
                 window: None,
+
+                asset_manager: STATIC_ASSETS.into_asset_manager(),
             })
             .unwrap();
     }

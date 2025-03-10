@@ -4,8 +4,8 @@ pub struct StaticAssets {
     pub images: &'static [(&'static str, Image)],
 }
 
-impl Into<AssetManager> for StaticAssets {
-    fn into(self) -> AssetManager {
+impl StaticAssets {
+    pub fn into_asset_manager(&self) -> AssetManager {
         AssetManager {
             images: self
                 .images

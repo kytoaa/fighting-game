@@ -1,11 +1,15 @@
 use ash::{vk, Device, Instance};
 
 mod deinitialization;
+mod initialization;
+
 mod frame_recording;
 mod graphics_pipeline;
-mod initialization;
 mod render_pass;
+
 mod shaders;
+mod textures;
+mod vertices;
 
 use super::Vector2;
 use asset_manager::SpriteHandle;
@@ -18,6 +22,11 @@ struct VulkanObject<T>(T, vk::DeviceMemory);
 struct Queues {
     graphics: vk::Queue,
     transfer: vk::Queue,
+}
+
+struct VertexBuffer {
+    vertices: VulkanObject<vk::Buffer>,
+    indices: VulkanObject<vk::Buffer>,
 }
 
 struct SwapchainInfo {
@@ -58,9 +67,13 @@ pub struct Renderer {
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
 
-    image_available_semaphores: Vec<vk::Semaphore>,
-    render_finished_semaphores: Vec<vk::Semaphore>,
-    in_flight_fences: Vec<vk::Fence>,
+    image_available_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
+    render_finished_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
+    in_flight_fences: [vk::Fence; MAX_FRAMES_IN_FLIGHT],
+
+    vertex_buffers: [VertexBuffer; MAX_FRAMES_IN_FLIGHT],
+
+    images: std::collections::HashMap<SpriteHandle, VulkanObject<VulkanImage>>,
 
     frame: u32,
 }
@@ -77,6 +90,9 @@ impl Renderer {
 
         let framebuffers = initialization::create_framebuffers(&core, &render_pass);
 
+        let vertex_buffers =
+            [(); MAX_FRAMES_IN_FLIGHT].map(|_| vertices::create_vertex_buffer(&core));
+
         let (pipeline, pipeline_layout) =
             graphics_pipeline::create_graphics_pipeline(&core, &render_pass);
 
@@ -86,24 +102,18 @@ impl Renderer {
                 vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
 
             (
-                (0..MAX_FRAMES_IN_FLIGHT)
-                    .map(|_| {
-                        unsafe { core.device.create_semaphore(&semaphore_create_info, None) }
-                            .expect("failed to create semaphore")
-                    })
-                    .collect(),
-                (0..MAX_FRAMES_IN_FLIGHT)
-                    .map(|_| {
-                        unsafe { core.device.create_semaphore(&semaphore_create_info, None) }
-                            .expect("failed to create semaphore")
-                    })
-                    .collect(),
-                (0..MAX_FRAMES_IN_FLIGHT)
-                    .map(|_| {
-                        unsafe { core.device.create_fence(&fence_create_info, None) }
-                            .expect("failed to create fence")
-                    })
-                    .collect(),
+                [(); MAX_FRAMES_IN_FLIGHT].map(|_| {
+                    unsafe { core.device.create_semaphore(&semaphore_create_info, None) }
+                        .expect("failed to create semaphore")
+                }),
+                [(); MAX_FRAMES_IN_FLIGHT].map(|_| {
+                    unsafe { core.device.create_semaphore(&semaphore_create_info, None) }
+                        .expect("failed to create semaphore")
+                }),
+                [(); MAX_FRAMES_IN_FLIGHT].map(|_| {
+                    unsafe { core.device.create_fence(&fence_create_info, None) }
+                        .expect("failed to create fence")
+                }),
             )
         };
 
@@ -119,17 +129,21 @@ impl Renderer {
             render_finished_semaphores,
             in_flight_fences,
 
+            vertex_buffers,
+
+            images: Default::default(),
+
             frame: 0,
         })
     }
 }
 
 impl Renderer {
-    pub fn draw_sprite(&mut self, sprite: SpriteHandle, position: Vector2, flipped: bool) {
-        todo!();
-    }
-
-    pub fn draw_frame(&mut self) {
+    pub fn draw_frame(
+        &mut self,
+        assets: &asset_manager::AssetManager,
+        sprites: Vec<(SpriteHandle, Vector2, bool)>,
+    ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
 
         unsafe {

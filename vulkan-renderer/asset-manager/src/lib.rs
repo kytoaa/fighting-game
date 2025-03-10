@@ -1,6 +1,6 @@
 pub mod static_data;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SpriteHandle(usize);
 
 pub struct Image {
