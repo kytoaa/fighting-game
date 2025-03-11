@@ -9,6 +9,7 @@ mod render_pass;
 
 mod shaders;
 mod textures;
+mod uniforms;
 mod vertices;
 
 use super::Vector2;
@@ -22,11 +23,6 @@ struct VulkanObject<T>(T, vk::DeviceMemory);
 struct Queues {
     graphics: vk::Queue,
     transfer: vk::Queue,
-}
-
-struct VertexBuffer {
-    vertices: VulkanObject<vk::Buffer>,
-    indices: VulkanObject<vk::Buffer>,
 }
 
 struct SwapchainInfo {
@@ -71,7 +67,7 @@ pub struct Renderer {
     render_finished_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
     in_flight_fences: [vk::Fence; MAX_FRAMES_IN_FLIGHT],
 
-    vertex_buffers: [VertexBuffer; MAX_FRAMES_IN_FLIGHT],
+    vertex_buffer: vertices::VertexBuffer,
 
     images: std::collections::HashMap<SpriteHandle, VulkanObject<VulkanImage>>,
 
@@ -90,8 +86,7 @@ impl Renderer {
 
         let framebuffers = initialization::create_framebuffers(&core, &render_pass);
 
-        let vertex_buffers =
-            [(); MAX_FRAMES_IN_FLIGHT].map(|_| vertices::create_vertex_buffer(&core));
+        let vertex_buffer = vertices::create_vertex_buffer(&core);
 
         let (pipeline, pipeline_layout) =
             graphics_pipeline::create_graphics_pipeline(&core, &render_pass);
@@ -129,7 +124,7 @@ impl Renderer {
             render_finished_semaphores,
             in_flight_fences,
 
-            vertex_buffers,
+            vertex_buffer,
 
             images: Default::default(),
 
@@ -142,9 +137,21 @@ impl Renderer {
     pub fn draw_frame(
         &mut self,
         assets: &asset_manager::AssetManager,
-        sprites: Vec<(SpriteHandle, Vector2, bool)>,
+        sprites: Vec<(SpriteHandle, Vector2, bool, f32)>,
     ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
+
+        self.populate_vertex_index_buffers(
+            sprites.iter().map(|(handle, position, flipped, depth)| {
+                (
+                    assets.get_sprite(*handle).size(),
+                    *position,
+                    *flipped,
+                    *depth,
+                )
+            }),
+            frame,
+        );
 
         unsafe {
             self.core
@@ -180,7 +187,12 @@ impl Renderer {
                 )
                 .unwrap();
 
-            self.record_command_buffer(&self.core.command_buffers[frame], image_index);
+            self.record_command_buffer(
+                &self.core.command_buffers[frame],
+                image_index,
+                frame,
+                sprites.len() * 4,
+            );
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];
             let wait_semaphores = [self.image_available_semaphores[frame]];
@@ -213,6 +225,88 @@ impl Renderer {
 
         //println!("{}, {}", self.frame, frame);
         self.frame += 1;
+    }
+
+    fn populate_vertex_index_buffers(
+        &mut self,
+        sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32)>,
+        frame: usize,
+    ) {
+        let quads: Vec<_> = sprites
+            .map(|((width, height), position, flipped, depth)| {
+                println!(
+                    "pushing quad of size {:?} at position {:?} to vertex buffer",
+                    (width, height),
+                    position
+                );
+                [
+                    (
+                        (
+                            position.x - (width / 2) as f32,
+                            position.y - (height / 2) as f32,
+                            depth,
+                        ),
+                        (0.0, 0.0),
+                    ),
+                    (
+                        (
+                            position.x - (width / 2) as f32,
+                            position.y + (height / 2) as f32,
+                            depth,
+                        ),
+                        (0.0, 1.0),
+                    ),
+                    (
+                        (
+                            position.x + (width / 2) as f32,
+                            position.y + (height / 2) as f32,
+                            depth,
+                        ),
+                        (1.0, 1.0),
+                    ),
+                    (
+                        (
+                            position.x + (width / 2) as f32,
+                            position.y - (height / 2) as f32,
+                            depth,
+                        ),
+                        (1.0, 0.0),
+                    ),
+                ]
+                .into_iter()
+                .map(move |(vertex, uv)| {
+                    if flipped {
+                        (
+                            vertex,
+                            (
+                                uv.0,
+                                match uv.1 {
+                                    0.0 => 1.0,
+                                    1.0 => 0.0,
+                                    _ => unreachable!(),
+                                },
+                            ),
+                        )
+                    } else {
+                        (vertex, uv)
+                    }
+                })
+            })
+            .flatten()
+            .collect();
+
+        let indices: Vec<_> = (0..(quads.len() / 4))
+            .map(|i| {
+                [0, 1, 3, 3, 1, 2]
+                    .into_iter()
+                    .map(move |v| v + i * vertices::INDICES_PER_QUAD)
+                    .map(|v| v as u16)
+            })
+            .flatten()
+            .collect();
+
+        self.vertex_buffer.write_vertices(&quads, frame);
+        self.vertex_buffer.write_indices(&indices, frame);
     }
 }
 

@@ -48,10 +48,15 @@ impl winit::application::ApplicationHandler for App {
                 event_loop.exit();
             }
             winit::event::WindowEvent::RedrawRequested => {
-                self.renderer
-                    .as_mut()
-                    .unwrap()
-                    .draw_frame(&self.asset_manager, vec![]);
+                self.renderer.as_mut().unwrap().draw_frame(
+                    &self.asset_manager,
+                    vec![(
+                        self.asset_manager.get_sprite_handle("j.d.png").unwrap(),
+                        Vector2::ZERO,
+                        false,
+                        0.5,
+                    )],
+                );
 
                 self.window.as_ref().unwrap().request_redraw();
             }

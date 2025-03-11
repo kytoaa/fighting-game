@@ -4,7 +4,13 @@ use ash::vk;
 use super::*;
 
 impl Renderer {
-    pub fn record_command_buffer(&self, command_buffer: &vk::CommandBuffer, image_index: u32) {
+    pub fn record_command_buffer(
+        &self,
+        command_buffer: &vk::CommandBuffer,
+        image_index: u32,
+        frame: usize,
+        vertex_count: usize,
+    ) {
         let begin_info =
             vk::CommandBufferBeginInfo::default().flags(vk::CommandBufferUsageFlags::empty());
 
@@ -71,34 +77,23 @@ impl Renderer {
                 ),
             );
 
-            // TODO: bind vertex buffer here
-            /*  VkBuffer vertexBuffers[] = { m_vertexBuffer };
-                VkDeviceSize offsets[] = { 0 };
-                vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-                vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-            */
-            /*self.core.device.cmd_bind_vertex_buffers(
+            self.core.device.cmd_bind_vertex_buffers(
                 *command_buffer,
                 0,
-                &[vk::Buffer::null()],
-                &[0],
+                std::slice::from_ref(self.vertex_buffer.buffer()),
+                &[(frame * vertices::VERTEX_BUFFER_DATA_SIZE) as u64],
             );
             self.core.device.cmd_bind_index_buffer(
                 *command_buffer,
-                vk::Buffer::null(),
-                0,
-                vk::IndexType::UINT32,
-            );*/
+                *self.vertex_buffer.buffer(),
+                (frame * vertices::VERTEX_BUFFER_DATA_SIZE
+                    + vertices::VERTEX_DATA_SIZE * vertices::MAX_VERTICES) as u64,
+                vk::IndexType::UINT16,
+            );
 
-            /*self.core
-            .device
-            .cmd_draw_indexed(*command_buffer, 3, 1, 0, 0, 0);*/
-            /* NOTE: draws a quad
-                self.core
-                    .device
-                    .cmd_draw_indexed(*command_buffer, 4, 1, 0, 0, 0);
-            */
-            self.core.device.cmd_draw(*command_buffer, 6, 1, 0, 0);
+            self.core
+                .device
+                .cmd_draw_indexed(*command_buffer, vertex_count as u32, 1, 0, 0, 0);
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 

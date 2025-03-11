@@ -7,6 +7,14 @@ pub struct Image {
     size: (usize, usize),
     data: AssetData,
 }
+impl Image {
+    pub const fn size(&self) -> (usize, usize) {
+        self.size
+    }
+    pub const fn data(&self) -> &AssetData {
+        &self.data
+    }
+}
 
 pub enum AssetData {
     Dynamic(Box<[u8]>),
@@ -59,6 +67,9 @@ impl AssetManager {
                         .is_some()
             })
             .map(|v| SpriteHandle(v.0))
+    }
+    pub fn get_names(&self) -> impl Iterator<Item = &str> {
+        self.images.iter().map(|(name, _)| name.name)
     }
 }
 

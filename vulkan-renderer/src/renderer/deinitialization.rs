@@ -48,6 +48,8 @@ impl Drop for Renderer {
                 .iter()
                 .for_each(|fence| self.core.device.destroy_fence(*fence, None));
 
+            self.vertex_buffer.free_buffer(&self.core);
+
             self.framebuffers
                 .iter()
                 .for_each(|framebuffer| self.core.device.destroy_framebuffer(*framebuffer, None));
