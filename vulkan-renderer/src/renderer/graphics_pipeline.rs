@@ -6,6 +6,7 @@ use super::*;
 pub fn create_graphics_pipeline(
     core: &CoreRenderData,
     render_pass: &vk::RenderPass,
+    descriptor_set_layouts: &[vk::DescriptorSetLayout],
 ) -> (vk::Pipeline, vk::PipelineLayout) {
     let vert_shader = shaders::HELLO_TRIANGLE_VERT_SHADER;
     let frag_shader = shaders::HELLO_TRIANGLE_FRAG_SHADER;
@@ -90,7 +91,8 @@ pub fn create_graphics_pipeline(
         .depth_bounds_test_enable(false)
         .stencil_test_enable(false);
 
-    let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::default().set_layouts(&[]);
+    let pipeline_layout_create_info =
+        vk::PipelineLayoutCreateInfo::default().set_layouts(descriptor_set_layouts);
 
     let pipeline_layout = unsafe {
         core.device

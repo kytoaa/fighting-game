@@ -7,6 +7,10 @@ mod frame_recording;
 mod graphics_pipeline;
 mod render_pass;
 
+mod commands;
+mod resources;
+
+mod descriptors;
 mod shaders;
 mod textures;
 mod uniforms;
@@ -67,7 +71,14 @@ pub struct Renderer {
     render_finished_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
     in_flight_fences: [vk::Fence; MAX_FRAMES_IN_FLIGHT],
 
-    vertex_buffer: vertices::VertexBuffer,
+    sampler: vk::Sampler,
+
+    vertex_buffers: vertices::VertexBuffer<MAX_FRAMES_IN_FLIGHT>,
+    uniform_buffers: uniforms::UniformBuffer<MAX_FRAMES_IN_FLIGHT>,
+
+    descriptor_pool: vk::DescriptorPool,
+    descriptor_set_layout: vk::DescriptorSetLayout,
+    descriptor_sets: [vk::DescriptorSet; MAX_FRAMES_IN_FLIGHT],
 
     images: std::collections::HashMap<SpriteHandle, VulkanObject<VulkanImage>>,
 
@@ -86,10 +97,26 @@ impl Renderer {
 
         let framebuffers = initialization::create_framebuffers(&core, &render_pass);
 
-        let vertex_buffer = vertices::create_vertex_buffer(&core);
+        let vertex_buffers = vertices::create_vertex_buffer(&core);
+        let uniform_buffers = uniforms::create_uniform_buffer(&core);
 
-        let (pipeline, pipeline_layout) =
-            graphics_pipeline::create_graphics_pipeline(&core, &render_pass);
+        let sampler = textures::create_image_sampler(&core);
+
+        let descriptor_pool = descriptors::create_descriptor_pool(&core);
+        let descriptor_set_layout = descriptors::create_descriptor_set_layout(&core);
+        let descriptor_sets = descriptors::create_descriptor_sets(
+            &core,
+            &descriptor_pool,
+            &descriptor_set_layout,
+            &uniform_buffers.get_buffers(),
+            &sampler,
+        );
+
+        let (pipeline, pipeline_layout) = graphics_pipeline::create_graphics_pipeline(
+            &core,
+            &render_pass,
+            std::slice::from_ref(&descriptor_set_layout),
+        );
 
         let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
             let semaphore_create_info = vk::SemaphoreCreateInfo::default();
@@ -124,7 +151,14 @@ impl Renderer {
             render_finished_semaphores,
             in_flight_fences,
 
-            vertex_buffer,
+            sampler,
+
+            vertex_buffers,
+            uniform_buffers,
+
+            descriptor_pool,
+            descriptor_set_layout,
+            descriptor_sets,
 
             images: Default::default(),
 
@@ -140,6 +174,21 @@ impl Renderer {
         sprites: Vec<(SpriteHandle, Vector2, bool, f32)>,
     ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
+
+        let images: Vec<_> = sprites
+            .iter()
+            .map(|s| s.0)
+            .map(|handle| match self.images.get(&handle) {
+                Some(image) => image.0 .1,
+                None => {
+                    let image = assets.get_sprite(handle);
+                    let data = image.data().data();
+                    let image = textures::create_image(&self.core, (image.size(), data));
+                    self.images.insert(handle, image);
+                    self.images.get(&handle).unwrap().0 .1
+                }
+            })
+            .collect();
 
         self.populate_vertex_index_buffers(
             sprites.iter().map(|(handle, position, flipped, depth)| {
@@ -191,7 +240,7 @@ impl Renderer {
                 &self.core.command_buffers[frame],
                 image_index,
                 frame,
-                sprites.len() * 4,
+                &images,
             );
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];
@@ -234,40 +283,35 @@ impl Renderer {
     ) {
         let quads: Vec<_> = sprites
             .map(|((width, height), position, flipped, depth)| {
-                println!(
-                    "pushing quad of size {:?} at position {:?} to vertex buffer",
-                    (width, height),
-                    position
-                );
                 [
                     (
                         (
-                            position.x - (width / 2) as f32,
-                            position.y - (height / 2) as f32,
+                            position.x - (width as f32 / 2.0),
+                            position.y - (height as f32 / 2.0),
                             depth,
                         ),
                         (0.0, 0.0),
                     ),
                     (
                         (
-                            position.x - (width / 2) as f32,
-                            position.y + (height / 2) as f32,
+                            position.x - (width as f32 / 2.0),
+                            position.y + (height as f32 / 2.0),
                             depth,
                         ),
                         (0.0, 1.0),
                     ),
                     (
                         (
-                            position.x + (width / 2) as f32,
-                            position.y + (height / 2) as f32,
+                            position.x + (width as f32 / 2.0),
+                            position.y + (height as f32 / 2.0),
                             depth,
                         ),
                         (1.0, 1.0),
                     ),
                     (
                         (
-                            position.x + (width / 2) as f32,
-                            position.y - (height / 2) as f32,
+                            position.x + (width as f32 / 2.0),
+                            position.y - (height as f32 / 2.0),
                             depth,
                         ),
                         (1.0, 0.0),
@@ -305,8 +349,8 @@ impl Renderer {
             .flatten()
             .collect();
 
-        self.vertex_buffer.write_vertices(&quads, frame);
-        self.vertex_buffer.write_indices(&indices, frame);
+        self.vertex_buffers.write_vertices(&quads, frame);
+        self.vertex_buffers.write_indices(&indices, frame);
     }
 }
 

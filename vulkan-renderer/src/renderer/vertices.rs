@@ -3,8 +3,6 @@ use ash::vk;
 
 use super::*;
 
-// interleaved vertex and uv, indices
-
 pub const MAX_VERTICES: usize = 400; // max of 100 quads
 pub const INDICES_PER_QUAD: usize = 6;
 pub const MAX_QUADS: usize = MAX_VERTICES / 4;
@@ -19,101 +17,114 @@ pub const VERTEX_BUFFER_DATA_SIZE: usize =
     MAX_VERTICES * VERTEX_DATA_SIZE + MAX_INDICES * INDEX_SIZE;
 pub const TOTAL_ALLOCATION_SIZE: usize = VERTEX_BUFFER_DATA_SIZE * MAX_FRAMES_IN_FLIGHT;
 
-pub struct VertexBuffer {
-    full_buffer: vk::Buffer,
-    memory: vk::DeviceMemory,
-
-    mapped_access: *mut std::ffi::c_void,
+pub struct VertexBuffer<const FRAMES: usize> {
+    vertex_buffers: [(VulkanObject<vk::Buffer>, *mut std::ffi::c_void); FRAMES],
+    index_buffers: [(VulkanObject<vk::Buffer>, *mut std::ffi::c_void); FRAMES],
 }
 
-pub fn create_vertex_buffer(core: &CoreRenderData) -> VertexBuffer {
-    let buffer_info = vk::BufferCreateInfo::default()
-        .size(TOTAL_ALLOCATION_SIZE as u64)
-        .usage(
-            vk::BufferUsageFlags::TRANSFER_SRC
-                | vk::BufferUsageFlags::TRANSFER_DST
-                | vk::BufferUsageFlags::VERTEX_BUFFER
-                | vk::BufferUsageFlags::INDEX_BUFFER,
-        )
-        .sharing_mode(vk::SharingMode::EXCLUSIVE);
-
-    let buffer = unsafe { core.device.create_buffer(&buffer_info, None) }.unwrap();
-
-    let memory_requirements = unsafe { core.device.get_buffer_memory_requirements(buffer) };
-
+pub fn create_vertex_buffer<const FRAMES: usize>(core: &CoreRenderData) -> VertexBuffer<FRAMES> {
     let device_memory_properties = unsafe {
         core.instance
             .get_physical_device_memory_properties(core.physical_device)
     };
-
-    let allocation_info = vk::MemoryAllocateInfo::default()
-        .allocation_size(memory_requirements.size)
-        .memory_type_index(
-            initialization::find_memorytype_index(
-                &memory_requirements,
-                &device_memory_properties,
-                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            )
-            .unwrap(),
-        );
-
-    let memory = unsafe { core.device.allocate_memory(&allocation_info, None) }
-        .expect("failed to allocate for vertex and index buffers");
-
-    unsafe { core.device.bind_buffer_memory(buffer, memory, 0) }.unwrap();
-
-    let mapped_memory = unsafe {
-        core.device.map_memory(
-            memory,
-            0,
-            TOTAL_ALLOCATION_SIZE as u64,
-            vk::MemoryMapFlags::empty(),
+    let vertex_buffers = [(); FRAMES].map(|_| {
+        let buffer = resources::create_buffer(
+            &core.device,
+            &device_memory_properties,
+            VERTEX_DATA_SIZE * MAX_VERTICES,
+            vk::BufferUsageFlags::TRANSFER_SRC
+                | vk::BufferUsageFlags::TRANSFER_DST
+                | vk::BufferUsageFlags::VERTEX_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )
-    }
-    .unwrap();
+        .expect("failed to create vertex buffer");
+
+        let mapped = unsafe {
+            core.device.map_memory(
+                buffer.1,
+                0,
+                (VERTEX_DATA_SIZE * MAX_VERTICES) as u64,
+                vk::MemoryMapFlags::empty(),
+            )
+        }
+        .unwrap();
+
+        (buffer, mapped)
+    });
+
+    let index_buffers = [(); FRAMES].map(|_| {
+        let buffer = resources::create_buffer(
+            &core.device,
+            &device_memory_properties,
+            INDEX_SIZE * MAX_INDICES,
+            vk::BufferUsageFlags::TRANSFER_SRC
+                | vk::BufferUsageFlags::TRANSFER_DST
+                | vk::BufferUsageFlags::INDEX_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        )
+        .expect("failed to create index buffer");
+
+        let mapped = unsafe {
+            core.device.map_memory(
+                buffer.1,
+                0,
+                (INDEX_SIZE * MAX_INDICES) as u64,
+                vk::MemoryMapFlags::empty(),
+            )
+        }
+        .unwrap();
+
+        (buffer, mapped)
+    });
 
     VertexBuffer {
-        full_buffer: buffer,
-        memory,
-
-        mapped_access: mapped_memory,
+        vertex_buffers,
+        index_buffers,
     }
 }
 
-impl VertexBuffer {
-    pub fn buffer(&self) -> &vk::Buffer {
-        &self.full_buffer
+impl<const FRAMES: usize> VertexBuffer<FRAMES> {
+    pub fn vertex_buffer(&self, frame: usize) -> &vk::Buffer {
+        &self.vertex_buffers[frame].0 .0
+    }
+    pub fn index_buffer(&self, frame: usize) -> &vk::Buffer {
+        &self.index_buffers[frame].0 .0
     }
     pub fn write_vertices(&self, vertices: &[VertexData], frame: usize) {
         assert!(frame < MAX_FRAMES_IN_FLIGHT);
-        let offset = frame * VERTEX_BUFFER_DATA_SIZE;
+        //println!("writing {:?} to vertex buffer", vertices);
 
         for (i, vert) in vertices.iter().enumerate().take(MAX_VERTICES) {
             unsafe {
-                ((self.mapped_access as *mut u8).add(offset) as *mut VertexData)
-                    .add(i * VERTEX_DATA_SIZE)
-                    .write_unaligned(*vert);
+                (self.vertex_buffers[frame].1 as *mut VertexData)
+                    .add(i)
+                    .write(*vert);
             }
         }
     }
     pub fn write_indices(&self, indices: &[u16], frame: usize) {
         assert!(frame < MAX_FRAMES_IN_FLIGHT);
-        let offset = frame * VERTEX_BUFFER_DATA_SIZE + VERTEX_DATA_SIZE * MAX_VERTICES;
+        //println!("writing {:?} to index buffer", indices);
 
         for (i, index) in indices.iter().enumerate().take(MAX_INDICES) {
             unsafe {
-                ((self.mapped_access as *mut u8).add(offset) as *mut u16)
-                    .add(i * INDEX_SIZE)
-                    .write_unaligned(*index);
+                (self.index_buffers[frame].1 as *mut u16)
+                    .add(i)
+                    .write(*index);
             }
         }
     }
 
-    pub fn free_buffer(&self, core: &CoreRenderData) {
+    pub fn free_buffers(&self, core: &CoreRenderData) {
         unsafe {
-            core.device.unmap_memory(self.memory);
-            core.device.destroy_buffer(self.full_buffer, None);
-            core.device.free_memory(self.memory, None);
+            self.vertex_buffers
+                .iter()
+                .chain(self.index_buffers.iter())
+                .for_each(|object| {
+                    core.device.unmap_memory(object.0 .1);
+                    core.device.destroy_buffer(object.0 .0, None);
+                    core.device.free_memory(object.0 .1, None);
+                });
         }
     }
 }

@@ -38,6 +38,23 @@ impl Drop for Renderer {
         unsafe {
             self.core.device.device_wait_idle().unwrap();
 
+            self.core.device.destroy_sampler(self.sampler, None);
+            self.images.values().for_each(|image| {
+                self.core.device.destroy_image_view(image.0 .1, None);
+                self.core.device.destroy_image(image.0 .0, None);
+                self.core.device.free_memory(image.1, None);
+            });
+
+            self.vertex_buffers.free_buffers(&self.core);
+            self.uniform_buffers.free_buffers(&self.core);
+
+            self.core
+                .device
+                .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+            self.core
+                .device
+                .destroy_descriptor_pool(self.descriptor_pool, None);
+
             self.image_available_semaphores
                 .iter()
                 .for_each(|semaphore| self.core.device.destroy_semaphore(*semaphore, None));
@@ -47,8 +64,6 @@ impl Drop for Renderer {
             self.in_flight_fences
                 .iter()
                 .for_each(|fence| self.core.device.destroy_fence(*fence, None));
-
-            self.vertex_buffer.free_buffer(&self.core);
 
             self.framebuffers
                 .iter()

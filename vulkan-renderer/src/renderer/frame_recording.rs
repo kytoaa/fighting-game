@@ -9,7 +9,7 @@ impl Renderer {
         command_buffer: &vk::CommandBuffer,
         image_index: u32,
         frame: usize,
-        vertex_count: usize,
+        sprites: &[vk::ImageView],
     ) {
         let begin_info =
             vk::CommandBufferBeginInfo::default().flags(vk::CommandBufferUsageFlags::empty());
@@ -80,20 +80,60 @@ impl Renderer {
             self.core.device.cmd_bind_vertex_buffers(
                 *command_buffer,
                 0,
-                std::slice::from_ref(self.vertex_buffer.buffer()),
-                &[(frame * vertices::VERTEX_BUFFER_DATA_SIZE) as u64],
+                std::slice::from_ref(self.vertex_buffers.vertex_buffer(frame)),
+                &[0],
             );
             self.core.device.cmd_bind_index_buffer(
                 *command_buffer,
-                *self.vertex_buffer.buffer(),
-                (frame * vertices::VERTEX_BUFFER_DATA_SIZE
-                    + vertices::VERTEX_DATA_SIZE * vertices::MAX_VERTICES) as u64,
+                *self.vertex_buffers.index_buffer(frame),
+                0,
                 vk::IndexType::UINT16,
             );
 
-            self.core
-                .device
-                .cmd_draw_indexed(*command_buffer, vertex_count as u32, 1, 0, 0, 0);
+            {
+                let (width, height) = (
+                    self.core.swapchain_info.extent.width as f32 / 2.0,
+                    self.core.swapchain_info.extent.height as f32 / 2.0,
+                );
+                let ubo = uniforms::UniformMatrix::orthographic_projection(
+                    -width, width, -height, height, 0.0, 1.0,
+                );
+                self.uniform_buffers.write(frame, ubo);
+            }
+
+            for texture in sprites {
+                let image_info = vk::DescriptorImageInfo::default()
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .image_view(*texture)
+                    .sampler(self.sampler);
+                let writes = [vk::WriteDescriptorSet::default()
+                    .dst_set(self.descriptor_sets[frame])
+                    .dst_binding(1)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                    .descriptor_count(1)
+                    .image_info(std::slice::from_ref(&image_info))];
+
+                self.core.device.update_descriptor_sets(&writes, &[]);
+
+                self.core.device.cmd_bind_descriptor_sets(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.pipeline_layout,
+                    0,
+                    std::slice::from_ref(&self.descriptor_sets[frame]),
+                    &[],
+                );
+
+                self.core.device.cmd_draw_indexed(
+                    *command_buffer,
+                    vertices::INDICES_PER_QUAD as u32,
+                    1,
+                    0,
+                    0,
+                    0,
+                );
+            }
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 
