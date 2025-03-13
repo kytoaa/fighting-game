@@ -38,11 +38,13 @@ pub fn create_graphics_pipeline(
         vk::VertexInputAttributeDescription::default()
             .binding(0)
             .location(0)
-            .format(vk::Format::R32G32B32_SFLOAT),
+            .format(vk::Format::R32G32B32_SFLOAT)
+            .offset(std::mem::offset_of!(vertices::VertexData, 0) as u32),
         vk::VertexInputAttributeDescription::default()
             .binding(0)
             .location(1)
-            .format(vk::Format::R32G32_SFLOAT),
+            .format(vk::Format::R32G32_SFLOAT)
+            .offset(std::mem::offset_of!(vertices::VertexData, 1) as u32),
     ];
     let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default()
         .vertex_binding_descriptions(std::slice::from_ref(&vertex_input_binding_description))

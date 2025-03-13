@@ -51,7 +51,7 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
         match addr.extension().unwrap().to_str().unwrap() {
             "png" => {
                 let file = image::ImageReader::open(addr).expect("could not read file");
-                let image = file.decode().expect("failed to decode image").into_rgba8();
+                let image = file.decode().expect("failed to decode image").into_rgb8();
 
                 let (width, height) = (image.width() as usize, image.height() as usize);
                 let pixels = image.pixels().map(|pixel| pixel.0).flatten();
