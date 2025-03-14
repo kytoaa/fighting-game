@@ -63,7 +63,7 @@ pub fn create_image(
         &core.device,
         &device_memory_properties,
         image_data.0,
-        vk::Format::R8G8B8_SRGB,
+        vk::Format::R8G8B8A8_SRGB,
         vk::ImageTiling::OPTIMAL,
         vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,

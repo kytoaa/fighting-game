@@ -9,7 +9,7 @@ pub const MAX_QUADS: usize = MAX_VERTICES / 4;
 pub const MAX_INDICES: usize = INDICES_PER_QUAD * MAX_QUADS;
 
 pub type Vertex = (f32, f32, f32);
-pub type VertexData = (Vertex, (f32, f32));
+pub type VertexData = (Vertex, (f32, f32), u32);
 pub const VERTEX_DATA_SIZE: usize = size_of::<VertexData>();
 pub const INDEX_SIZE: usize = size_of::<u16>();
 

@@ -23,7 +23,9 @@ impl Renderer {
 
         let clear_values = [
             vk::ClearValue {
-                color: vk::ClearColorValue::default(),
+                color: vk::ClearColorValue {
+                    float32: [1.0, 1.0, 1.0, 1.0],
+                },
             },
             vk::ClearValue {
                 depth_stencil: vk::ClearDepthStencilValue::default().depth(1.0).stencil(0),
@@ -99,41 +101,28 @@ impl Renderer {
                     -width, width, -height, height, 0.0, 1.0,
                 );
                 self.uniform_buffers.write(frame, ubo);
-            }
-
-            for texture in sprites {
-                let image_info = vk::DescriptorImageInfo::default()
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(*texture)
-                    .sampler(self.sampler);
-                let writes = [vk::WriteDescriptorSet::default()
-                    .dst_set(self.descriptor_sets[frame])
-                    .dst_binding(1)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                    .descriptor_count(1)
-                    .image_info(std::slice::from_ref(&image_info))];
-
-                self.core.device.update_descriptor_sets(&writes, &[]);
 
                 self.core.device.cmd_bind_descriptor_sets(
                     *command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
                     self.pipeline_layout,
                     0,
-                    std::slice::from_ref(&self.descriptor_sets[frame]),
+                    &[
+                        self.descriptor_sets[frame],
+                        self.sampler_descriptor_sets[frame],
+                    ],
                     &[],
                 );
-
-                self.core.device.cmd_draw_indexed(
-                    *command_buffer,
-                    vertices::INDICES_PER_QUAD as u32,
-                    1,
-                    0,
-                    0,
-                    0,
-                );
             }
+
+            self.core.device.cmd_draw_indexed(
+                *command_buffer,
+                (vertices::INDICES_PER_QUAD * sprites.len()) as u32,
+                1,
+                0,
+                0,
+                0,
+            );
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 

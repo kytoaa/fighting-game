@@ -63,7 +63,7 @@ impl CoreRenderData {
                     .application_version(0)
                     .engine_name(app_name)
                     .engine_version(0)
-                    .api_version(vk::make_api_version(0, 1, 0, 0));
+                    .api_version(vk::make_api_version(0, 1, 2, 0));
 
                 let create_flags = vk::InstanceCreateFlags::default();
 
@@ -125,7 +125,8 @@ impl CoreRenderData {
 
             let priorities = [1.0];
             let device_extension_names_raw = [ash::khr::swapchain::NAME.as_ptr()];
-            let device_features = vk::PhysicalDeviceFeatures::default();
+            let device_features = vk::PhysicalDeviceFeatures::default()
+                .shader_sampled_image_array_dynamic_indexing(true);
 
             // create the logical device
             let device = {

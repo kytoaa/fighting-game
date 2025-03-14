@@ -80,6 +80,10 @@ pub struct Renderer {
     descriptor_set_layout: vk::DescriptorSetLayout,
     descriptor_sets: [vk::DescriptorSet; MAX_FRAMES_IN_FLIGHT],
 
+    sampler_descriptor_pool: vk::DescriptorPool,
+    sampler_descriptor_set_layout: vk::DescriptorSetLayout,
+    sampler_descriptor_sets: [vk::DescriptorSet; MAX_FRAMES_IN_FLIGHT],
+
     images: std::collections::HashMap<SpriteHandle, VulkanObject<VulkanImage>>,
 
     frame: u32,
@@ -109,13 +113,15 @@ impl Renderer {
             &descriptor_pool,
             &descriptor_set_layout,
             &uniform_buffers.get_buffers(),
-            &sampler,
         );
+
+        let (sampler_descriptor_pool, sampler_descriptor_set_layout, sampler_descriptor_sets) =
+            descriptors::create_sampler_array_descriptor_sets(&core);
 
         let (pipeline, pipeline_layout) = graphics_pipeline::create_graphics_pipeline(
             &core,
             &render_pass,
-            std::slice::from_ref(&descriptor_set_layout),
+            &[descriptor_set_layout, sampler_descriptor_set_layout],
         );
 
         let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
@@ -160,6 +166,10 @@ impl Renderer {
             descriptor_set_layout,
             descriptor_sets,
 
+            sampler_descriptor_pool,
+            sampler_descriptor_set_layout,
+            sampler_descriptor_sets,
+
             images: Default::default(),
 
             frame: 0,
@@ -174,8 +184,12 @@ impl Renderer {
         sprites: Vec<(SpriteHandle, Vector2, bool, f32)>,
     ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
+        if sprites.len() == 0 {
+            self.frame += 1;
+            return;
+        }
 
-        let images: Vec<_> = sprites
+        let images: Vec<vk::ImageView> = sprites
             .iter()
             .map(|s| s.0)
             .map(|handle| match self.images.get(&handle) {
@@ -183,24 +197,13 @@ impl Renderer {
                 None => {
                     let image = assets.get_sprite(handle);
                     let data = image.data().data();
+                    //println!("{:?}", data);
                     let image = textures::create_image(&self.core, (image.size(), data));
                     self.images.insert(handle, image);
                     self.images.get(&handle).unwrap().0 .1
                 }
             })
             .collect();
-
-        self.populate_vertex_index_buffers(
-            sprites.iter().map(|(handle, position, flipped, depth)| {
-                (
-                    assets.get_sprite(*handle).size(),
-                    *position,
-                    *flipped,
-                    *depth,
-                )
-            }),
-            frame,
-        );
 
         unsafe {
             self.core
@@ -211,6 +214,24 @@ impl Renderer {
                     u64::MAX,
                 )
                 .unwrap();
+
+            self.insert_image_views(&images, frame);
+
+            self.populate_vertex_index_buffers(
+                sprites
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (handle, position, flipped, depth))| {
+                        (
+                            assets.get_sprite(*handle).size(),
+                            *position,
+                            *flipped,
+                            *depth,
+                            i as u32,
+                        )
+                    }),
+                frame,
+            );
 
             let (image_index, _) = self
                 .core
@@ -278,64 +299,71 @@ impl Renderer {
 
     fn populate_vertex_index_buffers(
         &mut self,
-        sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32)>,
+        sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, u32)>,
         frame: usize,
     ) {
         let quads: Vec<_> = sprites
-            .map(|((width, height), position, flipped, depth)| {
-                [
-                    (
+            .map(
+                |((width, height), position, flipped, depth, texture_index)| {
+                    [
                         (
-                            position.x - (width as f32 / 2.0),
-                            position.y - (height as f32 / 2.0),
-                            depth,
-                        ),
-                        (0.0, 0.0),
-                    ),
-                    (
-                        (
-                            position.x - (width as f32 / 2.0),
-                            position.y + (height as f32 / 2.0),
-                            depth,
-                        ),
-                        (0.0, 1.0),
-                    ),
-                    (
-                        (
-                            position.x + (width as f32 / 2.0),
-                            position.y + (height as f32 / 2.0),
-                            depth,
-                        ),
-                        (1.0, 1.0),
-                    ),
-                    (
-                        (
-                            position.x + (width as f32 / 2.0),
-                            position.y - (height as f32 / 2.0),
-                            depth,
-                        ),
-                        (1.0, 0.0),
-                    ),
-                ]
-                .into_iter()
-                .map(move |(vertex, uv)| {
-                    if flipped {
-                        (
-                            vertex,
                             (
-                                uv.0,
-                                match uv.1 {
-                                    0.0 => 1.0,
-                                    1.0 => 0.0,
-                                    _ => unreachable!(),
-                                },
+                                position.x - (width as f32 / 2.0),
+                                position.y - (height as f32 / 2.0),
+                                depth,
                             ),
-                        )
-                    } else {
-                        (vertex, uv)
-                    }
-                })
-            })
+                            (0.0, 0.0),
+                            texture_index,
+                        ),
+                        (
+                            (
+                                position.x - (width as f32 / 2.0),
+                                position.y + (height as f32 / 2.0),
+                                depth,
+                            ),
+                            (0.0, 1.0),
+                            texture_index,
+                        ),
+                        (
+                            (
+                                position.x + (width as f32 / 2.0),
+                                position.y + (height as f32 / 2.0),
+                                depth,
+                            ),
+                            (1.0, 1.0),
+                            texture_index,
+                        ),
+                        (
+                            (
+                                position.x + (width as f32 / 2.0),
+                                position.y - (height as f32 / 2.0),
+                                depth,
+                            ),
+                            (1.0, 0.0),
+                            texture_index,
+                        ),
+                    ]
+                    .into_iter()
+                    .map(move |(vertex, uv, texture_index)| {
+                        if flipped {
+                            (
+                                vertex,
+                                (
+                                    match uv.0 {
+                                        0.0 => 1.0,
+                                        1.0 => 0.0,
+                                        _ => unreachable!(),
+                                    },
+                                    uv.1,
+                                ),
+                                texture_index,
+                            )
+                        } else {
+                            (vertex, uv, texture_index)
+                        }
+                    })
+                },
+            )
             .flatten()
             .collect();
 
@@ -343,11 +371,12 @@ impl Renderer {
             .map(|i| {
                 [0, 1, 3, 3, 1, 2]
                     .into_iter()
-                    .map(move |v| v + i * vertices::INDICES_PER_QUAD)
+                    .map(move |v| v + i * 4)
                     .map(|v| v as u16)
             })
             .flatten()
             .collect();
+        //println!("{:?}", quads);
 
         self.vertex_buffers.write_vertices(&quads, frame);
         self.vertex_buffers.write_indices(&indices, frame);

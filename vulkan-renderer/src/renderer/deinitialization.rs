@@ -54,6 +54,12 @@ impl Drop for Renderer {
             self.core
                 .device
                 .destroy_descriptor_pool(self.descriptor_pool, None);
+            self.core
+                .device
+                .destroy_descriptor_set_layout(self.sampler_descriptor_set_layout, None);
+            self.core
+                .device
+                .destroy_descriptor_pool(self.sampler_descriptor_pool, None);
 
             self.image_available_semaphores
                 .iter()
