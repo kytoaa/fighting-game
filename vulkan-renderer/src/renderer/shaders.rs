@@ -35,7 +35,7 @@ layout(location = 1) flat in uint inTextureIndex;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-	outColor = texture(textureSamplers[inTextureIndex], fragUV) * 1.7;
+	outColor = texture(textureSamplers[inTextureIndex], fragUV);// * 1.7;
 
     if (outColor.w < 0.5) {
         discard;
