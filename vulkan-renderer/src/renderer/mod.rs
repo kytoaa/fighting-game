@@ -181,7 +181,7 @@ impl Renderer {
     pub fn draw_frame(
         &mut self,
         assets: &asset_manager::AssetManager,
-        sprites: Vec<(SpriteHandle, Vector2, bool, f32)>,
+        sprites: &[(SpriteHandle, Vector2, bool, f32)],
     ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
         if sprites.len() == 0 {

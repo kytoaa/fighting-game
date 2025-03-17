@@ -56,7 +56,12 @@ pub fn generate_static_asset_manager_from_dir(input: TokenStream) -> TokenStream
                 let (width, height) = (image.width() as usize, image.height() as usize);
                 let pixels = image.pixels().map(|pixel| pixel.0).flatten();
 
-                let addr = addr.to_str().unwrap().strip_prefix("./assets/");
+                let addr = addr
+                    .to_str()
+                    .unwrap()
+                    .strip_prefix("./assets/")
+                    .unwrap()
+                    .replace("\\", "/");
 
                 images.push(quote! {
                     (

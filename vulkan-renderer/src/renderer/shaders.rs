@@ -37,7 +37,7 @@ layout(location = 0) out vec4 outColor;
 void main() {
 	outColor = texture(textureSamplers[inTextureIndex], fragUV);// * 1.7;
 
-    if (outColor.w < 0.5) {
+    if (outColor.a < 0.5) {
         discard;
     }
 }"#,

@@ -336,6 +336,10 @@ where
         self.velocity = input.move_dir().y(0.0) * WALK_SPEED;
         self.grounded_actionable_state(input)
     }
+    fn frame_name(&self) -> Option<Box<str>> {
+        // TODO: TEMPORARY
+        Some("sol/idle".into())
+    }
 }
 impl SolDamageableState for WalkState<false> {}
 
@@ -402,6 +406,9 @@ impl Entity for Sol<Stand> {
         );
 
         self.grounded_actionable_state(input)
+    }
+    fn frame_name(&self) -> Option<Box<str>> {
+        Some("sol/idle".into())
     }
 }
 impl SolDamageableState for Stand {}

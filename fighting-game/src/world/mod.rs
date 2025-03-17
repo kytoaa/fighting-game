@@ -10,7 +10,7 @@ mod tests;
 const DELTA: f32 = 1.0 / 60.0;
 
 pub struct World {
-    input_providers: [std::rc::Rc<Mutex<InputHandler>>; 2],
+    input_providers: [std::sync::Arc<Mutex<InputHandler>>; 2],
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
@@ -20,7 +20,7 @@ struct Spawn<T>(T, usize);
 impl World {
     pub fn new(
         players: [Option<Box<dyn crate::characters::Entity>>; 2],
-        input_providers: [std::rc::Rc<Mutex<InputHandler>>; 2],
+        input_providers: [std::sync::Arc<Mutex<InputHandler>>; 2],
     ) -> Self {
         Self {
             input_providers,

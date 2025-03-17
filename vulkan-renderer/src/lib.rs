@@ -16,9 +16,16 @@ pub struct App {
 
     asset_manager: asset_manager::AssetManager,
 
-    sol_position: Vector2,
+    input_handlers: [std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>; 2],
+    key_states: std::collections::HashMap<winit::keyboard::PhysicalKey, winit::event::ElementState>,
+
     previous_time: std::time::SystemTime,
-    sol_sprite: bool,
+}
+
+pub type SpriteDrawData = (asset_manager::SpriteHandle, Vector2, bool, f32);
+pub struct RenderData {
+    sprites_to_render: [Vec<SpriteDrawData>; 2],
+    index: usize,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -53,17 +60,7 @@ impl winit::application::ApplicationHandler for App {
                 event,
                 is_synthetic: _,
             } => {
-                if let winit::keyboard::PhysicalKey::Code(key_code) = event.physical_key {
-                    match key_code {
-                        winit::keyboard::KeyCode::KeyA => self.sol_position += Vector2::LEFT,
-                        winit::keyboard::KeyCode::KeyD => self.sol_position += Vector2::RIGHT,
-                        winit::keyboard::KeyCode::KeyS => self.sol_position += Vector2::DOWN,
-                        winit::keyboard::KeyCode::KeyW => self.sol_position += Vector2::UP,
-                        winit::keyboard::KeyCode::Space => self.sol_sprite = true,
-                        winit::keyboard::KeyCode::ShiftLeft => self.sol_sprite = false,
-                        _ => (),
-                    }
-                }
+                self.key_states.insert(event.physical_key, event.state);
             }
             winit::event::WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -76,20 +73,13 @@ impl winit::application::ApplicationHandler for App {
 
                 println!("{}", 1.0 / time.as_secs_f64());
 
-                self.renderer.as_mut().unwrap().draw_frame(
-                    &self.asset_manager,
-                    vec![(
-                        self.asset_manager
-                            .get_sprite_handle(match self.sol_sprite {
-                                true => "gunflame.png",
-                                false => "j.d.png",
-                            })
-                            .unwrap(),
-                        self.sol_position.y(-self.sol_position.y),
-                        false,
-                        0.5,
-                    )],
-                );
+                self.update_input_state();
+                let sprite_data = self.state.update(&self.asset_manager);
+
+                self.renderer
+                    .as_mut()
+                    .unwrap()
+                    .draw_frame(&self.asset_manager, &sprite_data);
 
                 self.window.as_ref().unwrap().request_redraw();
             }
@@ -104,25 +94,185 @@ impl App {
 
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
+        let asset_manager = STATIC_ASSETS.into_asset_manager();
+
+        let input_handlers = [
+            std::sync::Arc::new(std::sync::Mutex::new(
+                fighting_game::input::InputHandler::new(),
+            )),
+            std::sync::Arc::new(std::sync::Mutex::new(
+                fighting_game::input::InputHandler::new(),
+            )),
+        ];
+
+        /*let render_data = RenderData {
+            sprites_to_render: [
+                vec![(
+                    asset_manager.get_sprite_handle("idle.png").unwrap(),
+                    Vector2::ZERO,
+                    false,
+                    0.5,
+                )],
+                vec![(
+                    asset_manager.get_sprite_handle("idle.png").unwrap(),
+                    Vector2::ZERO,
+                    false,
+                    0.5,
+                )],
+            ],
+            index: 0,
+        };*/
+
         event_loop
             .run_app(&mut App {
-                state: GameState::Game(()),
+                state: GameState::create_game((
+                    input_handlers[0].clone(),
+                    input_handlers[1].clone(),
+                )),
                 renderer: None,
                 window: None,
 
-                asset_manager: STATIC_ASSETS.into_asset_manager(),
+                key_states: {
+                    let mut map = std::collections::HashMap::new();
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyD),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyF),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyG),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Space),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyJ),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyU),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyI),
+                        winit::event::ElementState::Released,
+                    );
+                    map.insert(
+                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyK),
+                        winit::event::ElementState::Released,
+                    );
+                    map
+                },
 
-                sol_position: Vector2::ZERO,
+                asset_manager,
+                input_handlers,
+
                 previous_time: std::time::SystemTime::now(),
-                sol_sprite: true,
             })
             .unwrap();
     }
-    pub fn run(self) -> Result<(), ()> {
-        todo!();
+
+    fn update_input_state(&mut self) {
+        use fighting_game::input::{Button, ButtonState};
+        use winit::event::ElementState;
+        use winit::keyboard::{KeyCode, PhysicalKey};
+
+        let mut button_states = std::collections::HashMap::new();
+        for (key, button) in [
+            (KeyCode::KeyJ, Button::Light),
+            (KeyCode::KeyU, Button::Mid),
+            (KeyCode::KeyI, Button::Heavy),
+            (KeyCode::KeyK, Button::Utility),
+        ] {
+            button_states.insert(
+                button,
+                match self.key_states.get(&PhysicalKey::Code(key)).unwrap() {
+                    ElementState::Released => ButtonState::Up,
+                    ElementState::Pressed => ButtonState::Down,
+                },
+            );
+        }
+
+        fn button_state(
+            button: KeyCode,
+            states: &std::collections::HashMap<PhysicalKey, ElementState>,
+        ) -> f32 {
+            match states.get(&PhysicalKey::Code(button)).unwrap() {
+                ElementState::Pressed => 1.0,
+                ElementState::Released => 0.0,
+            }
+        }
+
+        let dir = Vector2::new(
+            0.0 - button_state(KeyCode::KeyD, &self.key_states)
+                + button_state(KeyCode::KeyG, &self.key_states),
+            0.0 - button_state(KeyCode::KeyF, &self.key_states)
+                + button_state(KeyCode::Space, &self.key_states),
+        );
+
+        self.input_handlers[0]
+            .lock()
+            .unwrap()
+            .update(button_states, dir.into());
+    }
+}
+
+impl RenderData {
+    pub fn get_sprite_names(&self) -> &[SpriteDrawData] {
+        &self.sprites_to_render[self.index]
     }
 }
 
 enum GameState {
-    Game(()),
+    Game(fighting_game::world::World),
+}
+
+impl GameState {
+    // TODO: add character selection
+    pub fn create_game(
+        input_handlers: (
+            std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>,
+            std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>,
+        ),
+    ) -> Self {
+        Self::Game(fighting_game::initialization::create_world(
+            (
+                fighting_game::initialization::Character::Sol,
+                input_handlers.0,
+            ),
+            (
+                fighting_game::initialization::Character::Sol,
+                input_handlers.1,
+            ),
+        ))
+    }
+}
+
+impl GameState {
+    pub fn update(&mut self, assets: &asset_manager::AssetManager) -> Vec<SpriteDrawData> {
+        match self {
+            GameState::Game(game) => {
+                game.update();
+                game.get_players()
+                    .iter()
+                    .map(|player| {
+                        let mut sprite_name = player.frame_name().unwrap().into_string();
+                        sprite_name.push_str(".png");
+                        //println!("{}", &sprite_name);
+                        (
+                            assets.get_sprite_handle(&sprite_name).unwrap(),
+                            player.position(),
+                            !player.get_direction(),
+                            0.5,
+                        )
+                    })
+                    .collect()
+            }
+        }
+    }
 }

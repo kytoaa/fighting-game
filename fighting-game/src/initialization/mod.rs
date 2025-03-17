@@ -2,7 +2,7 @@ use super::*;
 use characters::Entity;
 use datatypes::Vector2;
 use input::InputHandler;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::Mutex;
 
 pub enum Character {
@@ -10,8 +10,8 @@ pub enum Character {
 }
 
 pub fn create_world(
-    player_1: (Character, Rc<Mutex<InputHandler>>),
-    player_2: (Character, Rc<Mutex<InputHandler>>),
+    player_1: (Character, Arc<Mutex<InputHandler>>),
+    player_2: (Character, Arc<Mutex<InputHandler>>),
 ) -> world::World {
     let mut char_1 = get_character(player_1.0, 0);
     char_1.set_position(Vector2::new(-50.0, 0.0));

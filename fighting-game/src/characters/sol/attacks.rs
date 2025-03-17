@@ -97,7 +97,7 @@ impl Entity for Sol<JumpMid> {
         }
     }
     fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol_jump_mid".into())
+        Some("sol/jump_mid".into())
     }
 }
 impl SolDamageableState for JumpMid {}
@@ -193,7 +193,7 @@ impl Entity for Sol<CrouchHeavy> {
         }
     }
     fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol_jump_mid".into())
+        Some("sol/jump_mid".into())
     }
     fn actionable(&self) -> bool {
         false

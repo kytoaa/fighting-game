@@ -161,7 +161,14 @@ impl CoreRenderData {
             let (swapchain, present_images, present_image_views, swapchain_info) = {
                 let surface_format = surface_instance
                     .get_physical_device_surface_formats(physical_device, surface)
-                    .unwrap()[0];
+                    .unwrap()
+                    .into_iter()
+                    .find(|format| {
+                        (format.format == vk::Format::R8G8B8A8_SRGB
+                            || format.format == vk::Format::B8G8R8A8_SRGB)
+                            && format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
+                    })
+                    .unwrap();
                 let surface_capabilities = surface_instance
                     .get_physical_device_surface_capabilities(physical_device, surface)
                     .unwrap();
