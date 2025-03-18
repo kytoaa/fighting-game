@@ -9,7 +9,7 @@ impl Renderer {
         command_buffer: &vk::CommandBuffer,
         image_index: u32,
         frame: usize,
-        sprites: &[vk::ImageView],
+        sprite_count: usize,
     ) {
         let begin_info =
             vk::CommandBufferBeginInfo::default().flags(vk::CommandBufferUsageFlags::empty());
@@ -115,9 +115,13 @@ impl Renderer {
                 );
             }
 
+            println!(
+                "drawing {} vertices",
+                vertices::INDICES_PER_QUAD * sprite_count
+            );
             self.core.device.cmd_draw_indexed(
                 *command_buffer,
-                (vertices::INDICES_PER_QUAD * sprites.len()) as u32,
+                (vertices::INDICES_PER_QUAD * sprite_count) as u32,
                 1,
                 0,
                 0,

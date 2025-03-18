@@ -1,5 +1,5 @@
 use super::{Damageable, Direction, Entity, Grounded, HasCollider, OnHit, Position, Velocity};
-use crate::collision::{HitEffect, HitInfo, KnockdownType};
+use crate::collision::{HitConnection, HitEffect, HitInfo, HitType, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{
     directions::{InputDir, Motion},
@@ -131,77 +131,98 @@ impl<S> Damageable for Sol<S>
 where
     S: SolDamageableState,
 {
-    fn hit(mut self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        match &info.hit_effect {
-            HitEffect::Pushback(force) => {
-                self.velocity.x = *force;
-                Box::new(self.transition(BasicHitstun {
-                    length: info.hitstun,
-                    frame: 0,
-                }))
-            }
-            HitEffect::Launcher(force, knockdown) => {
-                self.velocity = *force;
-                self.grounded = false;
-                Box::new(self.transition(Tumble {
-                    length: info.hitstun,
-                    frame: 0,
-                    knockdown: *knockdown,
-                }))
-            }
-        }
+    fn hit(mut self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            match &info.hit_effect {
+                HitEffect::Pushback(force) => {
+                    self.velocity.x = *force;
+                    Box::new(self.transition(BasicHitstun {
+                        length: info.hitstun,
+                        frame: 0,
+                    }))
+                }
+                HitEffect::Launcher(force, knockdown) => {
+                    self.velocity = *force;
+                    self.grounded = false;
+                    Box::new(self.transition(Tumble {
+                        length: info.hitstun,
+                        frame: 0,
+                        knockdown: *knockdown,
+                    }))
+                }
+            },
+            HitConnection::Hit,
+        )
     }
 }
 
 impl Damageable for Sol<WalkState<true>> {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        Box::new(self.transition(BlockStun::<false> {
-            length: info.blockstun,
-            frame: 0,
-        }))
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            Box::new(self.transition(BlockStun::<false> {
+                length: info.blockstun,
+                frame: 0,
+            })),
+            HitConnection::Blocked,
+        )
     }
 }
 impl Damageable for Sol<Crouch<true>> {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        Box::new(self.transition(BlockStun::<true> {
-            length: info.blockstun,
-            frame: 0,
-        }))
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            Box::new(self.transition(BlockStun::<true> {
+                length: info.blockstun,
+                frame: 0,
+            })),
+            HitConnection::Blocked,
+        )
     }
 }
 impl Damageable for Sol<Air<true>> {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        Box::new(self.transition(AirBlockStun {
-            length: info.blockstun,
-            frame: 0,
-        }))
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            Box::new(self.transition(AirBlockStun {
+                length: info.blockstun,
+                frame: 0,
+            })),
+            HitConnection::Blocked,
+        )
     }
 }
 impl Damageable for Sol<AirBlockStun> {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        Box::new(self.transition(AirBlockStun {
-            length: info.blockstun,
-            frame: 0,
-        }))
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            Box::new(self.transition(AirBlockStun {
+                length: info.blockstun,
+                frame: 0,
+            })),
+            HitConnection::Blocked,
+        )
     }
 }
 impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity> {
-        Box::new(self.transition(BlockStun::<CROUCHING> {
-            length: info.blockstun,
-            frame: 0,
-        }))
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (
+            Box::new(self.transition(BlockStun::<CROUCHING> {
+                length: info.blockstun,
+                frame: 0,
+            })),
+            HitConnection::Blocked,
+        )
     }
 }
 impl Damageable for Sol<Backdash> {
-    fn hit(self: Box<Self>, _: &HitInfo) -> Box<dyn Entity> {
-        self
+    fn hit(self: Box<Self>, _: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (self, HitConnection::Invuln)
     }
 }
 
 impl<S> OnHit for Sol<S> {
-    fn on_hit(&mut self) {
-        self.has_hit = true;
+    fn on_hit(&mut self, hit_connection: HitConnection) {
+        match hit_connection {
+            HitConnection::Hit | HitConnection::Blocked => self.has_hit = true,
+            _ => (),
+        }
     }
 }
 
@@ -426,8 +447,8 @@ where
 impl SolDamageableState for Crouch<false> {}
 
 const JUMPSQUAT_FRAMES: usize = 4;
-const JUMP_FORCE: f32 = 120.0;
-const DOUBLE_JUMP_FORCE: f32 = 100.0;
+const JUMP_FORCE: f32 = 160.0;
+const DOUBLE_JUMP_FORCE: f32 = 120.0;
 const DOUBLE_JUMP_X_FORCE: f32 = 40.0;
 
 struct JumpSquat {
@@ -583,8 +604,8 @@ impl Entity for Sol<SoftKnockdown> {
     }
 }
 impl Damageable for Sol<SoftKnockdown> {
-    fn hit(self: Box<Self>, _: &HitInfo) -> Box<dyn Entity> {
-        self
+    fn hit(self: Box<Self>, _: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (self, HitConnection::Invuln)
     }
 }
 
@@ -601,7 +622,7 @@ impl Entity for Sol<HardKnockdown> {
     }
 }
 impl Damageable for Sol<HardKnockdown> {
-    fn hit(self: Box<Self>, _: &HitInfo) -> Box<dyn Entity> {
-        self
+    fn hit(self: Box<Self>, _: &HitInfo) -> (Box<dyn Entity>, HitConnection) {
+        (self, HitConnection::Invuln)
     }
 }

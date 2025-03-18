@@ -5,6 +5,27 @@ pub enum CollisionShape {
     Circle(BoundingCircle),
 }
 
+#[derive(Clone, Copy)]
+pub enum HitType {
+    Light,
+    Medium,
+    Heavy,
+    SuperHeavy,
+    Custom(usize),
+}
+impl HitType {
+    pub fn get_hitstop_frames(self) -> usize {
+        match self {
+            Self::Light => 4,
+            Self::Medium => 8,
+            Self::Heavy => 12,
+            Self::SuperHeavy => 20,
+            Self::Custom(frames) => frames,
+        }
+    }
+    pub const BLOCKED_HITSTOP_FRAMES: usize = 4;
+}
+
 pub struct HitInfo {
     pub damage: u16,
     pub priority: usize,
@@ -12,6 +33,8 @@ pub struct HitInfo {
     pub blockstun: usize,
     pub hit_effect: HitEffect,
     pub attack_type: AttackType,
+    pub hitbox_id: usize,
+    pub hit_type: HitType,
 }
 #[derive(Clone, Copy)]
 pub enum AttackType {
@@ -27,6 +50,13 @@ pub enum HitEffect {
 pub enum KnockdownType {
     Hard,
     Soft,
+}
+
+#[derive(Clone, Copy)]
+pub enum HitConnection {
+    Hit,
+    Blocked,
+    Invuln,
 }
 
 pub struct Hurtbox {

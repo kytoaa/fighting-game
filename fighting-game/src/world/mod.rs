@@ -1,4 +1,4 @@
-use super::collision::{CollisionShape, Hitbox, Hurtbox};
+use super::collision::{CollisionShape, HitType, Hitbox, Hurtbox};
 use super::datatypes::{BoundingShape, Vector2};
 use super::input::InputHandler;
 use std::collections::HashSet;
@@ -14,6 +14,8 @@ pub struct World {
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
+
+    hitstop_frames_left: usize,
 }
 struct Spawn<T>(T, usize);
 
@@ -27,12 +29,19 @@ impl World {
             players,
             hurtboxes: vec![],
             hitboxes: vec![],
+
+            hitstop_frames_left: 0,
         }
     }
 }
 
 impl World {
     pub fn update(&mut self) {
+        if self.hitstop_frames_left > 0 {
+            self.hitstop_frames_left -= 1;
+            return;
+        }
+
         self.update_hitbox_hurtboxes();
 
         {
@@ -114,18 +123,28 @@ impl World {
                 .unwrap()
                 .take()
                 .unwrap();
+
+            let (hit_state, hit_connection) = hit_player.hit(&hitbox.0.info);
             _ = self
                 .players
                 .get_mut(hurtbox.0.owner)
                 .unwrap()
-                .insert(hit_player.hit(&hitbox.0.info));
+                .insert(hit_state);
+
+            let hitstop_frames = match hit_connection {
+                crate::collision::HitConnection::Hit => hitbox.0.info.hit_type.get_hitstop_frames(),
+                crate::collision::HitConnection::Blocked => HitType::BLOCKED_HITSTOP_FRAMES,
+                crate::collision::HitConnection::Invuln => 0,
+            };
 
             self.players
                 .get_mut(hitbox.0.owner)
                 .unwrap()
                 .as_mut()
                 .unwrap()
-                .on_hit()
+                .on_hit(hit_connection);
+
+            self.trigger_hitstop(hitstop_frames);
         }
 
         self.hitboxes = self
@@ -263,5 +282,9 @@ impl World {
     }
     pub fn get_hitboxes(&self) -> impl Iterator<Item = &Hitbox> {
         self.hitboxes.iter().map(|s| &s.0)
+    }
+
+    pub fn trigger_hitstop(&mut self, frames: usize) {
+        self.hitstop_frames_left = frames.max(self.hitstop_frames_left);
     }
 }

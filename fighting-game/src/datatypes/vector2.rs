@@ -32,6 +32,9 @@ impl Vector2 {
     pub fn distance(&self, other: &Self) -> f32 {
         self.to(other).magnitude()
     }
+    pub fn rounded(&self) -> Self {
+        Vector2::new(self.x.round(), self.y.round())
+    }
     pub const fn x(&self, value: f32) -> Self {
         Vector2::new(value, self.y)
     }

@@ -1,4 +1,4 @@
-use crate::collision::HitInfo;
+use crate::collision::{HitConnection, HitInfo};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
 use crate::world::World;
@@ -18,17 +18,18 @@ pub trait Entity:
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
     fn frame_name(&self) -> Option<Box<str>> {
-        None
+        Some("sol/idle".into())
+        //None
     }
     fn actionable(&self) -> bool {
         true
     }
 }
 pub trait Damageable {
-    fn hit(self: Box<Self>, info: &HitInfo) -> Box<dyn Entity>;
+    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection);
 }
 pub trait OnHit {
-    fn on_hit(&mut self);
+    fn on_hit(&mut self, hit_type: HitConnection);
 }
 pub trait Position {
     fn position(&self) -> Vector2;

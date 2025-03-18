@@ -8,8 +8,8 @@ pub fn create_graphics_pipeline(
     render_pass: &vk::RenderPass,
     descriptor_set_layouts: &[vk::DescriptorSetLayout],
 ) -> (vk::Pipeline, vk::PipelineLayout) {
-    let vert_shader = shaders::HELLO_TRIANGLE_VERT_SHADER;
-    let frag_shader = shaders::HELLO_TRIANGLE_FRAG_SHADER;
+    let vert_shader = shaders::VERT_SHADER;
+    let frag_shader = shaders::DRAW_SPRITE_FRAG_SHADER;
 
     let vert_shader_module = create_shader_module(&core.device, vert_shader);
     let frag_shader_module = create_shader_module(&core.device, frag_shader);

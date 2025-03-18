@@ -56,6 +56,9 @@ impl Entity for Sol<JumpMidStartup> {
             self
         }
     }
+    fn frame_name(&self) -> Option<Box<str>> {
+        Some("sol/jump_mid".into())
+    }
 }
 impl SolDamageableState for JumpMidStartup {}
 
@@ -67,28 +70,32 @@ impl Entity for Sol<JumpMid> {
             return self.grounded_actionable_state(input);
         }
         self.state.0 += 1;
-        world.spawn_hitbox(
-            crate::collision::Hitbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
-                    Vector2::ZERO,
-                    Vector2::new(20.0, 5.0),
-                )),
-                owner: self.player,
-                info: HitInfo {
-                    damage: 30,
-                    attack_type: crate::collision::AttackType::High,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(80.0 * self.dir(), 50.0),
-                        KnockdownType::Soft,
-                    ),
-                    hitstun: 100,
-                    priority: 5,
-                    blockstun: 15,
+        if !self.has_hit {
+            world.spawn_hitbox(
+                crate::collision::Hitbox {
+                    shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                        Vector2::ZERO,
+                        Vector2::new(20.0, 5.0),
+                    )),
+                    owner: self.player,
+                    info: HitInfo {
+                        damage: 30,
+                        attack_type: crate::collision::AttackType::High,
+                        hit_effect: HitEffect::Launcher(
+                            Vector2::new(80.0 * self.dir(), 50.0),
+                            KnockdownType::Soft,
+                        ),
+                        hitstun: 100,
+                        priority: 5,
+                        blockstun: 15,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::Medium,
+                    },
                 },
-            },
-            self.position + Vector2::new(10.0 * self.dir(), 4.0),
-            1,
-        );
+                self.position + Vector2::new(10.0 * self.dir(), 4.0),
+                1,
+            );
+        }
 
         if self.state.0 > JUMP_MID_ACTIVE {
             Box::new(self.transition(JumpMidRecovery(0)))
@@ -115,6 +122,9 @@ impl Entity for Sol<JumpMidRecovery> {
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<Box<str>> {
+        Some("sol/jump_mid".into())
     }
 }
 impl SolDamageableState for JumpMidRecovery {}
@@ -163,28 +173,32 @@ impl Entity for Sol<CrouchHeavy> {
             }
         }
 
-        world.spawn_hitbox(
-            crate::collision::Hitbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
-                    Vector2::ZERO,
-                    Vector2::new(20.0, 10.0),
-                )),
-                owner: self.player,
-                info: HitInfo {
-                    damage: 30,
-                    attack_type: crate::collision::AttackType::Mid,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(10.0 * self.dir(), 90.0),
-                        KnockdownType::Soft,
-                    ),
-                    hitstun: 100,
-                    priority: 5,
-                    blockstun: 11,
+        if !self.has_hit {
+            world.spawn_hitbox(
+                crate::collision::Hitbox {
+                    shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                        Vector2::ZERO,
+                        Vector2::new(20.0, 10.0),
+                    )),
+                    owner: self.player,
+                    info: HitInfo {
+                        damage: 30,
+                        attack_type: crate::collision::AttackType::Mid,
+                        hit_effect: HitEffect::Launcher(
+                            Vector2::new(10.0 * self.dir(), 90.0),
+                            KnockdownType::Soft,
+                        ),
+                        hitstun: 100,
+                        priority: 5,
+                        blockstun: 11,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::Heavy,
+                    },
                 },
-            },
-            self.position + Vector2::new(10.0 * self.dir(), 0.0),
-            1,
-        );
+                self.position + Vector2::new(10.0 * self.dir(), 0.0),
+                1,
+            );
+        }
 
         if self.state.0 > CROUCH_HEAVY_ACTIVE {
             Box::new(self.transition(CrouchHeavyRecovery(0)))
@@ -286,28 +300,32 @@ impl Entity for Sol<Fafnir> {
 
         self.velocity = Vector2::RIGHT * FAFNIR_STOP_VELOCITY * self.dir();
 
-        world.spawn_hitbox(
-            crate::collision::Hitbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
-                    Vector2::ZERO,
-                    Vector2::new(20.0, 5.0),
-                )),
-                owner: self.player,
-                info: HitInfo {
-                    damage: 80,
-                    attack_type: crate::collision::AttackType::Mid,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(100.0 * self.dir(), 10.0),
-                        KnockdownType::Hard,
-                    ),
-                    hitstun: 100,
-                    priority: 5,
-                    blockstun: 20,
+        if !self.has_hit {
+            world.spawn_hitbox(
+                crate::collision::Hitbox {
+                    shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                        Vector2::ZERO,
+                        Vector2::new(20.0, 5.0),
+                    )),
+                    owner: self.player,
+                    info: HitInfo {
+                        damage: 80,
+                        attack_type: crate::collision::AttackType::Mid,
+                        hit_effect: HitEffect::Launcher(
+                            Vector2::new(100.0 * self.dir(), 10.0),
+                            KnockdownType::Hard,
+                        ),
+                        hitstun: 100,
+                        priority: 5,
+                        blockstun: 20,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::SuperHeavy,
+                    },
                 },
-            },
-            self.position + Vector2::new(10.0 * self.dir(), 0.0),
-            1,
-        );
+                self.position + Vector2::new(10.0 * self.dir(), 0.0),
+                1,
+            );
+        }
 
         if self.state.0 > FAFNIR_ACTIVE {
             Box::new(self.transition(FafnirRecovery(0)))

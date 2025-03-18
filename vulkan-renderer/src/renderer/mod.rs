@@ -24,6 +24,21 @@ const MAX_FRAMES_IN_FLIGHT: usize = 2;
 struct VulkanImage(vk::Image, vk::ImageView);
 struct VulkanObject<T>(T, vk::DeviceMemory);
 
+#[derive(Debug, Clone, Copy)]
+pub enum RectColor {
+    Red,
+    Green,
+    Blue,
+}
+pub enum Material {
+    Sprite(SpriteHandle, Vector2, bool, f32),
+    Rect {
+        pos: Vector2,
+        size: Vector2,
+        color: RectColor,
+    },
+}
+
 struct Queues {
     graphics: vk::Queue,
     transfer: vk::Queue,
@@ -178,20 +193,19 @@ impl Renderer {
 }
 
 impl Renderer {
-    pub fn draw_frame(
-        &mut self,
-        assets: &asset_manager::AssetManager,
-        sprites: &[(SpriteHandle, Vector2, bool, f32)],
-    ) {
+    pub fn draw_frame(&mut self, assets: &asset_manager::AssetManager, objects: &[Material]) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
-        if sprites.len() == 0 {
+        if objects.len() == 0 {
             self.frame += 1;
             return;
         }
 
-        let images: Vec<vk::ImageView> = sprites
+        let images: Vec<vk::ImageView> = objects
             .iter()
-            .map(|s| s.0)
+            .filter_map(|s| match s {
+                Material::Sprite(handle, ..) => Some(*handle),
+                _ => None,
+            })
             .map(|handle| match self.images.get(&handle) {
                 Some(image) => image.0 .1,
                 None => {
@@ -218,17 +232,38 @@ impl Renderer {
             self.insert_image_views(&images, frame);
 
             self.populate_vertex_index_buffers(
-                sprites
+                objects
                     .iter()
                     .enumerate()
-                    .map(|(i, (handle, position, flipped, depth))| {
-                        (
-                            assets.get_sprite(*handle).size(),
-                            *position,
-                            *flipped,
-                            *depth,
+                    .map(|(i, s)| match s {
+                        Material::Sprite(handle, position, flipped, depth) => (
                             i as u32,
-                        )
+                            (
+                                assets.get_sprite(*handle).size(),
+                                *position,
+                                *flipped,
+                                *depth,
+                            ),
+                        ),
+                        Material::Rect { pos, size, color } => {
+                            let rounded = size.rounded();
+                            println!(
+                                "rect of position {:?}, size {:?}, color {:?}",
+                                pos, size, color
+                            );
+                            (
+                                match color {
+                                    RectColor::Red => 64u32,
+                                    RectColor::Green => 65u32,
+                                    RectColor::Blue => 66u32,
+                                },
+                                ((rounded.x as usize, rounded.y as usize), *pos, false, 0.3),
+                            )
+                        }
+                    })
+                    .map(|(i, (size, position, flipped, depth))| {
+                        let position = position.y(-position.y);
+                        (size, position.rounded(), flipped, depth, i)
                     }),
                 frame,
             );
@@ -261,7 +296,7 @@ impl Renderer {
                 &self.core.command_buffers[frame],
                 image_index,
                 frame,
-                &images,
+                objects.len(),
             );
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];
@@ -302,9 +337,10 @@ impl Renderer {
         sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, u32)>,
         frame: usize,
     ) {
-        let quads: Vec<_> = sprites
+        let verts: Vec<_> = sprites
             .map(
                 |((width, height), position, flipped, depth, texture_index)| {
+                    //println!("texture_index: {}", texture_index);
                     [
                         (
                             (
@@ -367,7 +403,7 @@ impl Renderer {
             .flatten()
             .collect();
 
-        let indices: Vec<_> = (0..(quads.len() / 4))
+        let indices: Vec<_> = (0..(verts.len() / 4))
             .map(|i| {
                 [0, 1, 3, 3, 1, 2]
                     .into_iter()
@@ -376,9 +412,9 @@ impl Renderer {
             })
             .flatten()
             .collect();
-        //println!("{:?}", quads);
+        //println!("{:?} quads", verts);
 
-        self.vertex_buffers.write_vertices(&quads, frame);
+        self.vertex_buffers.write_vertices(&verts, frame);
         self.vertex_buffers.write_indices(&indices, frame);
     }
 }

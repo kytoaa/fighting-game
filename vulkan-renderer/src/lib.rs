@@ -20,11 +20,11 @@ pub struct App {
     key_states: std::collections::HashMap<winit::keyboard::PhysicalKey, winit::event::ElementState>,
 
     previous_time: std::time::SystemTime,
+    show_hitboxes: bool,
 }
 
-pub type SpriteDrawData = (asset_manager::SpriteHandle, Vector2, bool, f32);
 pub struct RenderData {
-    sprites_to_render: [Vec<SpriteDrawData>; 2],
+    sprites_to_render: [Vec<renderer::Material>; 2],
     index: usize,
 }
 
@@ -61,6 +61,13 @@ impl winit::application::ApplicationHandler for App {
                 is_synthetic: _,
             } => {
                 self.key_states.insert(event.physical_key, event.state);
+                if let (
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyQ),
+                    winit::event::ElementState::Pressed,
+                ) = (event.physical_key, event.state)
+                {
+                    self.show_hitboxes = !self.show_hitboxes
+                }
             }
             winit::event::WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -74,7 +81,47 @@ impl winit::application::ApplicationHandler for App {
                 println!("{}", 1.0 / time.as_secs_f64());
 
                 self.update_input_state();
-                let sprite_data = self.state.update(&self.asset_manager);
+                let mut sprite_data = self.state.update(&self.asset_manager);
+                if self.show_hitboxes {
+                    sprite_data =
+                        match &self.state {
+                            GameState::Game(world) => sprite_data
+                                .into_iter()
+                                .chain(world.get_hurtboxes().filter_map(
+                                    |hitbox| match &hitbox.shape {
+                                        fighting_game::collision::CollisionShape::Box(b) => {
+                                            Some(renderer::Material::Rect {
+                                                pos: b.position(),
+                                                size: b.size(),
+                                                color: renderer::RectColor::Green,
+                                            })
+                                        }
+                                        fighting_game::collision::CollisionShape::Circle(_) => None,
+                                    },
+                                ))
+                                .chain(world.get_hitboxes().filter_map(
+                                    |hitbox| match &hitbox.shape {
+                                        fighting_game::collision::CollisionShape::Box(b) => {
+                                            Some(renderer::Material::Rect {
+                                                pos: b.position(),
+                                                size: b.size(),
+                                                color: renderer::RectColor::Green,
+                                            })
+                                        }
+                                        fighting_game::collision::CollisionShape::Circle(_) => None,
+                                    },
+                                ))
+                                .chain(world.get_players().iter().map(|player| {
+                                    let collider = player.get_collider_world_space();
+                                    renderer::Material::Rect {
+                                        pos: collider.position(),
+                                        size: collider.size(),
+                                        color: renderer::RectColor::Blue,
+                                    }
+                                }))
+                                .collect(),
+                        }
+                }
 
                 self.renderer
                     .as_mut()
@@ -173,6 +220,7 @@ impl App {
                 input_handlers,
 
                 previous_time: std::time::SystemTime::now(),
+                show_hitboxes: false,
             })
             .unwrap();
     }
@@ -223,7 +271,7 @@ impl App {
 }
 
 impl RenderData {
-    pub fn get_sprite_names(&self) -> &[SpriteDrawData] {
+    pub fn get_sprite_names(&self) -> &[renderer::Material] {
         &self.sprites_to_render[self.index]
     }
 }
@@ -254,7 +302,7 @@ impl GameState {
 }
 
 impl GameState {
-    pub fn update(&mut self, assets: &asset_manager::AssetManager) -> Vec<SpriteDrawData> {
+    pub fn update(&mut self, assets: &asset_manager::AssetManager) -> Vec<renderer::Material> {
         match self {
             GameState::Game(game) => {
                 game.update();
@@ -264,7 +312,7 @@ impl GameState {
                         let mut sprite_name = player.frame_name().unwrap().into_string();
                         sprite_name.push_str(".png");
                         //println!("{}", &sprite_name);
-                        (
+                        renderer::Material::Sprite(
                             assets.get_sprite_handle(&sprite_name).unwrap(),
                             player.position(),
                             !player.get_direction(),

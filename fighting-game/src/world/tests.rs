@@ -8,8 +8,8 @@ use crate::datatypes::{BoundingBox, Vector2};
 fn collision_move_1_test() {
     let mut world = World {
         input_providers: [
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
         ],
         players: [
             Some(Box::new(TestPlayer {
@@ -27,6 +27,8 @@ fn collision_move_1_test() {
         ],
         hitboxes: vec![],
         hurtboxes: vec![],
+
+        hitstop_frames_left: 0,
     };
 
     world.move_players();
