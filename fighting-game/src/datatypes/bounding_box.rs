@@ -8,15 +8,15 @@ pub struct BoundingBox {
 }
 
 impl BoundingBox {
-    pub fn new(min: Vector2, max: Vector2) -> Self {
-        let (min_x, min_y) = (min.x.min(max.x), min.y.min(max.y));
-        let (max_x, max_y) = (min.x.max(max.x), min.y.max(max.y));
+    pub const fn new(min: Vector2, max: Vector2) -> Self {
+        let (min_x, min_y) = (fmin(min.x, max.x), fmin(min.y, max.y));
+        let (max_x, max_y) = (fmax(min.x, max.x), fmax(min.y, max.y));
         Self {
             min: Vector2::new(min_x, min_y),
             max: Vector2::new(max_x, max_y),
         }
     }
-    pub fn pos_size(pos: Vector2, size: Vector2) -> Self {
+    pub const fn pos_size(pos: Vector2, size: Vector2) -> Self {
         Self::new(
             Vector2::new(pos.x - size.x / 2.0, pos.y - size.y / 2.0),
             Vector2::new(pos.x + size.x / 2.0, pos.y + size.y / 2.0),
@@ -110,5 +110,20 @@ impl BoundingShape<BoundingBox> for BoundingBox {
 impl BoundingShape<BoundingCircle> for BoundingBox {
     fn intersects(&self, other: &BoundingCircle) -> bool {
         other.intersects(self)
+    }
+}
+
+const fn fmin(a: f32, b: f32) -> f32 {
+    if a > b {
+        b
+    } else {
+        a
+    }
+}
+const fn fmax(a: f32, b: f32) -> f32 {
+    if a > b {
+        a
+    } else {
+        b
     }
 }

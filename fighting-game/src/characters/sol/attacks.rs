@@ -10,7 +10,7 @@ use crate::input::{
 };
 use crate::world::World;
 
-use super::{Sol, SolDamageableState};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET};
 
 const GUNFLAME_STARTUP: usize = 18;
 
@@ -57,7 +57,7 @@ impl Entity for Sol<JumpMidStartup> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
+        Some(("sol/jump_mid".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for JumpMidStartup {}
@@ -104,7 +104,7 @@ impl Entity for Sol<JumpMid> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
+        Some(("sol/jump_mid".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for JumpMid {}
@@ -124,7 +124,7 @@ impl Entity for Sol<JumpMidRecovery> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
+        Some(("sol/jump_mid".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for JumpMidRecovery {}
@@ -207,7 +207,7 @@ impl Entity for Sol<CrouchHeavy> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
+        Some(("sol/jump_mid".into(), BASE_SPRITE_OFFSET))
     }
     fn actionable(&self) -> bool {
         false

@@ -92,8 +92,8 @@ fn collision_move_1_test() {
 fn collision_move_2_test() {
     let mut world = World {
         input_providers: [
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
         ],
         players: [
             Some(Box::new(TestPlayer {
@@ -111,6 +111,8 @@ fn collision_move_2_test() {
         ],
         hitboxes: vec![],
         hurtboxes: vec![],
+
+        hitstop_frames_left: 0,
     };
 
     world.move_players();
@@ -174,8 +176,8 @@ fn collision_move_2_test() {
 fn move_both_test() {
     let mut world = World {
         input_providers: [
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
         ],
         players: [
             Some(Box::new(TestPlayer {
@@ -193,6 +195,8 @@ fn move_both_test() {
         ],
         hitboxes: vec![],
         hurtboxes: vec![],
+
+        hitstop_frames_left: 0,
     };
 
     world.move_players();
@@ -228,8 +232,8 @@ fn move_both_test() {
 fn move_both_same_direction_test() {
     let mut world = World {
         input_providers: [
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
-            std::rc::Rc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
+            std::sync::Arc::new(std::sync::Mutex::new(InputHandler::new())),
         ],
         players: [
             Some(Box::new(TestPlayer {
@@ -247,6 +251,8 @@ fn move_both_same_direction_test() {
         ],
         hitboxes: vec![],
         hurtboxes: vec![],
+
+        hitstop_frames_left: 0,
     };
 
     world.move_players();
@@ -341,12 +347,15 @@ impl Velocity for TestPlayer {
     }
 }
 impl Damageable for TestPlayer {
-    fn hit(self: Box<Self>, _: &crate::collision::HitInfo) -> Box<dyn Entity> {
-        self
+    fn hit(
+        self: Box<Self>,
+        _: &crate::collision::HitInfo,
+    ) -> (Box<dyn Entity>, crate::collision::HitConnection) {
+        (self, crate::collision::HitConnection::Invuln)
     }
 }
 impl OnHit for TestPlayer {
-    fn on_hit(&mut self) {}
+    fn on_hit(&mut self, _: crate::collision::HitConnection) {}
 }
 impl HasCollider for TestPlayer {
     fn get_collider(&self) -> &BoundingBox {

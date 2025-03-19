@@ -13,6 +13,14 @@ use attacks::*;
 const WALK_SPEED: f32 = 20.0;
 const RUN_SPEED: f32 = 70.0;
 
+const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
+const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
+
+const DEFAULT_COLLIDER: BoundingBox = BoundingBox::pos_size(
+    Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
+    Vector2::new(14.0, 24.0),
+);
+
 pub fn initial_state(player: usize) -> Box<dyn Entity> {
     Box::new(Sol {
         player,
@@ -359,7 +367,7 @@ where
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         // TODO: TEMPORARY
-        Some(("sol/idle".into(), Vector2::UP * 8.0))
+        Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for WalkState<false> {}
@@ -419,7 +427,7 @@ impl Entity for Sol<Stand> {
         self.velocity = Vector2::ZERO;
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(self.collider.clone()),
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
                 owner: self.player,
             },
             self.position,
@@ -429,7 +437,7 @@ impl Entity for Sol<Stand> {
         self.grounded_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/idle".into(), Vector2::UP * 8.0))
+        Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for Stand {}
