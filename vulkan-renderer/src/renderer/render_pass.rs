@@ -39,6 +39,10 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
         .color_attachments(std::slice::from_ref(&color_attachment_ref))
         .depth_stencil_attachment(&depth_attachment_ref);
 
+    let depthless_subpass = vk::SubpassDescription::default()
+        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+        .color_attachments(std::slice::from_ref(&color_attachment_ref));
+
     let dependency = vk::SubpassDependency::default()
         .src_subpass(vk::SUBPASS_EXTERNAL)
         .dst_subpass(0)
@@ -55,12 +59,24 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE
                 | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
         );
+    let depthless_dependency = vk::SubpassDependency::default()
+        .src_subpass(0)
+        .dst_subpass(1)
+        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .src_access_mask(
+            vk::AccessFlags::COLOR_ATTACHMENT_WRITE
+                | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+        )
+        .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE);
 
     let attachments = [color_attachment, depth_attachment];
+    let subpasses = [subpass, depthless_subpass];
+    let dependencies = [dependency, depthless_dependency];
+
     let render_pass_create_info = vk::RenderPassCreateInfo::default()
         .attachments(&attachments)
-        .subpasses(std::slice::from_ref(&subpass))
-        .dependencies(std::slice::from_ref(&dependency));
+        .subpasses(&subpasses)
+        .dependencies(&dependencies);
 
     let render_pass = unsafe {
         core.device

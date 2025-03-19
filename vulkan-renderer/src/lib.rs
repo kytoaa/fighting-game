@@ -21,6 +21,7 @@ pub struct App {
 
     previous_time: std::time::SystemTime,
     show_hitboxes: bool,
+    debug_paused: bool,
 }
 
 pub struct RenderData {
@@ -66,7 +67,22 @@ impl winit::application::ApplicationHandler for App {
                     winit::event::ElementState::Pressed,
                 ) = (event.physical_key, event.state)
                 {
-                    self.show_hitboxes = !self.show_hitboxes
+                    self.show_hitboxes = !self.show_hitboxes;
+                }
+                if let (
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyW),
+                    winit::event::ElementState::Pressed,
+                ) = (event.physical_key, event.state)
+                {
+                    self.debug_paused = !self.debug_paused;
+                }
+                if let (
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyE),
+                    winit::event::ElementState::Pressed,
+                ) = (event.physical_key, event.state)
+                {
+                    self.update_input_state();
+                    _ = self.state.update(&self.asset_manager, false);
                 }
             }
             winit::event::WindowEvent::CloseRequested => {
@@ -81,7 +97,7 @@ impl winit::application::ApplicationHandler for App {
                 println!("{}", 1.0 / time.as_secs_f64());
 
                 self.update_input_state();
-                let mut sprite_data = self.state.update(&self.asset_manager);
+                let mut sprite_data = self.state.update(&self.asset_manager, self.debug_paused);
                 if self.show_hitboxes {
                     sprite_data =
                         match &self.state {
@@ -105,7 +121,7 @@ impl winit::application::ApplicationHandler for App {
                                             Some(renderer::Material::Rect {
                                                 pos: b.position(),
                                                 size: b.size(),
-                                                color: renderer::RectColor::Green,
+                                                color: renderer::RectColor::Red,
                                             })
                                         }
                                         fighting_game::collision::CollisionShape::Circle(_) => None,
@@ -221,6 +237,7 @@ impl App {
 
                 previous_time: std::time::SystemTime::now(),
                 show_hitboxes: false,
+                debug_paused: false,
             })
             .unwrap();
     }
@@ -302,19 +319,26 @@ impl GameState {
 }
 
 impl GameState {
-    pub fn update(&mut self, assets: &asset_manager::AssetManager) -> Vec<renderer::Material> {
+    pub fn update(
+        &mut self,
+        assets: &asset_manager::AssetManager,
+        paused: bool,
+    ) -> Vec<renderer::Material> {
         match self {
             GameState::Game(game) => {
-                game.update();
+                if !paused {
+                    game.update();
+                }
                 game.get_players()
                     .iter()
                     .map(|player| {
-                        let mut sprite_name = player.frame_name().unwrap().into_string();
+                        let (frame, offset) = player.frame_name().unwrap();
+                        let mut sprite_name = frame.into_string();
                         sprite_name.push_str(".png");
                         //println!("{}", &sprite_name);
                         renderer::Material::Sprite(
                             assets.get_sprite_handle(&sprite_name).unwrap(),
-                            player.position(),
+                            player.position() + offset,
                             !player.get_direction(),
                             0.5,
                         )

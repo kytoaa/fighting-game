@@ -56,8 +56,8 @@ impl Entity for Sol<JumpMidStartup> {
             self
         }
     }
-    fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol/jump_mid".into())
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
     }
 }
 impl SolDamageableState for JumpMidStartup {}
@@ -103,8 +103,8 @@ impl Entity for Sol<JumpMid> {
             self
         }
     }
-    fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol/jump_mid".into())
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
     }
 }
 impl SolDamageableState for JumpMid {}
@@ -123,8 +123,8 @@ impl Entity for Sol<JumpMidRecovery> {
             self
         }
     }
-    fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol/jump_mid".into())
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
     }
 }
 impl SolDamageableState for JumpMidRecovery {}
@@ -206,8 +206,8 @@ impl Entity for Sol<CrouchHeavy> {
             self
         }
     }
-    fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol/jump_mid".into())
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/jump_mid".into(), Vector2::UP * 8.0))
     }
     fn actionable(&self) -> bool {
         false

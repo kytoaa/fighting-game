@@ -35,26 +35,22 @@ layout(location = 1) flat in uint inTextureIndex;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    switch (inTextureIndex) {
+        case 64:
+            outColor = vec4(1.0, 0.2, 0.2, 0.8);
+            return;
+        case 65:
+            outColor = vec4(0.2, 1.0, 0.2, 0.3);
+            return;
+        case 66:
+            outColor = vec4(0.2, 0.2, 1.0, 0.3);
+            return;
+    }
     if (inTextureIndex < 64) {
         outColor = texture(textureSamplers[inTextureIndex], fragUV);
 
         if (outColor.a < 0.5) {
             discard;
-        }
-    } else {
-        switch (inTextureIndex) {
-            case 64:
-                outColor = vec4(1.0, 0.2, 0.2, 1.0);
-                return;
-            case 65:
-                outColor = vec4(0.2, 1.0, 0.2, 1.0);
-                return;
-            case 66:
-                outColor = vec4(0.2, 1.0, 0.2, 1.0);
-                return;
-            default:
-                outColor = vec4(1.0, 0.0, 1.0, 1.0);
-                return;
         }
     }
 }"#,

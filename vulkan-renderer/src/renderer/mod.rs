@@ -81,6 +81,8 @@ pub struct Renderer {
     framebuffers: Vec<vk::Framebuffer>,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
+    depthless_pipeline: vk::Pipeline,
+    depthless_pipeline_layout: vk::PipelineLayout,
 
     image_available_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
     render_finished_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
@@ -138,6 +140,12 @@ impl Renderer {
             &render_pass,
             &[descriptor_set_layout, sampler_descriptor_set_layout],
         );
+        let (depthless_pipeline, depthless_pipeline_layout) =
+            graphics_pipeline::create_depthless_graphics_pipeline(
+                &core,
+                &render_pass,
+                &[descriptor_set_layout, sampler_descriptor_set_layout],
+            );
 
         let (image_available_semaphores, render_finished_semaphores, in_flight_fences) = {
             let semaphore_create_info = vk::SemaphoreCreateInfo::default();
@@ -165,6 +173,8 @@ impl Renderer {
             render_pass,
             pipeline,
             pipeline_layout,
+            depthless_pipeline,
+            depthless_pipeline_layout,
 
             framebuffers,
 
@@ -236,28 +246,36 @@ impl Renderer {
                     .iter()
                     .enumerate()
                     .map(|(i, s)| match s {
-                        Material::Sprite(handle, position, flipped, depth) => (
-                            i as u32,
-                            (
+                        Material::Sprite(handle, position, flipped, depth) => {
+                            /*println!(
+                                "sprite of position {:?}, size {:?}, index {:?}",
+                                position,
                                 assets.get_sprite(*handle).size(),
-                                *position,
-                                *flipped,
-                                *depth,
-                            ),
-                        ),
+                                i
+                            );*/
+                            (
+                                i as u32,
+                                (
+                                    assets.get_sprite(*handle).size(),
+                                    *position,
+                                    *flipped,
+                                    0.6, //*depth,
+                                ),
+                            )
+                        }
                         Material::Rect { pos, size, color } => {
                             let rounded = size.rounded();
-                            println!(
+                            /*println!(
                                 "rect of position {:?}, size {:?}, color {:?}",
                                 pos, size, color
-                            );
+                            );*/
                             (
                                 match color {
                                     RectColor::Red => 64u32,
                                     RectColor::Green => 65u32,
                                     RectColor::Blue => 66u32,
                                 },
-                                ((rounded.x as usize, rounded.y as usize), *pos, false, 0.3),
+                                ((rounded.x as usize, rounded.y as usize), *pos, false, 0.5),
                             )
                         }
                     })
@@ -292,11 +310,13 @@ impl Renderer {
                 )
                 .unwrap();
 
+            //println!("{} images, {} objects", images.len(), objects.len());
             self.record_command_buffer(
                 &self.core.command_buffers[frame],
                 image_index,
                 frame,
-                objects.len(),
+                images.len(),
+                objects.len() - images.len(),
             );
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];

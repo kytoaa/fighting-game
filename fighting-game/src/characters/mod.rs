@@ -17,8 +17,8 @@ pub trait Entity:
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
-    fn frame_name(&self) -> Option<Box<str>> {
-        Some("sol/idle".into())
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/idle".into(), Vector2::UP * 8.0))
         //None
     }
     fn actionable(&self) -> bool {
