@@ -253,7 +253,13 @@ where
             &Motion::quarter_circle().direction(self.direction),
             &Action::Pressed(Button::Light),
         ) {
-            return Box::new(self.transition(GunFlameStartup(0)));
+            return Box::new(self.transition(GunFlameStartup(0, false)));
+        }
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(!self.direction),
+            &Action::Pressed(Button::Light),
+        ) {
+            return Box::new(self.transition(GunFlameStartup(0, true)));
         }
 
         // NOTE: 2h

@@ -2,7 +2,7 @@ use super::{
     Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position, Velocity,
     WALK_SPEED,
 };
-use crate::collision::{HitEffect, HitInfo, KnockdownType};
+use crate::collision::{CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{
     directions::{InputDir, Motion},
@@ -12,18 +12,42 @@ use crate::world::World;
 
 use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET};
 
-const GUNFLAME_STARTUP: usize = 18;
+const GUNFLAME_STARTUP: usize = 15;
+const GUNFLAME_DECEL: f32 = 0.9;
 
-pub struct GunFlameStartup(pub usize);
+/// bool is feint
+pub struct GunFlameStartup(pub usize, pub bool);
 impl Entity for Sol<GunFlameStartup> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.has_hit = false;
         self.state.0 += 1;
+        if self.velocity.x * self.dir() < 0.0 {
+            self.velocity.x = 0.0;
+        } else {
+            self.velocity.x *= GUNFLAME_DECEL;
+        }
         if self.state.0 > GUNFLAME_STARTUP {
-            Box::new(self.transition(GunFlame(0)))
+            if self.state.1 {
+                Box::new(self.transition(GunFlameFeint(0)))
+            } else {
+                Box::new(self.transition(GunFlame(0)))
+            }
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        let mut path: String = "sol/gunflame/gunflame".into();
+        path.push(match self.state.0 {
+            0..6 => '1',
+            ..11 => '2',
+            _ => '3',
+        });
+
+        Some((path.into(), BASE_SPRITE_OFFSET))
+    }
+    fn actionable(&self) -> bool {
+        false
     }
 }
 impl SolDamageableState for GunFlameStartup {}
@@ -36,6 +60,50 @@ impl Entity for Sol<GunFlame> {
     }
 }
 impl SolDamageableState for GunFlame {}
+
+const GUNFLAME_FEINT_HOLD_LENGTH: usize = 8;
+pub struct GunFlameFeint(usize);
+impl Entity for Sol<GunFlameFeint> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        self.state.0 += 1;
+
+        if self.state.0 == 3 {
+            world.spawn_hitbox(
+                Hitbox {
+                    shape: CollisionShape::Box(BoundingBox::pos_size(
+                        Vector2::ZERO,
+                        Vector2::new(4.0, 5.0),
+                    )),
+                    owner: self.player,
+                    info: HitInfo {
+                        damage: 10,
+                        priority: 1,
+                        hitstun: 15,
+                        blockstun: 8,
+                        hit_effect: HitEffect::Pushback(20.0 * self.dir()),
+                        attack_type: crate::collision::AttackType::Mid,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::Light,
+                    },
+                },
+                self.position + Vector2::new(10.0 * self.dir(), -4.0),
+                1,
+            );
+        }
+        if self.state.0 > GUNFLAME_FEINT_HOLD_LENGTH {
+            self.grounded_actionable_state(input)
+        } else {
+            self
+        }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/gunflame/gunflame3".into(), BASE_SPRITE_OFFSET))
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+}
+impl SolDamageableState for GunFlameFeint {}
 
 const JUMP_MID_STARTUP: usize = 5;
 const JUMP_MID_ACTIVE: usize = 5;
