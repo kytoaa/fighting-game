@@ -11,7 +11,7 @@ mod attacks;
 use attacks::*;
 
 const WALK_SPEED: f32 = 20.0;
-const RUN_SPEED: f32 = 70.0;
+const RUN_SPEED: f32 = 90.0;
 
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
 const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
@@ -264,7 +264,7 @@ where
         }
 
         if input.has_action(&Action::DoublePress(self.forward_dir())) {
-            return Box::new(self.transition(RunState));
+            return Box::new(self.transition(RunState(0)));
         }
         if input.has_action(&Action::DoublePress(self.backward_dir())) {
             return Box::new(self.transition(Backdash(0)));
@@ -372,18 +372,30 @@ where
 }
 impl SolDamageableState for WalkState<false> {}
 
-struct RunState;
+const RUN_ANIM_LENGTH: u8 = 6;
+const FRAMES_PER_RUN_ANIM_FRAME: u8 = 5;
+struct RunState(u8);
 impl Entity for Sol<RunState>
 where
     Sol<RunState>: Damageable,
 {
     fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        self.state.0 += 1;
+        if self.state.0 >= RUN_ANIM_LENGTH * FRAMES_PER_RUN_ANIM_FRAME {
+            self.state.0 = 0;
+        }
         if input.move_dir() == Vector2::new(self.dir(), 0.0) {
             self.velocity = input.move_dir().y(0.0) * RUN_SPEED;
             self
         } else {
             self.grounded_actionable_state(input)
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        let mut path: String = "sol/run/run".into();
+        path.push(('1' as u8 + (self.state.0 / FRAMES_PER_RUN_ANIM_FRAME)) as char);
+
+        Some((path.into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for RunState {}

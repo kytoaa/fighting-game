@@ -62,7 +62,11 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
     let depthless_dependency = vk::SubpassDependency::default()
         .src_subpass(0)
         .dst_subpass(1)
-        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .src_stage_mask(
+            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
+                | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+        )
+        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
         .src_access_mask(
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE
                 | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
