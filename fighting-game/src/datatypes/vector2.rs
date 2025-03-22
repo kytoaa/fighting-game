@@ -32,6 +32,14 @@ impl Vector2 {
     pub fn distance(&self, other: &Self) -> f32 {
         self.to(other).magnitude()
     }
+    pub fn move_towards(&self, value: &Self, delta: f32) -> Self {
+        let difference = self.to(value);
+        if difference.magnitude() < delta {
+            *value
+        } else {
+            *self + (difference.normalized() * delta)
+        }
+    }
     pub fn rounded(&self) -> Self {
         Vector2::new(self.x.round(), self.y.round())
     }

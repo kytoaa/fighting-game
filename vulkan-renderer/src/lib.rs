@@ -92,9 +92,11 @@ impl winit::application::ApplicationHandler for App {
                 let time = std::time::SystemTime::now()
                     .duration_since(self.previous_time)
                     .unwrap();
-                self.previous_time = std::time::SystemTime::now();
-
                 println!("{}", 1.0 / time.as_secs_f64());
+                std::thread::sleep(
+                    std::time::Duration::from_secs_f64(1.0 / 60.0).saturating_sub(time),
+                );
+                self.previous_time = std::time::SystemTime::now();
 
                 self.update_input_state();
                 let mut sprite_data = self.state.update(&self.asset_manager, self.debug_paused);

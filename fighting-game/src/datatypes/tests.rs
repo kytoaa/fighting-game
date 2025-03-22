@@ -46,6 +46,15 @@ fn vector_tests() {
 
     assert_eq!(Vector2::new(12.0, 8.0) * 3.0, Vector2 { x: 36.0, y: 24.0 });
     assert_eq!(Vector2::new(12.0, 8.0) / 4.0, Vector2 { x: 3.0, y: 2.0 });
+
+    assert_eq!(
+        Vector2::new(12.0, 8.0).move_towards(&Vector2::ZERO, 3.0),
+        Vector2::new(12.0, 8.0) - (Vector2::new(12.0, 8.0).normalized() * 3.0)
+    );
+    assert_eq!(
+        Vector2::new(3.0, 0.0).move_towards(&Vector2::ZERO, 5.0),
+        Vector2::ZERO
+    );
 }
 
 #[test]

@@ -7,17 +7,19 @@ pub fn create_image_sampler(core: &CoreRenderData) -> vk::Sampler {
     let sampler_create_info = vk::SamplerCreateInfo::default()
         .mag_filter(vk::Filter::NEAREST)
         .min_filter(vk::Filter::NEAREST)
-        .address_mode_u(vk::SamplerAddressMode::REPEAT)
-        .address_mode_v(vk::SamplerAddressMode::REPEAT)
-        .address_mode_w(vk::SamplerAddressMode::REPEAT)
+        .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_BORDER)
+        .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_BORDER)
+        .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_BORDER)
         .anisotropy_enable(false)
-        .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
+        .border_color(vk::BorderColor::FLOAT_TRANSPARENT_BLACK)
         .unnormalized_coordinates(false)
         .compare_enable(false)
+        .anisotropy_enable(false)
         .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
         .mip_lod_bias(0.0)
         .min_lod(0.0)
-        .max_lod(0.0);
+        .max_lod(0.0)
+        .flags(vk::SamplerCreateFlags::empty());
 
     unsafe { core.device.create_sampler(&sampler_create_info, None) }
         .expect("failed to create sampler")
@@ -93,8 +95,8 @@ pub fn create_image(
 
     resources::transition_image_layout(
         &core.device,
-        &core.transfer_pool,
-        &core.queues.transfer,
+        &core.command_pool,
+        &core.queues.graphics,
         &image.0 .0,
         vk::ImageLayout::TRANSFER_DST_OPTIMAL,
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,

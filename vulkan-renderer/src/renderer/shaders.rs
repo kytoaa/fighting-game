@@ -26,6 +26,7 @@ void main() {
 pub const DRAW_SPRITE_FRAG_SHADER: &'static [u32] = inline_spirv!(
     r#"
 #version 450
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(set = 1, binding = 0) uniform sampler2D textureSamplers[64];
 
@@ -47,9 +48,10 @@ void main() {
             return;
     }
     if (inTextureIndex < 64) {
-        outColor = texture(textureSamplers[inTextureIndex], fragUV);
+        outColor = texture(textureSamplers[nonuniformEXT(inTextureIndex)], fragUV, 0);
+        //outColor = vec4(fragUV, 0.0, 1.0);
 
-        if (outColor.a < 0.5) {
+        if (outColor.a < 0.1) {
             discard;
         }
     }

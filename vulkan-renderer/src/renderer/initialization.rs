@@ -125,8 +125,13 @@ impl CoreRenderData {
 
             let priorities = [1.0];
             let device_extension_names_raw = [ash::khr::swapchain::NAME.as_ptr()];
-            let device_features = vk::PhysicalDeviceFeatures::default()
-                .shader_sampled_image_array_dynamic_indexing(true);
+            /*let device_features = vk::PhysicalDeviceFeatures::default()
+            .shader_sampled_image_array_dynamic_indexing(true);*/
+            let mut device_features_12 = vk::PhysicalDeviceVulkan12Features::default()
+                .shader_sampled_image_array_non_uniform_indexing(true);
+            let mut device_features_2 =
+                vk::PhysicalDeviceFeatures2::default().push_next(&mut device_features_12);
+            instance.get_physical_device_features2(physical_device, &mut device_features_2);
 
             // create the logical device
             let device = {
@@ -143,8 +148,9 @@ impl CoreRenderData {
                 .collect::<Vec<_>>();
                 let create_info = vk::DeviceCreateInfo::default()
                     .queue_create_infos(&queue_families)
-                    .enabled_features(&device_features)
-                    .enabled_extension_names(&device_extension_names_raw);
+                    //.enabled_features(&device_features)
+                    .enabled_extension_names(&device_extension_names_raw)
+                    .push_next(&mut device_features_2);
 
                 instance
                     .create_device(physical_device, &create_info, None)
