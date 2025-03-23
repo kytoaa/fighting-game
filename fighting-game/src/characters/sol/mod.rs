@@ -439,10 +439,12 @@ impl Entity for Sol<BackdashVulnerable> {
 }
 impl SolDamageableState for BackdashVulnerable {}
 
+const DECEL_RATE: f32 = 8.0;
+
 struct Stand;
 impl Entity for Sol<Stand> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.velocity = Vector2::ZERO;
+        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL_RATE);
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
                 shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
@@ -455,7 +457,11 @@ impl Entity for Sol<Stand> {
         self.grounded_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
+        if self.velocity.x * self.dir() > 5.0 {
+            Some(("sol/run/run_stop".into(), BASE_SPRITE_OFFSET))
+        } else {
+            Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
+        }
     }
 }
 impl SolDamageableState for Stand {}
