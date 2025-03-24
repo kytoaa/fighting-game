@@ -279,6 +279,14 @@ where
     }
 
     fn walk_block_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+        let frame = if std::any::TypeId::of::<S>() == std::any::TypeId::of::<WalkState<true>>()
+            || std::any::TypeId::of::<S>() == std::any::TypeId::of::<WalkState<false>>()
+        {
+            // NOTE: probably sound, needs research
+            unsafe { &*(&self.state as *const S as *const WalkState<true>) }.0
+        } else {
+            0
+        };
         match input.move_dir().into() {
             (0.0, 0.0) => Box::new(self.transition(Stand)),
             (d, -1.0) => {
@@ -290,9 +298,9 @@ where
             }
             (d, 0.0) => {
                 if d.round() == -self.dir() {
-                    Box::new(self.transition(WalkState::<true>))
+                    Box::new(self.transition(WalkState::<true>(frame)))
                 } else {
-                    Box::new(self.transition(WalkState::<false>))
+                    Box::new(self.transition(WalkState::<false>(frame)))
                 }
             }
             (d, 1.0) => Box::new(self.transition(JumpSquat {
@@ -322,9 +330,9 @@ where
 
         if self.grounded {
             return if dir.x != self.dir() {
-                Box::new(self.transition(WalkState::<true>))
+                Box::new(self.transition(WalkState::<true>(0)))
             } else {
-                Box::new(self.transition(WalkState::<false>))
+                Box::new(self.transition(WalkState::<false>(0)))
             };
         }
         if input.has_action(&Action::DoublePress(self.forward_dir())) && self.has_air_action {
@@ -362,18 +370,32 @@ where
     }
 }
 
-struct WalkState<const BLOCKING: bool>;
+const WALK_ANIM_LENGTH: u8 = 4;
+const FRAMES_PER_WALK_ANIM_FRAME: u8 = 10;
+struct WalkState<const BLOCKING: bool>(u8);
 impl<const BLOCKING: bool> Entity for Sol<WalkState<BLOCKING>>
 where
     Sol<WalkState<BLOCKING>>: Damageable,
 {
     fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        self.state.0 += 1;
+        if self.state.0 >= WALK_ANIM_LENGTH * FRAMES_PER_WALK_ANIM_FRAME {
+            self.state.0 = 0;
+        }
         self.velocity = input.move_dir().y(0.0) * WALK_SPEED;
         self.grounded_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        // TODO: TEMPORARY
-        Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
+        let mut path: String = "sol/walk/walk".into();
+        path.push(
+            (if !BLOCKING {
+                '1' as u8 + (self.state.0 / FRAMES_PER_WALK_ANIM_FRAME)
+            } else {
+                '4' as u8 - (self.state.0 / FRAMES_PER_WALK_ANIM_FRAME)
+            }) as char,
+        );
+
+        Some((path.into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for WalkState<false> {}

@@ -138,7 +138,13 @@ impl Entity for Sol<JumpMid> {
             return self.grounded_actionable_state(input);
         }
         self.state.0 += 1;
-        if !self.has_hit {
+        if self.has_hit {
+            // NOTE: jump cancel
+            let move_dir = input.move_dir();
+            if move_dir.y == Vector2::UP.y {
+                return self.air_actionable_state(input);
+            }
+        } else {
             world.spawn_hitbox(
                 crate::collision::Hitbox {
                     shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
