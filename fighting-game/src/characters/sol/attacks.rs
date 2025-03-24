@@ -140,8 +140,10 @@ impl Entity for Sol<JumpMid> {
         self.state.0 += 1;
         if self.has_hit {
             // NOTE: jump cancel
-            let move_dir = input.move_dir();
-            if move_dir.y == Vector2::UP.y {
+            if input.has_action(&Action::JumpPress(InputDir::Dir7))
+                || input.has_action(&Action::JumpPress(InputDir::Dir8))
+                || input.has_action(&Action::JumpPress(InputDir::Dir9))
+            {
                 return self.air_actionable_state(input);
             }
         } else {
@@ -156,7 +158,7 @@ impl Entity for Sol<JumpMid> {
                         damage: 30,
                         attack_type: crate::collision::AttackType::High,
                         hit_effect: HitEffect::Launcher(
-                            Vector2::new(80.0 * self.dir(), 50.0),
+                            Vector2::new(80.0 * self.dir(), 70.0),
                             KnockdownType::Soft,
                         ),
                         hitstun: 100,

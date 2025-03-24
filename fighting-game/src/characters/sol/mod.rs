@@ -531,6 +531,9 @@ where
         self.gravity();
         self.air_actionable_state(input)
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/fall".into(), BASE_SPRITE_OFFSET))
+    }
 }
 impl SolDamageableState for Air<false> {}
 
