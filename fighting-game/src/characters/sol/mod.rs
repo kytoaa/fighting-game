@@ -378,8 +378,10 @@ where
         let dir = input.move_dir();
 
         if self.grounded {
-            return if dir.x != self.dir() {
+            return if dir.x == -self.dir() {
                 Box::new(self.transition(WalkState::<true>, true))
+            } else if dir.x == self.dir() {
+                Box::new(self.transition(WalkState::<false>, true))
             } else {
                 Box::new(self.transition(Stand, true))
             };
@@ -406,9 +408,9 @@ where
         }
 
         if dir == Vector2::new(-self.dir(), 0.0) {
-            Box::new(self.transition(Air::<true>, true))
+            Box::new(self.transition(Air::<true>, false))
         } else {
-            Box::new(self.transition(Air::<false>, true))
+            Box::new(self.transition(Air::<false>, false))
         }
     }
 
@@ -510,7 +512,7 @@ impl Entity for Sol<BackdashVulnerable> {
 }
 impl SolDamageableState for BackdashVulnerable {}
 
-const DECEL_RATE: f32 = 8.0;
+const DECEL_RATE: f32 = 12.0;
 
 struct Stand;
 impl Entity for Sol<Stand> {
@@ -577,11 +579,20 @@ where
     Sol<Air<B>>: Damageable,
 {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        self.frame += 1;
         self.gravity();
         self.air_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/fall".into(), BASE_SPRITE_OFFSET))
+        Some((
+            match self.frame {
+                0..10 => "sol/fall/fall1",
+                10..30 => "sol/fall/fall2",
+                _ => "sol/fall/fall1",
+            }
+            .into(),
+            BASE_SPRITE_OFFSET,
+        ))
     }
 }
 impl SolDamageableState for Air<false> {}
