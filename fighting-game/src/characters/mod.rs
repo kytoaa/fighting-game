@@ -1,9 +1,12 @@
-use crate::collision::{HitConnection, HitInfo};
+use crate::collision::{HitConnection, AttackData};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
 use crate::world::World;
 
 pub mod sol;
+mod wrapper_state;
+
+pub(crate) use wrapper_state::WrapperState;
 
 pub trait Entity:
     Damageable
@@ -26,7 +29,7 @@ pub trait Entity:
     }
 }
 pub trait Damageable {
-    fn hit(self: Box<Self>, info: &HitInfo) -> (Box<dyn Entity>, HitConnection);
+    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection);
 }
 pub trait OnHit {
     fn on_hit(&mut self, hit_type: HitConnection);

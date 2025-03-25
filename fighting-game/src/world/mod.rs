@@ -39,8 +39,14 @@ impl World {
     pub fn update(&mut self) {
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
+            self.input_providers
+                .iter_mut()
+                .for_each(|ip| ip.lock().unwrap().decrement_action_buffers = false);
             return;
         }
+        self.input_providers
+            .iter_mut()
+            .for_each(|ip| ip.lock().unwrap().decrement_action_buffers = true);
 
         self.update_hitbox_hurtboxes();
 

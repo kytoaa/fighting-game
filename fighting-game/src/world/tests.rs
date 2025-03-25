@@ -349,7 +349,7 @@ impl Velocity for TestPlayer {
 impl Damageable for TestPlayer {
     fn hit(
         self: Box<Self>,
-        _: &crate::collision::HitInfo,
+        _: &crate::collision::AttackData,
     ) -> (Box<dyn Entity>, crate::collision::HitConnection) {
         (self, crate::collision::HitConnection::Invuln)
     }

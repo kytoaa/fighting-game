@@ -26,15 +26,39 @@ impl HitType {
     pub const BLOCKED_HITSTOP_FRAMES: usize = 4;
 }
 
+#[derive(Debug, Clone)]
 pub struct HitInfo {
     pub damage: u16,
-    pub priority: usize,
     pub hitstun: usize,
     pub blockstun: usize,
     pub hit_effect: HitEffect,
+}
+
+pub struct AttackData {
+    pub grounded: HitInfo,
+    pub air: HitInfo,
+    pub priority: usize,
     pub attack_type: AttackType,
     pub hitbox_id: usize,
     pub hit_type: HitType,
+}
+impl AttackData {
+    pub fn with_same_hitinfo(
+        hit_info: HitInfo,
+        priority: usize,
+        attack_type: AttackType,
+        hitbox_id: usize,
+        hit_type: HitType,
+    ) -> Self {
+        Self {
+            grounded: hit_info.clone(),
+            air: hit_info,
+            priority,
+            attack_type,
+            hitbox_id,
+            hit_type,
+        }
+    }
 }
 #[derive(Clone, Copy)]
 pub enum AttackType {
@@ -42,6 +66,7 @@ pub enum AttackType {
     Mid,
     Low,
 }
+#[derive(Debug, Clone)]
 pub enum HitEffect {
     Pushback(f32),
     Launcher(Vector2, KnockdownType),
@@ -65,7 +90,7 @@ pub struct Hurtbox {
 }
 pub struct Hitbox {
     pub shape: CollisionShape,
-    pub info: HitInfo,
+    pub info: AttackData,
     pub owner: usize,
 }
 

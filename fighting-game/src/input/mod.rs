@@ -15,6 +15,7 @@ pub struct InputHandler {
     direction_queue: VecDeque<InputDir>,
     button_states: HashMap<Button, ButtonState>,
     buffered_actions: Option<Vec<BufferedAction>>,
+    pub decrement_action_buffers: bool,
 }
 impl InputHandler {
     pub fn new() -> InputHandler {
@@ -31,6 +32,7 @@ impl InputHandler {
                 map
             },
             buffered_actions: Some(vec![]),
+            decrement_action_buffers: true,
         }
     }
 }
@@ -77,21 +79,23 @@ impl InputHandler {
     }
 
     pub fn update(&mut self, button_states: HashMap<Button, ButtonState>, dir: InputDir) {
-        self.buffered_actions = Some(
-            self.buffered_actions
-                .take()
-                .unwrap()
-                .into_iter()
-                .filter_map(|mut action| {
-                    action.frames_left -= 1;
-                    if action.frames_left <= 0 {
-                        None
-                    } else {
-                        Some(action)
-                    }
-                })
-                .collect(),
-        );
+        if self.decrement_action_buffers {
+            self.buffered_actions = Some(
+                self.buffered_actions
+                    .take()
+                    .unwrap()
+                    .into_iter()
+                    .filter_map(|mut action| {
+                        action.frames_left -= 1;
+                        if action.frames_left <= 0 {
+                            None
+                        } else {
+                            Some(action)
+                        }
+                    })
+                    .collect(),
+            );
+        }
 
         _ = self.direction_queue.pop_front();
         self.direction_queue.push_back(dir);

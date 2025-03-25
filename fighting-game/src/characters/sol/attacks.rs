@@ -2,7 +2,7 @@ use super::{
     Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position, Velocity,
     WALK_SPEED,
 };
-use crate::collision::{CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
+use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{
     directions::{InputDir, Motion},
@@ -28,9 +28,9 @@ impl Entity for Sol<GunFlameStartup> {
         }
         if self.state.0 > GUNFLAME_STARTUP {
             if self.state.1 {
-                Box::new(self.transition(GunFlameFeint(0)))
+                Box::new(self.transition(GunFlameFeint(0), true))
             } else {
-                Box::new(self.transition(GunFlame(0)))
+                Box::new(self.transition(GunFlame(0), true))
             }
         } else {
             self
@@ -75,16 +75,18 @@ impl Entity for Sol<GunFlameFeint> {
                         Vector2::new(4.0, 5.0),
                     )),
                     owner: self.player,
-                    info: HitInfo {
-                        damage: 10,
-                        priority: 1,
-                        hitstun: 15,
-                        blockstun: 8,
-                        hit_effect: HitEffect::Pushback(20.0 * self.dir()),
-                        attack_type: crate::collision::AttackType::Mid,
-                        hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Light,
-                    },
+                    info: AttackData::with_same_hitinfo(
+                        HitInfo {
+                            damage: 10,
+                            hitstun: 15,
+                            blockstun: 8,
+                            hit_effect: HitEffect::Pushback(20.0 * self.dir()),
+                        },
+                        1,
+                        crate::collision::AttackType::Mid,
+                        1,
+                        crate::collision::HitType::Light,
+                    ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), -4.0),
                 1,
@@ -119,7 +121,7 @@ impl Entity for Sol<JumpMidStartup> {
         }
         self.state.0 += 1;
         if self.state.0 > JUMP_MID_STARTUP {
-            Box::new(self.transition(JumpMid(0)))
+            Box::new(self.transition(JumpMid(0), true))
         } else {
             self
         }
@@ -143,6 +145,7 @@ impl Entity for Sol<JumpMid> {
             if input.has_action(&Action::JumpPress(InputDir::Dir7))
                 || input.has_action(&Action::JumpPress(InputDir::Dir8))
                 || input.has_action(&Action::JumpPress(InputDir::Dir9))
+                || input.has_action(&Action::DoublePress(InputDir::Dir6))
             {
                 return self.air_actionable_state(input);
             }
@@ -154,19 +157,21 @@ impl Entity for Sol<JumpMid> {
                         Vector2::new(20.0, 5.0),
                     )),
                     owner: self.player,
-                    info: HitInfo {
-                        damage: 30,
-                        attack_type: crate::collision::AttackType::High,
-                        hit_effect: HitEffect::Launcher(
-                            Vector2::new(80.0 * self.dir(), 70.0),
-                            KnockdownType::Soft,
-                        ),
-                        hitstun: 100,
-                        priority: 5,
-                        blockstun: 15,
-                        hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Medium,
-                    },
+                    info: AttackData::with_same_hitinfo(
+                        HitInfo {
+                            damage: 30,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(80.0 * self.dir(), 70.0),
+                                KnockdownType::Soft,
+                            ),
+                            hitstun: 100,
+                            blockstun: 15,
+                        },
+                        5,
+                        crate::collision::AttackType::High,
+                        1,
+                        crate::collision::HitType::Medium,
+                    ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), 4.0),
                 1,
@@ -174,7 +179,7 @@ impl Entity for Sol<JumpMid> {
         }
 
         if self.state.0 > JUMP_MID_ACTIVE {
-            Box::new(self.transition(JumpMidRecovery(0)))
+            Box::new(self.transition(JumpMidRecovery(0), true))
         } else {
             self
         }
@@ -216,7 +221,7 @@ impl Entity for Sol<CrouchHeavyStartup> {
         self.has_hit = false;
         self.state.0 += 1;
         if self.state.0 > CROUCH_HEAVY_STARTUP {
-            Box::new(self.transition(CrouchHeavy(0)))
+            Box::new(self.transition(CrouchHeavy(0), true))
         } else {
             self
         }
@@ -235,17 +240,20 @@ impl Entity for Sol<CrouchHeavy> {
                 &Motion::half_circle().direction(self.direction),
                 &Action::Pressed(Button::Heavy),
             ) {
-                return Box::new(self.transition(FafnirStartup(0)));
+                return Box::new(self.transition(FafnirStartup(0), true));
             }
 
             // NOTE: jump cancel
             let move_dir = input.move_dir();
             if move_dir.y == Vector2::UP.y {
                 self.velocity.x = move_dir.x * WALK_SPEED;
-                return Box::new(self.transition(JumpSquat {
-                    frame: 0,
-                    direction: move_dir.x,
-                }));
+                return Box::new(self.transition(
+                    JumpSquat {
+                        frame: 0,
+                        direction: move_dir.x,
+                    },
+                    true,
+                ));
             }
         }
 
@@ -257,16 +265,27 @@ impl Entity for Sol<CrouchHeavy> {
                         Vector2::new(20.0, 10.0),
                     )),
                     owner: self.player,
-                    info: HitInfo {
-                        damage: 30,
+                    info: AttackData {
+                        grounded: HitInfo {
+                            damage: 30,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(10.0 * self.dir(), 90.0),
+                                KnockdownType::Soft,
+                            ),
+                            hitstun: 100,
+                            blockstun: 11,
+                        },
+                        air: HitInfo {
+                            damage: 30,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(10.0 * self.dir(), 120.0),
+                                KnockdownType::Soft,
+                            ),
+                            hitstun: 100,
+                            blockstun: 15,
+                        },
                         attack_type: crate::collision::AttackType::Mid,
-                        hit_effect: HitEffect::Launcher(
-                            Vector2::new(10.0 * self.dir(), 90.0),
-                            KnockdownType::Soft,
-                        ),
-                        hitstun: 100,
                         priority: 5,
-                        blockstun: 11,
                         hitbox_id: 1,
                         hit_type: crate::collision::HitType::Heavy,
                     },
@@ -277,7 +296,7 @@ impl Entity for Sol<CrouchHeavy> {
         }
 
         if self.state.0 > CROUCH_HEAVY_ACTIVE {
-            Box::new(self.transition(CrouchHeavyRecovery(0)))
+            Box::new(self.transition(CrouchHeavyRecovery(0), true))
         } else {
             self
         }
@@ -300,17 +319,20 @@ impl Entity for Sol<CrouchHeavyRecovery> {
                 &Motion::half_circle().direction(self.direction),
                 &Action::Pressed(Button::Heavy),
             ) {
-                return Box::new(self.transition(FafnirStartup(0)));
+                return Box::new(self.transition(FafnirStartup(0), true));
             }
 
             // NOTE: jump cancel
             let move_dir = input.move_dir();
             if move_dir.y == Vector2::UP.y {
                 self.velocity.x = move_dir.x * WALK_SPEED;
-                return Box::new(self.transition(JumpSquat {
-                    frame: 0,
-                    direction: move_dir.x,
-                }));
+                return Box::new(self.transition(
+                    JumpSquat {
+                        frame: 0,
+                        direction: move_dir.x,
+                    },
+                    true,
+                ));
             }
         }
 
@@ -340,7 +362,7 @@ impl Entity for Sol<FafnirStartup> {
         self.velocity = Vector2::ZERO;
         self.state.0 += 1;
         if self.state.0 > FAFNIR_STARTUP {
-            Box::new(self.transition(FafnirDash(0)))
+            Box::new(self.transition(FafnirDash(0), true))
         } else {
             self
         }
@@ -358,7 +380,7 @@ impl Entity for Sol<FafnirDash> {
         self.velocity = Vector2::RIGHT * FAFNIR_VELOCITY * self.dir();
         if self.state.0 > FAFNIR_DASH {
             self.velocity = Vector2::RIGHT * FAFNIR_STOP_VELOCITY * self.dir();
-            Box::new(self.transition(Fafnir(0)))
+            Box::new(self.transition(Fafnir(0), true))
         } else {
             self
         }
@@ -384,16 +406,27 @@ impl Entity for Sol<Fafnir> {
                         Vector2::new(20.0, 5.0),
                     )),
                     owner: self.player,
-                    info: HitInfo {
-                        damage: 80,
+                    info: AttackData {
+                        grounded: HitInfo {
+                            damage: 80,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(100.0 * self.dir(), 10.0),
+                                KnockdownType::Hard,
+                            ),
+                            blockstun: 20,
+                            hitstun: 100,
+                        },
+                        air: HitInfo {
+                            damage: 80,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(100.0 * self.dir(), 20.0),
+                                KnockdownType::Hard,
+                            ),
+                            blockstun: 20,
+                            hitstun: 100,
+                        },
                         attack_type: crate::collision::AttackType::Mid,
-                        hit_effect: HitEffect::Launcher(
-                            Vector2::new(100.0 * self.dir(), 10.0),
-                            KnockdownType::Hard,
-                        ),
-                        hitstun: 100,
                         priority: 5,
-                        blockstun: 20,
                         hitbox_id: 1,
                         hit_type: crate::collision::HitType::SuperHeavy,
                     },
@@ -404,7 +437,7 @@ impl Entity for Sol<Fafnir> {
         }
 
         if self.state.0 > FAFNIR_ACTIVE {
-            Box::new(self.transition(FafnirRecovery(0)))
+            Box::new(self.transition(FafnirRecovery(0), true))
         } else {
             self
         }
