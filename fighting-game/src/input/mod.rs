@@ -9,7 +9,7 @@ pub use directions::InputDir;
 
 const BUFFER_LENGTH: usize = 3;
 const INPUT_HISTORY_LENGTH: usize = 60;
-const DOUBLE_PRESS_FRAMES: usize = 10;
+const DOUBLE_PRESS_FRAMES: usize = 14;
 
 pub struct InputHandler {
     direction_queue: VecDeque<InputDir>,

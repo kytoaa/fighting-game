@@ -249,7 +249,6 @@ impl Entity for Sol<CrouchHeavy> {
                 self.velocity.x = move_dir.x * WALK_SPEED;
                 return Box::new(self.transition(
                     JumpSquat {
-                        frame: 0,
                         direction: move_dir.x,
                     },
                     true,
@@ -328,7 +327,6 @@ impl Entity for Sol<CrouchHeavyRecovery> {
                 self.velocity.x = move_dir.x * WALK_SPEED;
                 return Box::new(self.transition(
                     JumpSquat {
-                        frame: 0,
                         direction: move_dir.x,
                     },
                     true,

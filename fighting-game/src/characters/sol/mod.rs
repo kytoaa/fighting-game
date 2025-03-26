@@ -155,7 +155,6 @@ where
                     Box::new(self.transition(
                         BasicHitstun {
                             length: hit_info.hitstun,
-                            frame: 0,
                         },
                         true,
                     ))
@@ -166,7 +165,6 @@ where
                     Box::new(self.transition(
                         Tumble {
                             length: hit_info.hitstun,
-                            frame: 0,
                             knockdown: *knockdown,
                         },
                         true,
@@ -189,7 +187,6 @@ impl Damageable for Sol<WalkState<true>> {
             Box::new(self.transition(
                 BlockStun::<false> {
                     length: hit_info.blockstun,
-                    frame: 0,
                 },
                 true,
             )),
@@ -208,7 +205,6 @@ impl Damageable for Sol<Crouch<true>> {
             Box::new(self.transition(
                 BlockStun::<true> {
                     length: hit_info.blockstun,
-                    frame: 0,
                 },
                 true,
             )),
@@ -227,7 +223,6 @@ impl Damageable for Sol<Air<true>> {
             Box::new(self.transition(
                 AirBlockStun {
                     length: hit_info.blockstun,
-                    frame: 0,
                 },
                 true,
             )),
@@ -246,7 +241,6 @@ impl Damageable for Sol<AirBlockStun> {
             Box::new(self.transition(
                 AirBlockStun {
                     length: hit_info.blockstun,
-                    frame: 0,
                 },
                 true,
             )),
@@ -265,7 +259,6 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
             Box::new(self.transition(
                 BlockStun::<CROUCHING> {
                     length: hit_info.blockstun,
-                    frame: 0,
                 },
                 true,
             )),
@@ -349,13 +342,7 @@ where
                     Box::new(self.transition(WalkState::<false>, false))
                 }
             }
-            (d, 1.0) => Box::new(self.transition(
-                JumpSquat {
-                    direction: d,
-                    frame: 0,
-                },
-                true,
-            )),
+            (d, 1.0) => Box::new(self.transition(JumpSquat { direction: d }, true)),
             _ => unreachable!(),
         }
     }
@@ -388,7 +375,7 @@ where
         }
         if input.has_action(&Action::DoublePress(self.forward_dir())) && self.has_air_action {
             self.has_air_action = false;
-            return Box::new(self.transition(Airdash(0), true));
+            return Box::new(self.transition(Airdash, true));
         }
         if input.has_action(&Action::DoublePress(self.backward_dir())) && self.has_air_action {
             self.has_air_action = false;
@@ -405,6 +392,7 @@ where
                 dir.x * DOUBLE_JUMP_X_FORCE.max(self.velocity.x.abs()),
                 DOUBLE_JUMP_FORCE,
             );
+            self.frame = 0;
         }
 
         if dir == Vector2::new(-self.dir(), 0.0) {
@@ -489,17 +477,17 @@ impl Entity for Sol<Backdash> {
         self.velocity = Vector2::new(-self.dir() * BACKDASH_VELOCITY, 0.0);
         self.frame += 1;
         if self.frame > BACKDASH_FRAMES as u8 {
-            Box::new(self.transition(BackdashVulnerable(0), true))
+            Box::new(self.transition(BackdashVulnerable, true))
         } else {
             self
         }
     }
 }
-struct BackdashVulnerable(usize);
+struct BackdashVulnerable;
 impl Entity for Sol<BackdashVulnerable> {
     fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.state.0 += 1;
-        if self.state.0 > BACKDASH_VULNERABLE {
+        self.frame += 1;
+        if self.frame > BACKDASH_VULNERABLE as u8 {
             if self.grounded {
                 self.grounded_actionable_state(input)
             } else {
@@ -557,19 +545,21 @@ const DOUBLE_JUMP_FORCE: f32 = 120.0;
 const DOUBLE_JUMP_X_FORCE: f32 = 40.0;
 
 struct JumpSquat {
-    frame: usize,
     direction: f32,
 }
 impl SolDamageableState for JumpSquat {}
 impl Entity for Sol<JumpSquat> {
     fn update(mut self: Box<Self>, _world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
-        self.state.frame += 1;
-        if self.state.frame > JUMPSQUAT_FRAMES {
+        self.frame += 1;
+        if self.frame > JUMPSQUAT_FRAMES as u8 {
             self.velocity.y = Vector2::UP.y * JUMP_FORCE;
             Box::new(self.transition(Air::<false>, true))
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/fall/fall1".into(), BASE_SPRITE_OFFSET))
     }
 }
 
@@ -586,9 +576,9 @@ where
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some((
             match self.frame {
-                0..10 => "sol/fall/fall1",
-                10..30 => "sol/fall/fall2",
-                _ => "sol/fall/fall1",
+                0..10 => "sol/fall/fall2",
+                10..30 => "sol/fall/fall3",
+                _ => "sol/fall/fall2",
             }
             .into(),
             BASE_SPRITE_OFFSET,
@@ -601,12 +591,12 @@ const AIRDASH_LENGTH: usize = 12;
 const AIRDASH_SPEED: f32 = 140.0;
 
 #[derive(Debug)]
-struct Airdash(usize);
+struct Airdash;
 impl Entity for Sol<Airdash> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.velocity = Vector2::new(AIRDASH_SPEED * self.dir(), 0.0);
-        self.state.0 += 1;
-        if self.state.0 > AIRDASH_LENGTH {
+        self.frame += 1;
+        if self.frame > AIRDASH_LENGTH as u8 {
             Box::new(self.transition(Air::<false>, true))
         } else {
             match self.air_attack_options(input) {
@@ -620,12 +610,11 @@ impl SolDamageableState for Airdash {}
 
 struct BasicHitstun {
     length: usize,
-    frame: usize,
 }
 impl Entity for Sol<BasicHitstun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
-        self.state.frame += 1;
-        if self.state.frame > self.state.length {
+        self.frame += 1;
+        if self.frame > self.state.length as u8 {
             Box::new(self.transition(Stand, true))
         } else {
             self
@@ -637,7 +626,6 @@ impl SolDamageableState for BasicHitstun {}
 #[derive(Debug)]
 struct Tumble {
     length: usize,
-    frame: usize,
     knockdown: KnockdownType,
 }
 impl Entity for Sol<Tumble> {
@@ -649,8 +637,8 @@ impl Entity for Sol<Tumble> {
         );*/
         if self.grounded {
             return match self.state.knockdown {
-                KnockdownType::Hard => Box::new(self.transition(HardKnockdown(0), true)),
-                KnockdownType::Soft => Box::new(self.transition(SoftKnockdown(0), true)),
+                KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
+                KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
             };
         }
 
@@ -664,8 +652,8 @@ impl Entity for Sol<Tumble> {
             1,
         );
 
-        self.state.frame += 1;
-        if self.state.frame > self.state.length {
+        self.frame += 1;
+        if self.frame > self.state.length as u8 {
             self.air_actionable_state(input)
         } else {
             self
@@ -677,12 +665,11 @@ impl SolDamageableState for Tumble {}
 #[derive(Debug)]
 struct BlockStun<const CROUCHING: bool> {
     length: usize,
-    frame: usize,
 }
 impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
-        self.state.frame += 1;
-        if self.state.frame >= self.state.length {
+        self.frame += 1;
+        if self.frame >= self.state.length as u8 {
             Box::new(self.transition(Stand, true))
         } else {
             self
@@ -692,12 +679,11 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
 #[derive(Debug)]
 struct AirBlockStun {
     length: usize,
-    frame: usize,
 }
 impl Entity for Sol<AirBlockStun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
-        self.state.frame += 1;
-        if self.state.frame >= self.state.length {
+        self.frame += 1;
+        if self.frame >= self.state.length as u8 {
             Box::new(self.transition(Stand, true))
         } else {
             self
@@ -709,11 +695,11 @@ const HARD_KNOCKDOWN_FRAMES: usize = 30;
 const SOFT_KNOCKDOWN_FRAMES: usize = 15;
 
 #[derive(Debug)]
-struct SoftKnockdown(usize);
+struct SoftKnockdown;
 impl Entity for Sol<SoftKnockdown> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.state.0 += 1;
-        if self.state.0 >= SOFT_KNOCKDOWN_FRAMES {
+        self.frame += 1;
+        if self.frame >= SOFT_KNOCKDOWN_FRAMES as u8 {
             self.walk_block_state(input)
         } else {
             self
@@ -727,11 +713,11 @@ impl Damageable for Sol<SoftKnockdown> {
 }
 
 #[derive(Debug)]
-struct HardKnockdown(usize);
+struct HardKnockdown;
 impl Entity for Sol<HardKnockdown> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.state.0 += 1;
-        if self.state.0 >= HARD_KNOCKDOWN_FRAMES {
+        self.frame += 1;
+        if self.frame >= HARD_KNOCKDOWN_FRAMES as u8 {
             self.walk_block_state(input)
         } else {
             self
