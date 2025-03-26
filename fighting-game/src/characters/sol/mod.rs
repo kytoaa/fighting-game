@@ -300,13 +300,13 @@ where
             &Motion::quarter_circle().direction(self.direction),
             &Action::Pressed(Button::Light),
         ) {
-            return Box::new(self.transition(GunFlameStartup(0, false), true));
+            return Box::new(self.transition(GunFlameStartup(false), true));
         }
         if input.has_motion_input(
             &Motion::quarter_circle().direction(!self.direction),
             &Action::Pressed(Button::Light),
         ) {
-            return Box::new(self.transition(GunFlameStartup(0, true), true));
+            return Box::new(self.transition(GunFlameStartup(true), true));
         }
 
         // NOTE: 2h
@@ -468,8 +468,8 @@ where
 impl SolDamageableState for RunState {}
 
 const BACKDASH_VELOCITY: f32 = 70.0;
-const BACKDASH_FRAMES: usize = 5;
-const BACKDASH_VULNERABLE: usize = 10;
+const BACKDASH_FRAMES: usize = 6;
+const BACKDASH_VULNERABLE: usize = 9;
 
 struct Backdash;
 impl Entity for Sol<Backdash> {
@@ -481,6 +481,9 @@ impl Entity for Sol<Backdash> {
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/backdash/backdash1".into(), BASE_SPRITE_OFFSET))
     }
 }
 struct BackdashVulnerable;
@@ -496,6 +499,9 @@ impl Entity for Sol<BackdashVulnerable> {
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/backdash/backdash2".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for BackdashVulnerable {}

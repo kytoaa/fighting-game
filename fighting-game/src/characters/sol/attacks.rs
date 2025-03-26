@@ -16,21 +16,21 @@ const GUNFLAME_STARTUP: usize = 15;
 const GUNFLAME_DECEL: f32 = 0.9;
 
 /// bool is feint
-pub struct GunFlameStartup(pub usize, pub bool);
+pub struct GunFlameStartup(pub bool);
 impl Entity for Sol<GunFlameStartup> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.has_hit = false;
-        self.state.0 += 1;
+        self.frame += 1;
         if self.velocity.x * self.dir() < 0.0 {
             self.velocity.x = 0.0;
         } else {
             self.velocity.x *= GUNFLAME_DECEL;
         }
-        if self.state.0 > GUNFLAME_STARTUP {
-            if self.state.1 {
-                Box::new(self.transition(GunFlameFeint(0), true))
+        if self.frame > GUNFLAME_STARTUP as u8 {
+            if self.state.0 {
+                Box::new(self.transition(GunFlameFeint, true))
             } else {
-                Box::new(self.transition(GunFlame(0), true))
+                Box::new(self.transition(GunFlame, true))
             }
         } else {
             self
@@ -38,7 +38,7 @@ impl Entity for Sol<GunFlameStartup> {
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         let mut path: String = "sol/gunflame/gunflame".into();
-        path.push(match self.state.0 {
+        path.push(match self.frame {
             0..6 => '1',
             ..11 => '2',
             _ => '3',
@@ -52,7 +52,7 @@ impl Entity for Sol<GunFlameStartup> {
 }
 impl SolDamageableState for GunFlameStartup {}
 
-struct GunFlame(usize);
+struct GunFlame;
 impl Entity for Sol<GunFlame> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         // TODO: spawn projectile
@@ -62,12 +62,12 @@ impl Entity for Sol<GunFlame> {
 impl SolDamageableState for GunFlame {}
 
 const GUNFLAME_FEINT_HOLD_LENGTH: usize = 8;
-pub struct GunFlameFeint(usize);
+pub struct GunFlameFeint;
 impl Entity for Sol<GunFlameFeint> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.state.0 += 1;
+        self.frame += 1;
 
-        if self.state.0 == 3 {
+        if self.frame == 3 {
             world.spawn_hitbox(
                 Hitbox {
                     shape: CollisionShape::Box(BoundingBox::pos_size(
@@ -92,7 +92,7 @@ impl Entity for Sol<GunFlameFeint> {
                 1,
             );
         }
-        if self.state.0 > GUNFLAME_FEINT_HOLD_LENGTH {
+        if self.frame > GUNFLAME_FEINT_HOLD_LENGTH as u8 {
             self.grounded_actionable_state(input)
         } else {
             self
