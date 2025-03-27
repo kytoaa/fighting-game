@@ -81,6 +81,7 @@ impl Entity for Sol<GunFlameFeint> {
                             hitstun: 15,
                             blockstun: 8,
                             hit_effect: HitEffect::Pushback(20.0 * self.dir()),
+                            block_push: 8.0 * self.dir(),
                         },
                         1,
                         crate::collision::AttackType::Mid,
@@ -166,6 +167,7 @@ impl Entity for Sol<JumpMid> {
                             ),
                             hitstun: 100,
                             blockstun: 15,
+                            block_push: 50.0 * self.dir(),
                         },
                         5,
                         crate::collision::AttackType::High,
@@ -264,8 +266,8 @@ impl Entity for Sol<CrouchHeavy> {
                         Vector2::new(20.0, 10.0),
                     )),
                     owner: self.player,
-                    info: AttackData {
-                        grounded: HitInfo {
+                    info: AttackData::with_same_hitinfo(
+                        HitInfo {
                             damage: 30,
                             hit_effect: HitEffect::Launcher(
                                 Vector2::new(10.0 * self.dir(), 90.0),
@@ -273,21 +275,13 @@ impl Entity for Sol<CrouchHeavy> {
                             ),
                             hitstun: 100,
                             blockstun: 11,
+                            block_push: 8.0 * self.dir(),
                         },
-                        air: HitInfo {
-                            damage: 30,
-                            hit_effect: HitEffect::Launcher(
-                                Vector2::new(10.0 * self.dir(), 120.0),
-                                KnockdownType::Soft,
-                            ),
-                            hitstun: 100,
-                            blockstun: 15,
-                        },
-                        attack_type: crate::collision::AttackType::Mid,
-                        priority: 5,
-                        hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Heavy,
-                    },
+                        5,
+                        crate::collision::AttackType::Mid,
+                        1,
+                        crate::collision::HitType::Heavy,
+                    ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), 0.0),
                 1,
@@ -404,8 +398,8 @@ impl Entity for Sol<Fafnir> {
                         Vector2::new(20.0, 5.0),
                     )),
                     owner: self.player,
-                    info: AttackData {
-                        grounded: HitInfo {
+                    info: AttackData::with_same_hitinfo(
+                        HitInfo {
                             damage: 80,
                             hit_effect: HitEffect::Launcher(
                                 Vector2::new(100.0 * self.dir(), 10.0),
@@ -413,21 +407,13 @@ impl Entity for Sol<Fafnir> {
                             ),
                             blockstun: 20,
                             hitstun: 100,
+                            block_push: 12.0 * self.dir(),
                         },
-                        air: HitInfo {
-                            damage: 80,
-                            hit_effect: HitEffect::Launcher(
-                                Vector2::new(100.0 * self.dir(), 20.0),
-                                KnockdownType::Hard,
-                            ),
-                            blockstun: 20,
-                            hitstun: 100,
-                        },
-                        attack_type: crate::collision::AttackType::Mid,
-                        priority: 5,
-                        hitbox_id: 1,
-                        hit_type: crate::collision::HitType::SuperHeavy,
-                    },
+                        5,
+                        crate::collision::AttackType::Mid,
+                        1,
+                        crate::collision::HitType::SuperHeavy,
+                    ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), 0.0),
                 1,

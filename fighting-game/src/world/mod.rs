@@ -91,7 +91,7 @@ impl World {
                 }
             }
         }
-        if clanks.len() > 0 {
+        /*if clanks.len() > 0 {
             self.hitboxes = self
                 .hitboxes
                 .drain(0..)
@@ -104,7 +104,7 @@ impl World {
                     }
                 })
                 .collect();
-        }
+        }*/
 
         let mut collisions = vec![];
 
@@ -120,7 +120,9 @@ impl World {
             let hitbox = &mut self.hitboxes[hitbox_index];
             let hurtbox = &mut self.hurtboxes[hurtbox_index];
 
+            println!("collision");
             if hitbox.0.owner == hurtbox.0.owner {
+                println!("owner same");
                 continue;
             }
             let hit_player = self
@@ -271,10 +273,20 @@ impl World {
             let player1_position = self.players[0].as_ref().unwrap().position();
             let player2_position = self.players[1].as_ref().unwrap().position();
 
-            let direction = player2_position.x - player1_position.x > 0.0;
+            let distance = player2_position.x - player1_position.x;
+            let direction = distance > 0.0;
 
             self.players[0].as_mut().unwrap().set_direction(direction);
             self.players[1].as_mut().unwrap().set_direction(!direction);
+
+            self.players[0]
+                .as_mut()
+                .unwrap()
+                .set_distance(distance.abs());
+            self.players[1]
+                .as_mut()
+                .unwrap()
+                .set_distance(distance.abs());
         }
     }
     pub fn get_players(&self) -> Box<[&dyn crate::characters::Entity; 2]> {

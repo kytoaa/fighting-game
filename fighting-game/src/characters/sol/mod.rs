@@ -1,4 +1,7 @@
-use super::{Damageable, Direction, Entity, Grounded, HasCollider, OnHit, Position, Velocity};
+use super::{
+    Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded, HasCollider, OnHit, Position,
+    Velocity,
+};
 use crate::collision::{AttackData, HitConnection, HitEffect, HitType, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{
@@ -8,7 +11,9 @@ use crate::input::{
 use crate::world::World;
 
 mod attacks;
+mod normals;
 use attacks::*;
+use normals::*;
 
 const WALK_SPEED: f32 = 20.0;
 const RUN_SPEED: f32 = 90.0;
@@ -31,6 +36,7 @@ pub fn initial_state(player: usize) -> Box<dyn Entity> {
         has_hit: false,
         grounded: true,
         has_air_action: true,
+        distance_from_other_player: f32::MAX,
         frame: 0,
         state: Stand,
     })
@@ -45,6 +51,7 @@ struct Sol<S> {
     has_hit: bool,
     grounded: bool,
     has_air_action: bool,
+    distance_from_other_player: f32,
     frame: u8,
     state: S,
 }
@@ -78,6 +85,7 @@ impl<S> Sol<S> {
             has_hit: self.has_hit,
             grounded: self.grounded,
             has_air_action: self.has_air_action,
+            distance_from_other_player: self.distance_from_other_player,
             frame: if reset_frame { 0 } else { self.frame },
             state: new_state,
         }
@@ -133,6 +141,14 @@ where
         if self.actionable() && self.grounded {
             self.direction = direction
         }
+    }
+}
+impl<S> DistanceFromOtherPlayer for Sol<S>
+where
+    Sol<S>: Entity,
+{
+    fn set_distance(&mut self, distance: f32) {
+        self.distance_from_other_player = distance;
     }
 }
 
@@ -287,12 +303,42 @@ where
     Sol<S>: Entity + 'static,
 {
     fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+        match self.grounded_cancel_options(input) {
+            Ok(state) => state,
+            Err(s) => s.walk_block_state(input),
+        }
+    }
+    fn grounded_cancel_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        match self.grounded_attack_options(input) {
+            Ok(state) => Ok(state),
+            Err(s) => s.grounded_movement_cancel_options(input),
+        }
+    }
+    fn grounded_movement_cancel_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if input.has_action(&Action::DoublePress(self.forward_dir())) {
+            return Ok(Box::new(self.transition(RunState, true)));
+        }
+        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+            return Ok(Box::new(self.transition(Backdash, true)));
+        }
+        Err(self)
+    }
+    fn grounded_attack_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
         // NOTE: fafnir
         if input.has_motion_input(
             &Motion::half_circle().direction(self.direction),
             &Action::Pressed(Button::Heavy),
         ) {
-            return Box::new(self.transition(FafnirStartup(0), true));
+            return Ok(Box::new(self.transition(FafnirStartup(0), true)));
         }
 
         // NOTE: gun flame
@@ -300,29 +346,33 @@ where
             &Motion::quarter_circle().direction(self.direction),
             &Action::Pressed(Button::Light),
         ) {
-            return Box::new(self.transition(GunFlameStartup(false), true));
+            return Ok(Box::new(self.transition(GunFlameStartup(false), true)));
         }
         if input.has_motion_input(
             &Motion::quarter_circle().direction(!self.direction),
             &Action::Pressed(Button::Light),
         ) {
-            return Box::new(self.transition(GunFlameStartup(true), true));
+            return Ok(Box::new(self.transition(GunFlameStartup(true), true)));
         }
 
         // NOTE: 2h
         if input.move_dir().y == Vector2::DOWN.y
             && input.has_action(&Action::Pressed(Button::Heavy))
         {
-            return Box::new(self.transition(CrouchHeavyStartup(0), true));
+            return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
         }
 
-        if input.has_action(&Action::DoublePress(self.forward_dir())) {
-            return Box::new(self.transition(RunState, true));
+        const CLOSE_MID_DISTANCE: f32 = 10.0;
+
+        if input.has_action(&Action::Pressed(Button::Mid)) {
+            if self.distance_from_other_player < CLOSE_MID_DISTANCE {
+                return Ok(Box::new(self.transition(CloseMid, true)));
+            } else {
+                return Ok(Box::new(self.transition(FarMid, true)));
+            }
         }
-        if input.has_action(&Action::DoublePress(self.backward_dir())) {
-            return Box::new(self.transition(Backdash, true));
-        }
-        self.walk_block_state(input)
+
+        Err(self)
     }
 
     fn walk_block_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
@@ -453,7 +503,7 @@ where
         }
         if input.move_dir() == Vector2::new(self.dir(), 0.0) {
             self.velocity = input.move_dir().y(0.0) * RUN_SPEED;
-            self
+            self.grounded_attack_options(input).unwrap_or_else(|s| s)
         } else {
             self.grounded_actionable_state(input)
         }
@@ -595,6 +645,7 @@ impl SolDamageableState for Air<false> {}
 
 const AIRDASH_LENGTH: usize = 12;
 const AIRDASH_SPEED: f32 = 140.0;
+const AIRDASH_ACTIONABLE_FRAME: usize = 4;
 
 #[derive(Debug)]
 struct Airdash;
@@ -605,11 +656,26 @@ impl Entity for Sol<Airdash> {
         if self.frame > AIRDASH_LENGTH as u8 {
             Box::new(self.transition(Air::<false>, true))
         } else {
-            match self.air_attack_options(input) {
-                Ok(s) => s,
-                Err(s) => s,
+            if self.frame > AIRDASH_ACTIONABLE_FRAME as u8 {
+                match self.air_attack_options(input) {
+                    Ok(s) => s,
+                    Err(s) => s,
+                }
+            } else {
+                self
             }
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some((
+            match self.frame {
+                0 => "sol/fall/fall1",
+                1 => "sol/fall/fall2",
+                _ => "sol/airdash",
+            }
+            .into(),
+            BASE_SPRITE_OFFSET,
+        ))
     }
 }
 impl SolDamageableState for Airdash {}
@@ -642,9 +708,11 @@ impl Entity for Sol<Tumble> {
             self.grounded, self.velocity, self.state.frame
         );*/
         if self.grounded {
+            let length = self.state.length - self.frame as usize;
             return match self.state.knockdown {
                 KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
                 KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
+                KnockdownType::None => Box::new(self.transition(BasicHitstun { length }, true)),
             };
         }
 

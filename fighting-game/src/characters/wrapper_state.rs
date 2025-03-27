@@ -102,3 +102,11 @@ where
         self.entity.set_direction(direction)
     }
 }
+impl<const FRAMES: usize, F> DistanceFromOtherPlayer for WrapperState<FRAMES, F>
+where
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
+{
+    fn set_distance(&mut self, distance: f32) {
+        self.entity.set_distance(distance)
+    }
+}

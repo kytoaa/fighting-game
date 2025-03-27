@@ -1,4 +1,4 @@
-use crate::collision::{HitConnection, AttackData};
+use crate::collision::{AttackData, HitConnection};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
 use crate::world::World;
@@ -17,6 +17,7 @@ pub trait Entity:
     + ColliderWorldSpace
     + Grounded
     + Direction
+    + DistanceFromOtherPlayer
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
@@ -26,6 +27,9 @@ pub trait Entity:
     }
     fn actionable(&self) -> bool {
         true
+    }
+    fn counterhit(&self) -> bool {
+        false
     }
 }
 pub trait Damageable {
@@ -59,6 +63,9 @@ pub trait Direction {
 pub trait Grounded: Position {
     fn set_grounded(&mut self, grounded: bool);
     fn is_grounded(&self) -> bool;
+}
+pub trait DistanceFromOtherPlayer {
+    fn set_distance(&mut self, distance: f32);
 }
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}

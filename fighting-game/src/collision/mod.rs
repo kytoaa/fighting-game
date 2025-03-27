@@ -32,11 +32,13 @@ pub struct HitInfo {
     pub hitstun: usize,
     pub blockstun: usize,
     pub hit_effect: HitEffect,
+    pub block_push: f32,
 }
 
 pub struct AttackData {
     pub grounded: HitInfo,
     pub air: HitInfo,
+    pub counterhit: HitInfo,
     pub priority: usize,
     pub attack_type: AttackType,
     pub hitbox_id: usize,
@@ -52,7 +54,8 @@ impl AttackData {
     ) -> Self {
         Self {
             grounded: hit_info.clone(),
-            air: hit_info,
+            air: hit_info.clone(),
+            counterhit: hit_info,
             priority,
             attack_type,
             hitbox_id,
@@ -75,6 +78,7 @@ pub enum HitEffect {
 pub enum KnockdownType {
     Hard,
     Soft,
+    None,
 }
 
 #[derive(Clone, Copy)]
