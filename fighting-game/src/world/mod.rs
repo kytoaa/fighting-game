@@ -102,6 +102,27 @@ impl World {
             }
         }
 
+        collisions = collisions
+            .iter()
+            .fold(
+                std::collections::HashMap::new(),
+                |mut acc: std::collections::HashMap<usize, (usize, usize)>,
+                 (hitbox_index, hurtbox_index)| {
+                    let hitbox = &self.hitboxes[*hitbox_index];
+                    let hurtbox = &self.hurtboxes[*hurtbox_index];
+                    if let Some(collision) = acc.get(&hurtbox.0.owner) {
+                        let other = &self.hitboxes[collision.0];
+                        if other.0.info.priority > hitbox.0.info.priority {
+                            return acc;
+                        }
+                    }
+                    acc.insert(hurtbox.0.owner, (*hitbox_index, *hurtbox_index));
+                    acc
+                },
+            )
+            .into_values()
+            .collect();
+
         for (hitbox_index, hurtbox_index) in collisions {
             let hitbox = &mut self.hitboxes[hitbox_index];
             let hurtbox = &mut self.hurtboxes[hurtbox_index];

@@ -202,3 +202,106 @@ impl Entity for Sol<FarMid> {
     }
 }
 impl SolDamageableState for FarMid {}
+
+const STAND_LIGHT_STARTUP: usize = 5;
+const STAND_LIGHT_FIRST_ACTIVE: usize = 1;
+const STAND_LIGHT_SECOND_ACTIVE: usize = 3;
+const STAND_LIGHT_RECOVERY: usize = 18;
+const STAND_LIGHT_FIRST_HIT_DAMAGE: u16 = 14;
+const STAND_LIGHT_SECOND_HIT_DAMAGE: u16 = 14;
+
+pub struct StandLight;
+impl Entity for Sol<StandLight> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const SECOND_ACTIVE_FRAME: usize = STAND_LIGHT_STARTUP + STAND_LIGHT_FIRST_ACTIVE;
+        const RECOVERY_FRAME: usize = SECOND_ACTIVE_FRAME + FAR_MID_ACTIVE;
+        const END_FRAME: usize = RECOVERY_FRAME + STAND_LIGHT_RECOVERY;
+
+        if self.frame == 0 {
+            self.has_hit = false;
+        }
+
+        self.frame += 1;
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
+        match self.frame as usize {
+            0..STAND_LIGHT_STARTUP => self,
+            STAND_LIGHT_STARTUP => {
+                todo!()
+            }
+            SECOND_ACTIVE_FRAME..RECOVERY_FRAME => {
+                if !self.has_hit {
+                    let active_frames_extra_hitstun =
+                        SECOND_ACTIVE_FRAME - (self.frame as usize - STAND_LIGHT_SECOND_ACTIVE);
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(12.0, 18.0),
+                            )),
+                            owner: self.player,
+                            info: AttackData {
+                                grounded: HitInfo {
+                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                                    hitstun: 5 + active_frames_extra_hitstun,
+                                    blockstun: 4 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Pushback(10.0 * self.dir()),
+                                    block_push: 5.0 * self.dir(),
+                                },
+                                air: HitInfo {
+                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                                    hitstun: 5 + active_frames_extra_hitstun,
+                                    blockstun: 4 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(20.0 * self.dir(), 50.0),
+                                        KnockdownType::Soft,
+                                    ),
+                                    block_push: 15.0 * self.dir(),
+                                },
+                                counterhit: HitInfo {
+                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                                    hitstun: 5 + active_frames_extra_hitstun,
+                                    blockstun: 4 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(20.0 * self.dir(), 50.0),
+                                        KnockdownType::None,
+                                    ),
+                                    block_push: 0.0 * self.dir(),
+                                },
+                                priority: 10,
+                                attack_type: crate::collision::AttackType::Mid,
+                                hitbox_id: 1,
+                                hit_type: crate::collision::HitType::Medium,
+                            },
+                        },
+                        self.position + Vector2::new(7.0 * self.dir(), 10.0),
+                        1,
+                    );
+                } else {
+                    match self.grounded_movement_cancel_options(input) {
+                        Ok(state) => return state,
+                        Err(state) => self = state,
+                    }
+                }
+                self
+            }
+            RECOVERY_FRAME..END_FRAME => self,
+            _ => self.grounded_actionable_state(input),
+        }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+}
+impl SolDamageableState for StandLight {}
