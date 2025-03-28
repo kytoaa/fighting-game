@@ -51,14 +51,23 @@ impl Vector2 {
     }
 }
 
+impl Vector2 {
+    pub const fn from_floats((x, y): (f32, f32)) -> Self {
+        Self { x, y }
+    }
+    pub const fn into_floats(self) -> (f32, f32) {
+        (self.x, self.y)
+    }
+}
+
 impl From<(f32, f32)> for Vector2 {
     fn from((x, y): (f32, f32)) -> Self {
-        Self { x, y }
+        Self::from_floats((x, y))
     }
 }
 impl Into<(f32, f32)> for Vector2 {
     fn into(self) -> (f32, f32) {
-        (self.x, self.y)
+        self.into_floats()
     }
 }
 

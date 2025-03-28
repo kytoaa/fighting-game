@@ -59,7 +59,7 @@ impl Entity for Sol<CloseMid> {
                                     hitstun: 13 + active_frames_extra_hitstun,
                                     blockstun: 13 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(12.0 * self.dir(), 70.0),
+                                        Vector2::new(15.0 * self.dir(), 70.0),
                                         KnockdownType::None,
                                     ),
                                     block_push: 8.0 * self.dir(),
@@ -74,11 +74,7 @@ impl Entity for Sol<CloseMid> {
                         1,
                     );
                 } else {
-                    match self.grounded_movement_cancel_options(input) {
-                        Ok(state) => return state,
-                        Err(state) => self = state,
-                    }
-                    if input.has_action(&Action::Pressed(Button::Mid)) {
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
                     }
                 }
@@ -86,7 +82,7 @@ impl Entity for Sol<CloseMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.frame as usize <= RECOVERY_FRAME + 7 {
-                    if input.has_action(&Action::Pressed(Button::Mid)) {
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
                     }
                 }
@@ -114,8 +110,8 @@ impl Entity for Sol<FarMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         const RECOVERY_FRAME: usize = FAR_MID_STARTUP + FAR_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + FAR_MID_RECOVERY;
-        const ADVANCE_VELOCITY: f32 = 50.0;
-        const DECEL: f32 = ADVANCE_VELOCITY / 2.0;
+        const ADVANCE_VELOCITY: f32 = 90.0;
+        const DECEL: f32 = ADVANCE_VELOCITY / FAR_MID_ACTIVE as f32;
 
         if self.frame == 0 {
             self.has_hit = false;
@@ -149,19 +145,39 @@ impl Entity for Sol<FarMid> {
                                 Vector2::new(12.0, 18.0),
                             )),
                             owner: self.player,
-                            info: AttackData::with_same_hitinfo(
-                                HitInfo {
+                            info: AttackData {
+                                grounded: HitInfo {
                                     damage: FAR_MID_DAMAGE,
                                     hitstun: 20 + active_frames_extra_hitstun,
                                     blockstun: 15 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Pushback(20.0 * self.dir()),
+                                    hit_effect: HitEffect::Pushback(35.0 * self.dir()),
                                     block_push: 8.0 * self.dir(),
                                 },
-                                10,
-                                crate::collision::AttackType::Mid,
-                                1,
-                                crate::collision::HitType::Medium,
-                            ),
+                                air: HitInfo {
+                                    damage: FAR_MID_DAMAGE,
+                                    hitstun: 20 + active_frames_extra_hitstun,
+                                    blockstun: 15 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(80.0 * self.dir(), 20.0),
+                                        KnockdownType::Soft,
+                                    ),
+                                    block_push: 15.0 * self.dir(),
+                                },
+                                counterhit: HitInfo {
+                                    damage: FAR_MID_DAMAGE,
+                                    hitstun: 20 + active_frames_extra_hitstun,
+                                    blockstun: 15 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(20.0 * self.dir(), 50.0),
+                                        KnockdownType::None,
+                                    ),
+                                    block_push: 8.0 * self.dir(),
+                                },
+                                priority: 10,
+                                attack_type: crate::collision::AttackType::Mid,
+                                hitbox_id: 1,
+                                hit_type: crate::collision::HitType::Medium,
+                            },
                         },
                         self.position + Vector2::new(7.0 * self.dir(), 10.0),
                         1,

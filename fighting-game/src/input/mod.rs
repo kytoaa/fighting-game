@@ -13,7 +13,7 @@ const DOUBLE_PRESS_FRAMES: usize = 14;
 
 pub struct InputHandler {
     direction_queue: VecDeque<InputDir>,
-    button_states: HashMap<Button, ButtonState>,
+    button_states: ButtonStates,
     buffered_actions: Option<Vec<BufferedAction>>,
     pub decrement_action_buffers: bool,
 }
@@ -23,14 +23,7 @@ impl InputHandler {
             direction_queue: std::iter::repeat(InputDir::Dir5)
                 .take(INPUT_HISTORY_LENGTH)
                 .collect(),
-            button_states: {
-                let mut map = HashMap::new();
-                map.insert(Button::Light, ButtonState::Up);
-                map.insert(Button::Mid, ButtonState::Up);
-                map.insert(Button::Heavy, ButtonState::Up);
-                map.insert(Button::Utility, ButtonState::Up);
-                map
-            },
+            button_states: ButtonStates::default(),
             buffered_actions: Some(vec![]),
             decrement_action_buffers: true,
         }
@@ -65,20 +58,25 @@ impl InputHandler {
         motion_index == motion.directions.len()
     }
     pub fn has_action(&self, action: &Action) -> bool {
-        self.buffered_actions
-            .as_ref()
-            .unwrap()
-            .iter()
-            .any(|a| &a.action == action)
+        self.buffered_actions.as_ref().unwrap().iter().any(|a| {
+            if let Action::Pressed(button, None) = action {
+                match a.action {
+                    Action::Pressed(b, _) if b == *button => true,
+                    _ => false,
+                }
+            } else {
+                &a.action == action
+            }
+        })
     }
     pub fn has_motion_input(&self, motion: &Motion, action: &Action) -> bool {
         self.has_motion(motion) && self.has_action(action)
     }
     pub fn get_state(&self, button: Button) -> ButtonState {
-        *self.button_states.get(&button).unwrap()
+        self.button_states.get_button_state(button)
     }
 
-    pub fn update(&mut self, button_states: HashMap<Button, ButtonState>, dir: InputDir) {
+    pub fn update(&mut self, input_state: &InputState) {
         if self.decrement_action_buffers {
             self.buffered_actions = Some(
                 self.buffered_actions
@@ -98,21 +96,21 @@ impl InputHandler {
         }
 
         _ = self.direction_queue.pop_front();
-        self.direction_queue.push_back(dir);
+        self.direction_queue.push_back(input_state.dir);
 
         if self
             .direction_queue
             .iter()
             .skip(INPUT_HISTORY_LENGTH - DOUBLE_PRESS_FRAMES - 1)
             .skip_while(|d| **d != InputDir::Dir5)
-            .skip_while(|d| **d != dir)
+            .skip_while(|d| **d != input_state.dir)
             .find(|d| **d == InputDir::Dir5)
             .is_some()
         {
             self.buffered_actions
                 .as_mut()
                 .unwrap()
-                .push(BufferedAction::new(Action::DoublePress(dir)));
+                .push(BufferedAction::new(Action::DoublePress(input_state.dir)));
         }
         if self
             .direction_queue
@@ -124,26 +122,29 @@ impl InputHandler {
             self.buffered_actions
                 .as_mut()
                 .unwrap()
-                .push(BufferedAction::new(Action::JumpPress(dir)));
+                .push(BufferedAction::new(Action::JumpPress(input_state.dir)));
         }
 
-        for (button, state) in button_states.iter() {
-            let prev_state = self.button_states[button];
+        for (button, state) in input_state.button_states.get_states() {
+            let prev_state = self.button_states.get_button_state(button);
             match (state, prev_state) {
                 (ButtonState::Down, ButtonState::Up) => self
                     .buffered_actions
                     .as_mut()
                     .unwrap()
-                    .push(BufferedAction::new(Action::Pressed(*button))),
+                    .push(BufferedAction::new(Action::Pressed(
+                        button,
+                        Some(input_state.dir),
+                    ))),
                 (ButtonState::Up, ButtonState::Down) => self
                     .buffered_actions
                     .as_mut()
                     .unwrap()
-                    .push(BufferedAction::new(Action::Released(*button))),
+                    .push(BufferedAction::new(Action::Released(button))),
                 _ => (),
             }
         }
-        self.button_states = button_states;
+        self.button_states = input_state.button_states.clone();
     }
 
     pub fn move_dir(&self) -> Vector2 {
@@ -172,7 +173,7 @@ pub enum ButtonState {
 
 #[derive(PartialEq, Debug)]
 pub enum Action {
-    Pressed(Button),
+    Pressed(Button, Option<InputDir>),
     Released(Button),
     DoublePress(InputDir),
     JumpPress(InputDir),
@@ -188,6 +189,50 @@ impl BufferedAction {
         Self {
             action,
             frames_left: BUFFER_LENGTH,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ButtonStates {
+    pub light: ButtonState,
+    pub mid: ButtonState,
+    pub heavy: ButtonState,
+    pub utility: ButtonState,
+}
+
+#[derive(Default)]
+pub struct InputState {
+    pub dir: InputDir,
+    pub button_states: ButtonStates,
+}
+
+impl ButtonStates {
+    const fn get_button_state(&self, button: Button) -> ButtonState {
+        match button {
+            Button::Light => self.light,
+            Button::Mid => self.mid,
+            Button::Heavy => self.heavy,
+            Button::Utility => self.utility,
+        }
+    }
+    fn get_states(&self) -> impl Iterator<Item = (Button, ButtonState)> {
+        [
+            (Button::Light, self.get_button_state(Button::Light)),
+            (Button::Mid, self.get_button_state(Button::Mid)),
+            (Button::Heavy, self.get_button_state(Button::Heavy)),
+            (Button::Utility, self.get_button_state(Button::Utility)),
+        ]
+        .into_iter()
+    }
+}
+impl Default for ButtonStates {
+    fn default() -> Self {
+        Self {
+            light: ButtonState::Up,
+            mid: ButtonState::Up,
+            heavy: ButtonState::Up,
+            utility: ButtonState::Up,
         }
     }
 }

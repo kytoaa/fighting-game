@@ -16,11 +16,11 @@ pub struct App {
 
     asset_manager: asset_manager::AssetManager,
 
-    input_handlers: [std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>; 2],
     key_states: std::collections::HashMap<winit::keyboard::PhysicalKey, winit::event::ElementState>,
 
     previous_time: std::time::SystemTime,
     show_hitboxes: bool,
+    show_fps: bool,
     debug_paused: bool,
 }
 
@@ -81,8 +81,15 @@ impl winit::application::ApplicationHandler for App {
                     winit::event::ElementState::Pressed,
                 ) = (event.physical_key, event.state)
                 {
-                    self.update_input_state();
-                    _ = self.state.update(&self.asset_manager, false);
+                    let input_states = self.get_input_states();
+                    _ = self.state.update(&self.asset_manager, false, input_states);
+                }
+                if let (
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit1),
+                    winit::event::ElementState::Pressed,
+                ) = (event.physical_key, event.state)
+                {
+                    self.show_fps = !self.show_fps;
                 }
             }
             winit::event::WindowEvent::CloseRequested => {
@@ -92,53 +99,57 @@ impl winit::application::ApplicationHandler for App {
                 let time = std::time::SystemTime::now()
                     .duration_since(self.previous_time)
                     .unwrap();
-                println!("{}", 1.0 / time.as_secs_f64());
+                if self.show_fps {
+                    println!("{}", 1.0 / time.as_secs_f64());
+                }
                 std::thread::sleep(
                     std::time::Duration::from_secs_f64(1.0 / 60.0).saturating_sub(time),
                 );
                 self.previous_time = std::time::SystemTime::now();
 
-                self.update_input_state();
-                let mut sprite_data = self.state.update(&self.asset_manager, self.debug_paused);
+                let input_states = self.get_input_states();
+                let mut sprite_data =
+                    self.state
+                        .update(&self.asset_manager, self.debug_paused, input_states);
+
                 if self.show_hitboxes {
-                    sprite_data =
-                        match &self.state {
-                            GameState::Game(world) => sprite_data
-                                .into_iter()
-                                .chain(world.get_hurtboxes().filter_map(
-                                    |hitbox| match &hitbox.shape {
-                                        fighting_game::collision::CollisionShape::Box(b) => {
-                                            Some(renderer::Material::Rect {
-                                                pos: b.position(),
-                                                size: b.size(),
-                                                color: renderer::RectColor::Green,
-                                            })
-                                        }
-                                        fighting_game::collision::CollisionShape::Circle(_) => None,
-                                    },
-                                ))
-                                .chain(world.get_hitboxes().filter_map(
-                                    |hitbox| match &hitbox.shape {
-                                        fighting_game::collision::CollisionShape::Box(b) => {
-                                            Some(renderer::Material::Rect {
-                                                pos: b.position(),
-                                                size: b.size(),
-                                                color: renderer::RectColor::Red,
-                                            })
-                                        }
-                                        fighting_game::collision::CollisionShape::Circle(_) => None,
-                                    },
-                                ))
-                                .chain(world.get_players().iter().map(|player| {
-                                    let collider = player.get_collider_world_space();
-                                    renderer::Material::Rect {
-                                        pos: collider.position(),
-                                        size: collider.size(),
-                                        color: renderer::RectColor::Blue,
+                    sprite_data = match &self.state {
+                        GameState::Game(game) => sprite_data
+                            .into_iter()
+                            .chain(game.world().get_hurtboxes().filter_map(|hitbox| {
+                                match &hitbox.shape {
+                                    fighting_game::collision::CollisionShape::Box(b) => {
+                                        Some(renderer::Material::Rect {
+                                            pos: b.position(),
+                                            size: b.size(),
+                                            color: renderer::RectColor::Green,
+                                        })
                                     }
-                                }))
-                                .collect(),
-                        }
+                                    fighting_game::collision::CollisionShape::Circle(_) => None,
+                                }
+                            }))
+                            .chain(game.world().get_hitboxes().filter_map(|hitbox| {
+                                match &hitbox.shape {
+                                    fighting_game::collision::CollisionShape::Box(b) => {
+                                        Some(renderer::Material::Rect {
+                                            pos: b.position(),
+                                            size: b.size(),
+                                            color: renderer::RectColor::Red,
+                                        })
+                                    }
+                                    fighting_game::collision::CollisionShape::Circle(_) => None,
+                                }
+                            }))
+                            .chain(game.world().get_players().iter().map(|player| {
+                                let collider = player.get_collider_world_space();
+                                renderer::Material::Rect {
+                                    pos: collider.position(),
+                                    size: collider.size(),
+                                    color: renderer::RectColor::Blue,
+                                }
+                            }))
+                            .collect(),
+                    }
                 }
 
                 self.renderer
@@ -161,15 +172,6 @@ impl App {
 
         let asset_manager = STATIC_ASSETS.into_asset_manager();
 
-        let input_handlers = [
-            std::sync::Arc::new(std::sync::Mutex::new(
-                fighting_game::input::InputHandler::new(),
-            )),
-            std::sync::Arc::new(std::sync::Mutex::new(
-                fighting_game::input::InputHandler::new(),
-            )),
-        ];
-
         /*let render_data = RenderData {
             sprites_to_render: [
                 vec![(
@@ -190,10 +192,7 @@ impl App {
 
         event_loop
             .run_app(&mut App {
-                state: GameState::create_game((
-                    input_handlers[0].clone(),
-                    input_handlers[1].clone(),
-                )),
+                state: GameState::create_game(),
                 renderer: None,
                 window: None,
 
@@ -235,35 +234,52 @@ impl App {
                 },
 
                 asset_manager,
-                input_handlers,
 
                 previous_time: std::time::SystemTime::now(),
                 show_hitboxes: false,
+                show_fps: false,
                 debug_paused: false,
             })
             .unwrap();
     }
 
-    fn update_input_state(&mut self) {
-        use fighting_game::input::{Button, ButtonState};
+    fn get_input_states(&mut self) -> [fighting_game::input::InputState; 2] {
+        use fighting_game::input::{Button, ButtonState, InputState};
         use winit::event::ElementState;
         use winit::keyboard::{KeyCode, PhysicalKey};
 
-        let mut button_states = std::collections::HashMap::new();
-        for (key, button) in [
-            (KeyCode::KeyJ, Button::Light),
-            (KeyCode::KeyU, Button::Mid),
-            (KeyCode::KeyI, Button::Heavy),
-            (KeyCode::KeyK, Button::Utility),
-        ] {
-            button_states.insert(
-                button,
-                match self.key_states.get(&PhysicalKey::Code(key)).unwrap() {
-                    ElementState::Released => ButtonState::Up,
-                    ElementState::Pressed => ButtonState::Down,
-                },
-            );
-        }
+        let light = match self
+            .key_states
+            .get(&PhysicalKey::Code(KeyCode::KeyJ))
+            .unwrap()
+        {
+            ElementState::Released => ButtonState::Up,
+            ElementState::Pressed => ButtonState::Down,
+        };
+        let mid = match self
+            .key_states
+            .get(&PhysicalKey::Code(KeyCode::KeyU))
+            .unwrap()
+        {
+            ElementState::Released => ButtonState::Up,
+            ElementState::Pressed => ButtonState::Down,
+        };
+        let heavy = match self
+            .key_states
+            .get(&PhysicalKey::Code(KeyCode::KeyI))
+            .unwrap()
+        {
+            ElementState::Released => ButtonState::Up,
+            ElementState::Pressed => ButtonState::Down,
+        };
+        let utility = match self
+            .key_states
+            .get(&PhysicalKey::Code(KeyCode::KeyK))
+            .unwrap()
+        {
+            ElementState::Released => ButtonState::Up,
+            ElementState::Pressed => ButtonState::Down,
+        };
 
         fn button_state(
             button: KeyCode,
@@ -280,12 +296,20 @@ impl App {
                 + button_state(KeyCode::KeyG, &self.key_states),
             0.0 - button_state(KeyCode::KeyF, &self.key_states)
                 + button_state(KeyCode::Space, &self.key_states),
-        );
-
-        self.input_handlers[0]
-            .lock()
-            .unwrap()
-            .update(button_states, dir.into());
+        )
+        .into();
+        [
+            InputState {
+                dir,
+                button_states: fighting_game::input::ButtonStates {
+                    light,
+                    mid,
+                    heavy,
+                    utility,
+                },
+            },
+            InputState::default(),
+        ]
     }
 }
 
@@ -296,26 +320,15 @@ impl RenderData {
 }
 
 enum GameState {
-    Game(fighting_game::world::World),
+    Game(fighting_game::Game),
 }
 
 impl GameState {
     // TODO: add character selection
-    pub fn create_game(
-        input_handlers: (
-            std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>,
-            std::sync::Arc<std::sync::Mutex<fighting_game::input::InputHandler>>,
-        ),
-    ) -> Self {
-        Self::Game(fighting_game::initialization::create_world(
-            (
-                fighting_game::initialization::Character::Sol,
-                input_handlers.0,
-            ),
-            (
-                fighting_game::initialization::Character::Sol,
-                input_handlers.1,
-            ),
+    pub fn create_game() -> Self {
+        Self::Game(fighting_game::Game::init(
+            fighting_game::initialization::Character::Sol,
+            fighting_game::initialization::Character::Sol,
         ))
     }
 }
@@ -325,13 +338,15 @@ impl GameState {
         &mut self,
         assets: &asset_manager::AssetManager,
         paused: bool,
+        input_states: [fighting_game::input::InputState; 2],
     ) -> Vec<renderer::Material> {
         match self {
             GameState::Game(game) => {
                 if !paused {
-                    game.update();
+                    game.update(input_states);
                 }
-                game.get_players()
+                game.world()
+                    .get_players()
                     .iter()
                     .map(|player| {
                         let (frame, offset) = player.frame_name().unwrap();

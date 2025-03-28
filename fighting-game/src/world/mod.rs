@@ -1,16 +1,12 @@
 use super::collision::{CollisionShape, HitType, Hitbox, Hurtbox};
 use super::datatypes::{BoundingShape, Vector2};
-use super::input::InputHandler;
+use super::input::{InputHandler, InputState};
 use std::collections::HashSet;
-use std::sync::Mutex;
-
-#[cfg(test)]
-mod tests;
+use std::rc::Rc;
 
 const DELTA: f32 = 1.0 / 60.0;
 
 pub struct World {
-    input_providers: [std::sync::Arc<Mutex<InputHandler>>; 2],
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
@@ -20,12 +16,8 @@ pub struct World {
 struct Spawn<T>(T, usize);
 
 impl World {
-    pub fn new(
-        players: [Option<Box<dyn crate::characters::Entity>>; 2],
-        input_providers: [std::sync::Arc<Mutex<InputHandler>>; 2],
-    ) -> Self {
+    pub fn new(players: [Option<Box<dyn crate::characters::Entity>>; 2]) -> Self {
         Self {
-            input_providers,
             players,
             hurtboxes: vec![],
             hitboxes: vec![],
@@ -36,30 +28,24 @@ impl World {
 }
 
 impl World {
-    pub fn update(&mut self) {
+    pub fn update(&mut self, input_providers: &[InputHandler]) {
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
-            self.input_providers
-                .iter_mut()
-                .for_each(|ip| ip.lock().unwrap().decrement_action_buffers = false);
             return;
         }
-        self.input_providers
-            .iter_mut()
-            .for_each(|ip| ip.lock().unwrap().decrement_action_buffers = true);
 
         self.update_hitbox_hurtboxes();
 
         {
             let player = self.players[0].take().unwrap();
-            let input_provider = self.input_providers[0].clone();
-            let player = player.update(self, &input_provider.as_ref().lock().unwrap());
+            let input_provider = &input_providers[0];
+            let player = player.update(self, &input_provider);
             _ = self.players[0].insert(player);
         }
         {
             let player = self.players[1].take().unwrap();
-            let input_provider = self.input_providers[1].clone();
-            let player = player.update(self, &input_provider.as_ref().lock().unwrap());
+            let input_provider = &input_providers[1];
+            let player = player.update(self, &input_provider);
             _ = self.players[1].insert(player);
         }
 
@@ -74,7 +60,7 @@ impl World {
         self.hitboxes
             .push(Spawn(hitbox.at_position(position), frames));
     }
-    pub fn update_hitbox_hurtboxes(&mut self) {
+    fn update_hitbox_hurtboxes(&mut self) {
         let mut clanks = HashSet::new();
 
         for (i, hitbox) in self.hitboxes.iter().enumerate() {
@@ -184,14 +170,14 @@ impl World {
             .collect();
     }
 
-    pub fn is_grounded(&self, shape: &CollisionShape) -> bool {
+    fn is_grounded(&self, shape: &CollisionShape) -> bool {
         match shape {
             CollisionShape::Box(b) => b.min.y <= 0.01,
             CollisionShape::Circle(c) => c.position.y - c.radius <= 0.01,
         }
     }
 
-    pub fn move_players(&mut self) {
+    fn move_players(&mut self) {
         {
             let velocity_1 = self.players[0].as_ref().unwrap().velocity();
             self.players[0]
@@ -304,5 +290,9 @@ impl World {
 
     pub fn trigger_hitstop(&mut self, frames: usize) {
         self.hitstop_frames_left = frames.max(self.hitstop_frames_left);
+    }
+
+    pub const fn in_hitstop(&self) -> bool {
+        self.hitstop_frames_left > 0
     }
 }

@@ -19,7 +19,7 @@ const WALK_SPEED: f32 = 20.0;
 const RUN_SPEED: f32 = 90.0;
 
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
-const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
+const COLLIDER_SIZE: Vector2 = Vector2::new(12.0, 12.0);
 
 const DEFAULT_COLLIDER: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
@@ -31,13 +31,14 @@ pub fn initial_state(player: usize) -> Box<dyn Entity> {
         player,
         position: Vector2::ZERO,
         velocity: Vector2::ZERO,
-        collider: BoundingBox::pos_size(Vector2::ZERO, Vector2::new(8.0, 12.0)),
+        collider: BoundingBox::pos_size(Vector2::ZERO, COLLIDER_SIZE),
         direction: true,
         has_hit: false,
         grounded: true,
         has_air_action: true,
         distance_from_other_player: f32::MAX,
         frame: 0,
+        combo_hit_count: 0,
         state: Stand,
     })
 }
@@ -53,6 +54,7 @@ struct Sol<S> {
     has_air_action: bool,
     distance_from_other_player: f32,
     frame: u8,
+    combo_hit_count: u8,
     state: S,
 }
 impl<S> Sol<S> {
@@ -87,6 +89,7 @@ impl<S> Sol<S> {
             has_air_action: self.has_air_action,
             distance_from_other_player: self.distance_from_other_player,
             frame: if reset_frame { 0 } else { self.frame },
+            combo_hit_count: self.combo_hit_count,
             state: new_state,
         }
     }
@@ -159,6 +162,8 @@ where
     S: SolDamageableState,
 {
     fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        self.combo_hit_count += 1;
+        println!("{} hits", self.combo_hit_count);
         let hit_info = if self.is_grounded() {
             &info.grounded
         } else {
@@ -302,7 +307,8 @@ impl<S> Sol<S>
 where
     Sol<S>: Entity + 'static,
 {
-    fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn grounded_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+        self.combo_hit_count = 0;
         match self.grounded_cancel_options(input) {
             Ok(state) => state,
             Err(s) => s.walk_block_state(input),
@@ -336,7 +342,7 @@ where
         // NOTE: fafnir
         if input.has_motion_input(
             &Motion::half_circle().direction(self.direction),
-            &Action::Pressed(Button::Heavy),
+            &Action::Pressed(Button::Heavy, None),
         ) {
             return Ok(Box::new(self.transition(FafnirStartup(0), true)));
         }
@@ -344,27 +350,27 @@ where
         // NOTE: gun flame
         if input.has_motion_input(
             &Motion::quarter_circle().direction(self.direction),
-            &Action::Pressed(Button::Light),
+            &Action::Pressed(Button::Light, None),
         ) {
             return Ok(Box::new(self.transition(GunFlameStartup(false), true)));
         }
         if input.has_motion_input(
             &Motion::quarter_circle().direction(!self.direction),
-            &Action::Pressed(Button::Light),
+            &Action::Pressed(Button::Light, None),
         ) {
             return Ok(Box::new(self.transition(GunFlameStartup(true), true)));
         }
 
         // NOTE: 2h
         if input.move_dir().y == Vector2::DOWN.y
-            && input.has_action(&Action::Pressed(Button::Heavy))
+            && input.has_action(&Action::Pressed(Button::Heavy, None))
         {
             return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
         }
 
-        const CLOSE_MID_DISTANCE: f32 = 10.0;
+        const CLOSE_MID_DISTANCE: f32 = 15.0;
 
-        if input.has_action(&Action::Pressed(Button::Mid)) {
+        if input.has_action(&Action::Pressed(Button::Mid, None)) {
             if self.distance_from_other_player < CLOSE_MID_DISTANCE {
                 return Ok(Box::new(self.transition(CloseMid, true)));
             } else {
@@ -396,7 +402,8 @@ where
             _ => unreachable!(),
         }
     }
-    fn air_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+        self.combo_hit_count = 0;
         match self.air_attack_options(input) {
             Ok(s) => s,
             Err(s) => s.air_movement_state(input),
@@ -406,7 +413,7 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        if input.has_action(&Action::Pressed(Button::Mid)) {
+        if input.has_action(&Action::Pressed(Button::Mid, None)) {
             return Ok(Box::new(self.transition(JumpMidStartup(0), true)));
         }
         Err(self)
@@ -686,6 +693,14 @@ struct BasicHitstun {
 impl Entity for Sol<BasicHitstun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
         if self.frame > self.state.length as u8 {
             Box::new(self.transition(Stand, true))
         } else {
@@ -726,12 +741,7 @@ impl Entity for Sol<Tumble> {
             1,
         );
 
-        self.frame += 1;
-        if self.frame > self.state.length as u8 {
-            self.air_actionable_state(input)
-        } else {
-            self
-        }
+        self
     }
 }
 impl SolDamageableState for Tumble {}

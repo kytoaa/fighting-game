@@ -240,7 +240,7 @@ impl Entity for Sol<CrouchHeavy> {
             // NOTE: fafnir
             if input.has_motion_input(
                 &Motion::half_circle().direction(self.direction),
-                &Action::Pressed(Button::Heavy),
+                &Action::Pressed(Button::Heavy, None),
             ) {
                 return Box::new(self.transition(FafnirStartup(0), true));
             }
@@ -310,7 +310,7 @@ impl Entity for Sol<CrouchHeavyRecovery> {
             // NOTE: fafnir
             if input.has_motion_input(
                 &Motion::half_circle().direction(self.direction),
-                &Action::Pressed(Button::Heavy),
+                &Action::Pressed(Button::Heavy, None),
             ) {
                 return Box::new(self.transition(FafnirStartup(0), true));
             }
