@@ -15,15 +15,15 @@ mod normals;
 use attacks::*;
 use normals::*;
 
-const WALK_SPEED: f32 = 20.0;
+const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
 
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
-const COLLIDER_SIZE: Vector2 = Vector2::new(12.0, 12.0);
+const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
 
 const DEFAULT_COLLIDER: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
-    Vector2::new(14.0, 24.0),
+    Vector2::new(12.0, 24.0),
 );
 
 pub fn initial_state(player: usize) -> Box<dyn Entity> {
@@ -302,7 +302,7 @@ impl<S> OnHit for Sol<S> {
     }
 }
 
-const GRAVITY: f32 = 7.0;
+const GRAVITY: f32 = 9.0;
 impl<S> Sol<S>
 where
     Sol<S>: Entity + 'static,
@@ -362,20 +362,24 @@ where
         }
 
         // NOTE: 2h
-        if input.move_dir().y == Vector2::DOWN.y
-            && input.has_action(&Action::Pressed(Button::Heavy, None))
-        {
+        if input.has_action(&Action::Pressed(Button::Heavy, Some(InputDir::Dir2))) {
             return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
         }
 
         const CLOSE_MID_DISTANCE: f32 = 15.0;
 
+        // NOTE: c.m and f.m
         if input.has_action(&Action::Pressed(Button::Mid, None)) {
             if self.distance_from_other_player < CLOSE_MID_DISTANCE {
                 return Ok(Box::new(self.transition(CloseMid, true)));
             } else {
                 return Ok(Box::new(self.transition(FarMid, true)));
             }
+        }
+
+        // NOTE: 5l
+        if input.has_action(&Action::Pressed(Button::Light, None)) {
+            return Ok(Box::new(self.transition(StandLight, true)));
         }
 
         Err(self)
@@ -603,8 +607,8 @@ where
 impl SolDamageableState for Crouch<false> {}
 
 const JUMPSQUAT_FRAMES: usize = 4;
-const JUMP_FORCE: f32 = 160.0;
-const DOUBLE_JUMP_FORCE: f32 = 120.0;
+const JUMP_FORCE: f32 = 175.0;
+const DOUBLE_JUMP_FORCE: f32 = 150.0;
 const DOUBLE_JUMP_X_FORCE: f32 = 40.0;
 
 struct JumpSquat {
@@ -722,8 +726,13 @@ impl Entity for Sol<Tumble> {
             "grounded: {}, velocity: {:?}, frame: {}",
             self.grounded, self.velocity, self.state.frame
         );*/
+        self.frame += 1;
         if self.grounded {
-            let length = self.state.length - self.frame as usize;
+            let length = self
+                .state
+                .length
+                .checked_sub(self.frame as usize)
+                .unwrap_or(3); // NOTE: 3 frames of hitstun minimum
             return match self.state.knockdown {
                 KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
                 KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
