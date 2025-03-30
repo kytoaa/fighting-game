@@ -12,7 +12,7 @@ use crate::world::World;
 
 use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET};
 
-const GUNFLAME_STARTUP: usize = 15;
+const GUNFLAME_STARTUP: usize = 11;
 const GUNFLAME_DECEL: f32 = 0.9;
 
 /// bool is feint
@@ -39,8 +39,8 @@ impl Entity for Sol<GunFlameStartup> {
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         let mut path: String = "sol/gunflame/gunflame".into();
         path.push(match self.frame {
-            0..6 => '1',
-            ..11 => '2',
+            0..4 => '1',
+            ..8 => '2',
             _ => '3',
         });
 

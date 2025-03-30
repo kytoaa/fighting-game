@@ -95,7 +95,14 @@ impl Entity for Sol<CloseMid> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/normals/c.m/c.m2".into(), BASE_SPRITE_OFFSET))
+        Some((
+            match self.frame as usize {
+                0..CLOSE_MID_STARTUP => "sol/normals/f.m/f.m2",
+                _ => "sol/normals/c.m/c.m2",
+            }
+            .into(),
+            BASE_SPRITE_OFFSET,
+        ))
     }
     fn actionable(&self) -> bool {
         false
@@ -199,6 +206,9 @@ impl Entity for Sol<FarMid> {
             RECOVERY_FRAME..END_FRAME => self,
             _ => self.grounded_actionable_state(input),
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/normals/f.m/f.m2".into(), BASE_SPRITE_OFFSET))
     }
     fn actionable(&self) -> bool {
         false
