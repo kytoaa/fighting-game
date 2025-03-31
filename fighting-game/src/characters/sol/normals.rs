@@ -95,13 +95,15 @@ impl Entity for Sol<CloseMid> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const CLOSE_MID_STARTUP_SECOND_FRAME: usize = CLOSE_MID_STARTUP / 2;
         Some((
             match self.frame as usize {
-                0..CLOSE_MID_STARTUP => "sol/normals/f.m/f.m2",
-                _ => "sol/normals/c.m/c.m2",
+                0..CLOSE_MID_STARTUP_SECOND_FRAME => "sol/normals/c.m/c.m1",
+                CLOSE_MID_STARTUP_SECOND_FRAME..CLOSE_MID_STARTUP => "sol/normals/c.m/c.m2",
+                _ => "sol/normals/c.m/c.m3",
             }
             .into(),
-            BASE_SPRITE_OFFSET,
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 5.0 * self.dir(),
         ))
     }
     fn actionable(&self) -> bool {
@@ -155,7 +157,7 @@ impl Entity for Sol<FarMid> {
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::pos_size(
                                 Vector2::ZERO,
-                                Vector2::new(12.0, 18.0),
+                                Vector2::new(16.0, 18.0),
                             )),
                             owner: self.player,
                             info: AttackData {
@@ -192,7 +194,7 @@ impl Entity for Sol<FarMid> {
                                 hit_type: crate::collision::HitType::Medium,
                             },
                         },
-                        self.position + Vector2::new(7.0 * self.dir(), 10.0),
+                        self.position + Vector2::new(10.0 * self.dir(), 10.0),
                         1,
                     );
                 } else {
@@ -208,7 +210,19 @@ impl Entity for Sol<FarMid> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/normals/f.m/f.m2".into(), BASE_SPRITE_OFFSET))
+        const FAR_MID_STARTUP_SECOND_FRAME: usize = 3;
+        const FAR_MID_RECOVER_FRAME: usize =
+            FAR_MID_STARTUP + FAR_MID_ACTIVE + FAR_MID_RECOVERY / 2;
+        Some((
+            match self.frame as usize {
+                0..FAR_MID_STARTUP_SECOND_FRAME => "sol/normals/f.m/f.m1",
+                FAR_MID_STARTUP_SECOND_FRAME..FAR_MID_STARTUP => "sol/normals/f.m/f.m2",
+                FAR_MID_STARTUP..FAR_MID_RECOVER_FRAME => "sol/normals/f.m/f.m3",
+                _ => "sol/normals/f.m/f.m4",
+            }
+            .into(),
+            BASE_SPRITE_OFFSET + Vector2::RIGHT * 0.0 * self.dir(),
+        ))
     }
     fn actionable(&self) -> bool {
         false
