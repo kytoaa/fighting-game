@@ -17,6 +17,7 @@ use normals::*;
 
 const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
+const MIN_RUN_FRAMES_BEFORE_CANCEL: u8 = 4;
 
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
 const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
@@ -327,11 +328,46 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        if input.has_action(&Action::DoublePress(self.forward_dir())) {
-            return Ok(Box::new(self.transition(RunState, true)));
+        if input.has_action(&Action::DoublePress(self.forward_dir()))
+            && input.move_dir().x == self.dir()
+        {
+            return Ok(Box::new(self.transition(RunStartState::new(), true)));
         }
         if input.has_action(&Action::DoublePress(self.backward_dir())) {
             return Ok(Box::new(self.transition(Backdash, true)));
+        }
+        let move_dir = input.move_dir();
+        if move_dir.y == Vector2::UP.y {
+            return Ok(Box::new(self.transition(
+                JumpSquat {
+                    direction: move_dir.x,
+                },
+                true,
+            )));
+        }
+        Err(self)
+    }
+    fn grounded_movement_cancel_options_from_attack<const FRAMES: u8>(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+        dash_cancel_state: RunStartState<FRAMES>,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if input.has_action(&Action::DoublePress(self.forward_dir()))
+            && input.move_dir().x == self.dir()
+        {
+            return Ok(Box::new(self.transition(dash_cancel_state, true)));
+        }
+        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+            return Ok(Box::new(self.transition(Backdash, true)));
+        }
+        let move_dir = input.move_dir();
+        if move_dir.y == Vector2::UP.y {
+            return Ok(Box::new(self.transition(
+                JumpSquat {
+                    direction: move_dir.x,
+                },
+                true,
+            )));
         }
         Err(self)
     }
@@ -513,7 +549,7 @@ where
             self.frame = 0;
         }
         if input.move_dir() == Vector2::new(self.dir(), 0.0) {
-            self.velocity = input.move_dir().y(0.0) * RUN_SPEED;
+            self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
             self.grounded_attack_options(input).unwrap_or_else(|s| s)
         } else {
             self.grounded_actionable_state(input)
@@ -527,6 +563,40 @@ where
     }
 }
 impl SolDamageableState for RunState {}
+
+struct RunStartState<const FRAMES: u8 = MIN_RUN_FRAMES_BEFORE_CANCEL>;
+impl RunStartState {
+    const fn dash_cancel() -> RunStartState<10> {
+        RunStartState
+    }
+    const fn new() -> Self {
+        RunStartState
+    }
+}
+impl<const FRAMES: u8> Entity for Sol<RunStartState<FRAMES>>
+where
+    Sol<RunStartState<FRAMES>>: Damageable,
+{
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        // NOTE: stops instantly cancelling dash into something, adds a little commitment and stops
+        // dash cancel cancels
+        self.frame += 1;
+        if self.frame < FRAMES {
+            self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
+            return self;
+        } else {
+            self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
+            Box::new(self.transition(RunState, false))
+        }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        let mut path: String = "sol/run/run".into();
+        path.push(('1' as u8 + (self.frame / FRAMES_PER_RUN_ANIM_FRAME)) as char);
+
+        Some((path.into(), BASE_SPRITE_OFFSET))
+    }
+}
+impl<const FRAMES: u8> SolDamageableState for RunStartState<FRAMES> {}
 
 const BACKDASH_VELOCITY: f32 = 70.0;
 const BACKDASH_FRAMES: usize = 6;
@@ -619,6 +689,9 @@ impl Entity for Sol<JumpSquat> {
     fn update(mut self: Box<Self>, _world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
         if self.frame > JUMPSQUAT_FRAMES as u8 {
+            if self.velocity.x.abs() < 1.0 {
+                self.velocity.x = WALK_SPEED * self.state.direction;
+            }
             self.velocity.y = Vector2::UP.y * JUMP_FORCE;
             Box::new(self.transition(Air::<false>, true))
         } else {

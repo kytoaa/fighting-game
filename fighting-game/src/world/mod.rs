@@ -1,8 +1,7 @@
 use super::collision::{CollisionShape, HitType, Hitbox, Hurtbox};
 use super::datatypes::{BoundingShape, Vector2};
-use super::input::{InputHandler, InputState};
+use super::input::InputHandler;
 use std::collections::HashSet;
-use std::rc::Rc;
 
 const DELTA: f32 = 1.0 / 60.0;
 
@@ -29,12 +28,12 @@ impl World {
 
 impl World {
     pub fn update(&mut self, input_providers: &[InputHandler]) {
+        self.update_hitbox_hurtboxes();
+
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
             return;
         }
-
-        self.update_hitbox_hurtboxes();
 
         {
             let player = self.players[0].take().unwrap();

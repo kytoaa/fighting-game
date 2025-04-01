@@ -5,7 +5,7 @@ pub enum CollisionShape {
     Circle(BoundingCircle),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum HitType {
     Light,
     Medium,
@@ -16,8 +16,8 @@ pub enum HitType {
 impl HitType {
     pub fn get_hitstop_frames(self) -> usize {
         match self {
-            Self::Light => 4,
-            Self::Medium => 8,
+            Self::Light => 6,
+            Self::Medium => 9,
             Self::Heavy => 12,
             Self::SuperHeavy => 20,
             Self::Custom(frames) => frames,
@@ -35,6 +35,7 @@ pub struct HitInfo {
     pub block_push: f32,
 }
 
+#[derive(Debug, Clone)]
 pub struct AttackData {
     pub grounded: HitInfo,
     pub air: HitInfo,
@@ -63,7 +64,7 @@ impl AttackData {
         }
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum AttackType {
     High,
     Mid,

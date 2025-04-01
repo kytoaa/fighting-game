@@ -1,6 +1,6 @@
 use super::{
-    Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position, Velocity,
-    WALK_SPEED,
+    Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
+    RunStartState, Velocity, WALK_SPEED,
 };
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
@@ -56,8 +56,8 @@ impl Entity for Sol<CloseMid> {
                             info: AttackData::with_same_hitinfo(
                                 HitInfo {
                                     damage: CLOSE_MID_DAMAGE,
-                                    hitstun: 13 + active_frames_extra_hitstun,
-                                    blockstun: 13 + active_frames_extra_hitstun,
+                                    hitstun: 14 + active_frames_extra_hitstun,
+                                    blockstun: 14 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
                                         Vector2::new(25.0 * self.dir(), 80.0),
                                         KnockdownType::None,
@@ -73,7 +73,25 @@ impl Entity for Sol<CloseMid> {
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
                         1,
                     );
+
+                    world.spawn_hurtbox(
+                        crate::collision::Hurtbox {
+                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(12.0, 20.0),
+                            )),
+                            owner: self.player,
+                        },
+                        self.position + Vector2::new(5.0 * self.dir(), 10.0),
+                        1,
+                    );
                 } else {
+                    match self
+                        .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
+                    {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
                     }
@@ -197,8 +215,23 @@ impl Entity for Sol<FarMid> {
                         self.position + Vector2::new(10.0 * self.dir(), 10.0),
                         1,
                     );
+
+                    world.spawn_hurtbox(
+                        crate::collision::Hurtbox {
+                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(18.0, 20.0),
+                            )),
+                            owner: self.player,
+                        },
+                        self.position + Vector2::new(10.0 * self.dir(), 10.0),
+                        1,
+                    );
                 } else {
-                    match self.grounded_movement_cancel_options(input) {
+                    match self.grounded_movement_cancel_options_from_attack(
+                        input,
+                        RunStartState::dash_cancel(),
+                    ) {
                         Ok(state) => return state,
                         Err(state) => self = state,
                     }
@@ -236,7 +269,7 @@ impl SolDamageableState for FarMid {}
 const STAND_LIGHT_STARTUP: usize = 5;
 const STAND_LIGHT_FIRST_ACTIVE: usize = 1;
 const STAND_LIGHT_SECOND_ACTIVE: usize = 3;
-const STAND_LIGHT_RECOVERY: usize = 18;
+const STAND_LIGHT_RECOVERY: usize = 15;
 const STAND_LIGHT_FIRST_HIT_DAMAGE: u16 = 8;
 const STAND_LIGHT_SECOND_HIT_DAMAGE: u16 = 14;
 
@@ -261,7 +294,7 @@ impl Entity for Sol<StandLight> {
                 shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
                 owner: self.player,
             },
-            self.position,
+            self.position + Vector2::RIGHT * 6.0 * self.dir(),
             1,
         );
 
@@ -284,7 +317,7 @@ impl Entity for Sol<StandLight> {
                                 damage: STAND_LIGHT_FIRST_HIT_DAMAGE,
                                 hitstun: 6,
                                 blockstun: 5,
-                                hit_effect: HitEffect::Pushback(10.0 * self.dir()),
+                                hit_effect: HitEffect::Pushback(20.0 * self.dir()),
                                 block_push: 8.0 * self.dir(),
                             },
                             10,
@@ -293,60 +326,144 @@ impl Entity for Sol<StandLight> {
                             crate::collision::HitType::Light,
                         ),
                     },
-                    self.position + Vector2::new(4.0 * self.dir(), 8.0),
+                    self.position
+                        + Vector2::new(8.0 * self.dir(), 8.0)
+                        + Vector2::RIGHT * 6.0 * self.dir(),
                     1,
                 );
+
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            Vector2::ZERO,
+                            Vector2::new(12.0, 14.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position
+                        + Vector2::new(8.0 * self.dir(), 8.0)
+                        + Vector2::RIGHT * 6.0 * self.dir(),
+                    1,
+                );
+
                 self
             }
             SECOND_ACTIVE_FRAME..RECOVERY_FRAME => {
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
                         SECOND_ACTIVE_FRAME - (self.frame as usize - STAND_LIGHT_SECOND_ACTIVE);
+
+                    let attack_data: AttackData = AttackData {
+                        grounded: HitInfo {
+                            damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                            hitstun: 9 + active_frames_extra_hitstun,
+                            blockstun: 8 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Pushback(10.0 * self.dir()),
+                            block_push: 5.0 * self.dir(),
+                        },
+                        air: HitInfo {
+                            damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                            hitstun: 9 + active_frames_extra_hitstun,
+                            blockstun: 8 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(30.0 * self.dir(), 60.0),
+                                KnockdownType::Soft,
+                            ),
+                            block_push: 25.0 * self.dir(),
+                        },
+                        counterhit: HitInfo {
+                            damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
+                            hitstun: 9 + active_frames_extra_hitstun,
+                            blockstun: 8 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(20.0 * self.dir(), 50.0),
+                                KnockdownType::None,
+                            ),
+                            block_push: 0.0 * self.dir(),
+                        },
+                        priority: 10,
+                        attack_type: crate::collision::AttackType::Mid,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::Light,
+                    };
+
                     world.spawn_hitbox(
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::pos_size(
                                 Vector2::ZERO,
-                                Vector2::new(12.0, 18.0),
+                                Vector2::new(10.0, 12.0),
                             )),
                             owner: self.player,
-                            info: AttackData {
-                                grounded: HitInfo {
-                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
-                                    hitstun: 8 + active_frames_extra_hitstun,
-                                    blockstun: 7 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Pushback(10.0 * self.dir()),
-                                    block_push: 5.0 * self.dir(),
-                                },
-                                air: HitInfo {
-                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
-                                    hitstun: 8 + active_frames_extra_hitstun,
-                                    blockstun: 7 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(30.0 * self.dir(), 50.0),
-                                        KnockdownType::Soft,
-                                    ),
-                                    block_push: 25.0 * self.dir(),
-                                },
-                                counterhit: HitInfo {
-                                    damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
-                                    hitstun: 8 + active_frames_extra_hitstun,
-                                    blockstun: 7 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(20.0 * self.dir(), 50.0),
-                                        KnockdownType::None,
-                                    ),
-                                    block_push: 0.0 * self.dir(),
-                                },
-                                priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
-                                hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Light,
-                            },
+                            info: attack_data.clone(),
                         },
-                        self.position + Vector2::new(9.0 * self.dir(), 12.0),
+                        self.position
+                            + Vector2::new(14.0 * self.dir(), 24.0)
+                            + Vector2::RIGHT * 6.0 * self.dir(),
+                        1,
+                    );
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(8.0, 10.0),
+                            )),
+                            owner: self.player,
+                            info: attack_data.clone(),
+                        },
+                        self.position
+                            + Vector2::new(9.0 * self.dir(), 17.0)
+                            + Vector2::RIGHT * 6.0 * self.dir(),
+                        1,
+                    );
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(8.0, 10.0),
+                            )),
+                            owner: self.player,
+                            info: attack_data,
+                        },
+                        self.position
+                            + Vector2::new(5.0 * self.dir(), 10.0)
+                            + Vector2::RIGHT * 6.0 * self.dir(),
+                        1,
+                    );
+
+                    world.spawn_hurtbox(
+                        crate::collision::Hurtbox {
+                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(10.0, 12.0),
+                            )),
+                            owner: self.player,
+                        },
+                        self.position
+                            + Vector2::new(9.0 * self.dir(), 17.0)
+                            + Vector2::RIGHT * 6.0 * self.dir(),
+                        1,
+                    );
+                    world.spawn_hurtbox(
+                        crate::collision::Hurtbox {
+                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(10.0, 12.0),
+                            )),
+                            owner: self.player,
+                        },
+                        self.position
+                            + Vector2::new(5.0 * self.dir(), 10.0)
+                            + Vector2::RIGHT * 6.0 * self.dir(),
                         1,
                     );
                 } else {
+                    match self.grounded_movement_cancel_options_from_attack(
+                        input,
+                        RunStartState::dash_cancel(),
+                    ) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
                     }
@@ -356,6 +473,30 @@ impl Entity for Sol<StandLight> {
             RECOVERY_FRAME..END_FRAME => self,
             _ => self.grounded_actionable_state(input),
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const MAIN_ACTIVE_FRAME: usize = STAND_LIGHT_STARTUP + STAND_LIGHT_FIRST_ACTIVE;
+        const RECOVERY_START: usize = MAIN_ACTIVE_FRAME + STAND_LIGHT_SECOND_ACTIVE + 7;
+        const RECOVERY_END: usize = RECOVERY_START + STAND_LIGHT_RECOVERY - 7;
+        Some(match self.frame as usize {
+            0..STAND_LIGHT_STARTUP => (
+                "sol/normals/5l/5l1".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 5.0 * self.dir(),
+            ),
+            STAND_LIGHT_STARTUP => (
+                "sol/normals/5l/5l2".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 6.0 * self.dir(),
+            ),
+            MAIN_ACTIVE_FRAME..RECOVERY_START => (
+                "sol/normals/5l/5l3".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 7.0 * self.dir(),
+            ),
+            RECOVERY_START..RECOVERY_END => (
+                "sol/normals/5l/5l4".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 7.0 * self.dir(),
+            ),
+            _ => unreachable!(),
+        })
     }
     fn actionable(&self) -> bool {
         false

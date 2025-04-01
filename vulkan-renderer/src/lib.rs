@@ -298,6 +298,9 @@ impl App {
                 + button_state(KeyCode::Space, &self.key_states),
         )
         .into();
+
+        let mut other = InputState::default();
+
         [
             InputState {
                 dir,
@@ -308,7 +311,7 @@ impl App {
                     utility,
                 },
             },
-            InputState::default(),
+            other,
         ]
     }
 }
