@@ -372,29 +372,12 @@ where
         Err(self)
     }
     fn grounded_attack_options(
-        self: Box<Sol<S>>,
+        mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        // NOTE: fafnir
-        if input.has_motion_input(
-            &Motion::half_circle().direction(self.direction),
-            &Action::Pressed(Button::Heavy, None),
-        ) {
-            return Ok(Box::new(self.transition(FafnirStartup(0), true)));
-        }
-
-        // NOTE: gun flame
-        if input.has_motion_input(
-            &Motion::quarter_circle().direction(self.direction),
-            &Action::Pressed(Button::Light, None),
-        ) {
-            return Ok(Box::new(self.transition(GunFlameStartup(false), true)));
-        }
-        if input.has_motion_input(
-            &Motion::quarter_circle().direction(!self.direction),
-            &Action::Pressed(Button::Light, None),
-        ) {
-            return Ok(Box::new(self.transition(GunFlameStartup(true), true)));
+        match self.grounded_special_cancel(input) {
+            Ok(state) => return Ok(state),
+            Err(s) => self = s,
         }
 
         // NOTE: 2h
@@ -416,6 +399,11 @@ where
         // NOTE: 5l
         if input.has_action(&Action::Pressed(Button::Light, None)) {
             return Ok(Box::new(self.transition(StandLight, true)));
+        }
+
+        // NOTE: 5h
+        if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+            return Ok(Box::new(self.transition(StandHeavy, true)));
         }
 
         Err(self)
@@ -454,7 +442,7 @@ where
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
         if input.has_action(&Action::Pressed(Button::Mid, None)) {
-            return Ok(Box::new(self.transition(JumpMidStartup(0), true)));
+            return Ok(Box::new(self.transition(JumpMidStartup, true)));
         }
         Err(self)
     }
@@ -503,6 +491,35 @@ where
         if !self.grounded {
             self.velocity += Vector2::DOWN * GRAVITY;
         }
+    }
+
+    fn grounded_special_cancel(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        // NOTE: fafnir
+        if input.has_motion_input(
+            &Motion::half_circle().direction(self.direction),
+            &Action::Pressed(Button::Heavy, None),
+        ) {
+            return Ok(Box::new(self.transition(FafnirStartup(0), true)));
+        }
+
+        // NOTE: gun flame
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(self.direction),
+            &Action::Pressed(Button::Light, None),
+        ) {
+            return Ok(Box::new(self.transition(GunFlameStartup::real(), true)));
+        }
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(!self.direction),
+            &Action::Pressed(Button::Light, None),
+        ) {
+            return Ok(Box::new(self.transition(GunFlameStartup::feint(), true)));
+        }
+
+        Err(self)
     }
 }
 

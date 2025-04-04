@@ -16,8 +16,16 @@ const GUNFLAME_STARTUP: usize = 11;
 const GUNFLAME_DECEL: f32 = 0.9;
 
 /// bool is feint
-pub struct GunFlameStartup(pub bool);
-impl Entity for Sol<GunFlameStartup> {
+pub struct GunFlameStartup<const FEINT: bool = false>;
+impl GunFlameStartup {
+    pub const fn feint() -> GunFlameStartup<true> {
+        GunFlameStartup
+    }
+    pub const fn real() -> GunFlameStartup<false> {
+        GunFlameStartup
+    }
+}
+impl<const FEINT: bool> Entity for Sol<GunFlameStartup<FEINT>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.has_hit = false;
         self.frame += 1;
@@ -27,7 +35,7 @@ impl Entity for Sol<GunFlameStartup> {
             self.velocity.x *= GUNFLAME_DECEL;
         }
         if self.frame > GUNFLAME_STARTUP as u8 {
-            if self.state.0 {
+            if FEINT {
                 Box::new(self.transition(GunFlameFeint, true))
             } else {
                 Box::new(self.transition(GunFlame, true))
@@ -50,7 +58,7 @@ impl Entity for Sol<GunFlameStartup> {
         false
     }
 }
-impl SolDamageableState for GunFlameStartup {}
+impl<const FEINT: bool> SolDamageableState for GunFlameStartup<FEINT> {}
 
 struct GunFlame;
 impl Entity for Sol<GunFlame> {
@@ -112,7 +120,7 @@ const JUMP_MID_STARTUP: usize = 5;
 const JUMP_MID_ACTIVE: usize = 5;
 const JUMP_MID_RECOVERY: usize = 14;
 
-pub struct JumpMidStartup(pub usize);
+pub struct JumpMidStartup;
 impl Entity for Sol<JumpMidStartup> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.has_hit = false;
@@ -120,8 +128,8 @@ impl Entity for Sol<JumpMidStartup> {
         if self.grounded {
             return self.grounded_actionable_state(input);
         }
-        self.state.0 += 1;
-        if self.state.0 > JUMP_MID_STARTUP {
+        self.frame += 1;
+        if self.frame > JUMP_MID_STARTUP as u8 {
             Box::new(self.transition(JumpMid(0), true))
         } else {
             self

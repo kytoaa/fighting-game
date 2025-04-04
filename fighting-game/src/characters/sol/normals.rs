@@ -86,6 +86,10 @@ impl Entity for Sol<CloseMid> {
                         1,
                     );
                 } else {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -98,13 +102,23 @@ impl Entity for Sol<CloseMid> {
                     if input.has_action(&Action::Pressed(Button::Light, None)) {
                         return Box::new(self.transition(StandLight, true));
                     }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(StandHeavy, true));
+                    }
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.frame as usize <= RECOVERY_FRAME + 7 {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(StandHeavy, true));
                     }
                 }
                 self
@@ -228,12 +242,19 @@ impl Entity for Sol<FarMid> {
                         1,
                     );
                 } else {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
                     ) {
                         Ok(state) => return state,
                         Err(state) => self = state,
+                    }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(StandHeavy, true));
                     }
                 }
                 self
@@ -277,7 +298,7 @@ pub struct StandLight;
 impl Entity for Sol<StandLight> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         const SECOND_ACTIVE_FRAME: usize = STAND_LIGHT_STARTUP + STAND_LIGHT_FIRST_ACTIVE;
-        const RECOVERY_FRAME: usize = SECOND_ACTIVE_FRAME + FAR_MID_ACTIVE;
+        const RECOVERY_FRAME: usize = SECOND_ACTIVE_FRAME + STAND_LIGHT_SECOND_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + STAND_LIGHT_RECOVERY;
         const DECEL: f32 = 8.0;
 
@@ -457,6 +478,10 @@ impl Entity for Sol<StandLight> {
                         1,
                     );
                 } else {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -466,6 +491,9 @@ impl Entity for Sol<StandLight> {
                     }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(StandHeavy, true));
                     }
                 }
                 self
@@ -506,3 +534,119 @@ impl Entity for Sol<StandLight> {
     }
 }
 impl SolDamageableState for StandLight {}
+
+const STAND_HEAVY_STARTUP: usize = 10;
+const STAND_HEAVY_ACTIVE: usize = 4;
+const STAND_HEAVY_RECOVERY: usize = 20;
+const STAND_HEAVY_DAMAGE: u16 = 25;
+
+pub struct StandHeavy;
+impl Entity for Sol<StandHeavy> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const RECOVERY_FRAME: usize = STAND_HEAVY_STARTUP + STAND_HEAVY_ACTIVE;
+        const END_FRAME: usize = RECOVERY_FRAME + STAND_HEAVY_RECOVERY;
+        const DECEL: f32 = 3.0;
+
+        if self.frame == 0 {
+            self.has_hit = false;
+        }
+
+        self.frame += 1;
+
+        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position + Vector2::RIGHT * 6.0 * self.dir(),
+            1,
+        );
+
+        match self.frame as usize {
+            0..STAND_HEAVY_STARTUP => self,
+            STAND_HEAVY_STARTUP..RECOVERY_FRAME => {
+                if !self.has_hit {
+                    let active_frames_extra_hitstun =
+                        STAND_HEAVY_ACTIVE - (self.frame as usize - STAND_HEAVY_STARTUP);
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(25.0, 15.0),
+                            )),
+                            owner: self.player,
+                            info: AttackData {
+                                grounded: HitInfo {
+                                    damage: STAND_HEAVY_DAMAGE,
+                                    hitstun: 15 + active_frames_extra_hitstun,
+                                    blockstun: 18 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Pushback(60.0 * self.dir()),
+                                    block_push: 20.0 * self.dir(),
+                                },
+                                air: HitInfo {
+                                    damage: FAR_MID_DAMAGE,
+                                    hitstun: 20 + active_frames_extra_hitstun,
+                                    blockstun: 15 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(100.0 * self.dir(), 30.0),
+                                        KnockdownType::Hard,
+                                    ),
+                                    block_push: 30.0 * self.dir(),
+                                },
+                                counterhit: HitInfo {
+                                    damage: FAR_MID_DAMAGE,
+                                    hitstun: 20 + active_frames_extra_hitstun,
+                                    blockstun: 15 + active_frames_extra_hitstun,
+                                    hit_effect: HitEffect::Launcher(
+                                        Vector2::new(40.0 * self.dir(), 70.0),
+                                        KnockdownType::None,
+                                    ),
+                                    block_push: 20.0 * self.dir(),
+                                },
+                                priority: 10,
+                                attack_type: crate::collision::AttackType::Mid,
+                                hitbox_id: 1,
+                                hit_type: crate::collision::HitType::Heavy,
+                            },
+                        },
+                        self.position + Vector2::new(20.0 * self.dir(), 13.0),
+                        1,
+                    );
+                } else {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
+                }
+                self
+            }
+            RECOVERY_FRAME..END_FRAME => {
+                if self.frame < (RECOVERY_FRAME + 5) as u8 && self.has_hit {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
+                }
+                self
+            }
+            _ => self.grounded_actionable_state(input),
+        }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(match self.frame {
+            0..3 => ("sol/normals/5h/5h1".into(), BASE_SPRITE_OFFSET),
+            3..7 => ("sol/normals/5h/5h2".into(), BASE_SPRITE_OFFSET),
+            7..10 => ("sol/normals/5h/5h3".into(), BASE_SPRITE_OFFSET),
+            10.. => ("sol/normals/5h/5h4".into(), BASE_SPRITE_OFFSET),
+        })
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+}
+impl SolDamageableState for StandHeavy {}
