@@ -16,6 +16,7 @@ pub struct InputHandler {
     button_states: ButtonStates,
     buffered_actions: Option<Vec<BufferedAction>>,
     pub decrement_action_buffers: bool,
+    directions_to_dequeue: usize,
 }
 impl InputHandler {
     pub fn new() -> InputHandler {
@@ -26,6 +27,7 @@ impl InputHandler {
             button_states: ButtonStates::default(),
             buffered_actions: Some(vec![]),
             decrement_action_buffers: true,
+            directions_to_dequeue: 0,
         }
     }
 }
@@ -45,7 +47,7 @@ impl InputHandler {
         for dir in self
             .direction_queue
             .iter()
-            .skip(self.direction_queue.len() - motion.frames - 1)
+            .skip(self.direction_queue.len() - motion.frames - self.directions_to_dequeue)
         {
             if let Some(d) = motion.directions.get(motion_index) {
                 if d == dir {
@@ -93,9 +95,14 @@ impl InputHandler {
                     })
                     .collect(),
             );
+            for _ in 0..self.directions_to_dequeue {
+                _ = self.direction_queue.pop_front();
+            }
+            self.directions_to_dequeue = 1;
+        } else {
+            self.directions_to_dequeue += 1;
         }
 
-        _ = self.direction_queue.pop_front();
         self.direction_queue.push_back(input_state.dir);
 
         if self
