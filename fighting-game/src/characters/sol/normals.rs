@@ -59,7 +59,7 @@ impl Entity for Sol<CloseMid> {
                                     hitstun: 14 + active_frames_extra_hitstun,
                                     blockstun: 14 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(25.0 * self.dir(), 80.0),
+                                        Vector2::new(25.0 * self.dir(), 85.0),
                                         KnockdownType::None,
                                     ),
                                     block_push: 8.0 * self.dir(),
@@ -205,7 +205,7 @@ impl Entity for Sol<FarMid> {
                                     hitstun: 20 + active_frames_extra_hitstun,
                                     blockstun: 15 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(80.0 * self.dir(), 30.0),
+                                        Vector2::new(80.0 * self.dir(), 35.0),
                                         KnockdownType::Soft,
                                     ),
                                     block_push: 15.0 * self.dir(),
@@ -574,7 +574,7 @@ impl Entity for Sol<StandHeavy> {
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::pos_size(
                                 Vector2::ZERO,
-                                Vector2::new(25.0, 15.0),
+                                Vector2::new(20.0, 15.0),
                             )),
                             owner: self.player,
                             info: AttackData {
@@ -582,7 +582,7 @@ impl Entity for Sol<StandHeavy> {
                                     damage: STAND_HEAVY_DAMAGE,
                                     hitstun: 15 + active_frames_extra_hitstun,
                                     blockstun: 18 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Pushback(60.0 * self.dir()),
+                                    hit_effect: HitEffect::Pushback(55.0 * self.dir()),
                                     block_push: 20.0 * self.dir(),
                                 },
                                 air: HitInfo {
@@ -590,7 +590,7 @@ impl Entity for Sol<StandHeavy> {
                                     hitstun: 20 + active_frames_extra_hitstun,
                                     blockstun: 15 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(100.0 * self.dir(), 30.0),
+                                        Vector2::new(80.0 * self.dir(), 35.0),
                                         KnockdownType::Hard,
                                     ),
                                     block_push: 30.0 * self.dir(),
@@ -611,7 +611,7 @@ impl Entity for Sol<StandHeavy> {
                                 hit_type: crate::collision::HitType::Heavy,
                             },
                         },
-                        self.position + Vector2::new(20.0 * self.dir(), 13.0),
+                        self.position + Vector2::new(18.0 * self.dir(), 13.0),
                         1,
                     );
                 } else {
@@ -636,10 +636,38 @@ impl Entity for Sol<StandHeavy> {
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some(match self.frame {
-            0..3 => ("sol/normals/5h/5h1".into(), BASE_SPRITE_OFFSET),
-            3..7 => ("sol/normals/5h/5h2".into(), BASE_SPRITE_OFFSET),
-            7..10 => ("sol/normals/5h/5h3".into(), BASE_SPRITE_OFFSET),
-            10.. => ("sol/normals/5h/5h4".into(), BASE_SPRITE_OFFSET),
+            0..3 => (
+                "sol/normals/5h/5h1".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 2.0 * self.dir(),
+            ),
+            3..7 => (
+                "sol/normals/5h/5h2".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 2.0 * self.dir(),
+            ),
+            7..10 => (
+                "sol/normals/5h/5h3".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * self.dir(),
+            ),
+            10..13 => (
+                "sol/normals/5h/5h4".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 7.0 * self.dir(),
+            ),
+            13..16 => (
+                "sol/normals/5h/5h5".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 6.0 * self.dir(),
+            ),
+            16..22 => (
+                "sol/normals/5h/5h6".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 6.0 * self.dir(),
+            ),
+            22..28 => (
+                "sol/normals/5h/5h7".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 6.0 * self.dir(),
+            ),
+            28.. => (
+                "sol/normals/5h/5h8".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 2.0 * self.dir(),
+            ),
         })
     }
     fn actionable(&self) -> bool {
