@@ -545,7 +545,7 @@ impl Entity for Sol<StandHeavy> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         const RECOVERY_FRAME: usize = STAND_HEAVY_STARTUP + STAND_HEAVY_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + STAND_HEAVY_RECOVERY;
-        const DECEL: f32 = 3.0;
+        const DECEL: f32 = 4.0;
 
         if self.frame == 0 {
             self.has_hit = false;
@@ -612,6 +612,17 @@ impl Entity for Sol<StandHeavy> {
                             },
                         },
                         self.position + Vector2::new(18.0 * self.dir(), 13.0),
+                        1,
+                    );
+                    world.spawn_hurtbox(
+                        crate::collision::Hurtbox {
+                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                Vector2::new(12.0, 17.0),
+                            )),
+                            owner: self.player,
+                        },
+                        self.position + Vector2::new(12.0 * self.dir(), 13.0),
                         1,
                     );
                 } else {

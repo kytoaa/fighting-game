@@ -444,6 +444,9 @@ where
         if input.has_action(&Action::Pressed(Button::Mid, None)) {
             return Ok(Box::new(self.transition(JumpMidStartup, true)));
         }
+        if input.has_action(&Action::Pressed(Button::Light, None)) {
+            return Ok(Box::new(self.transition(AirLight, true)));
+        }
         Err(self)
     }
     fn air_movement_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
@@ -472,12 +475,7 @@ where
             || input.has_action(&Action::JumpPress(InputDir::Dir9)))
             && self.has_air_action
         {
-            self.has_air_action = false;
-            self.velocity = Vector2::new(
-                dir.x * DOUBLE_JUMP_X_FORCE.max(self.velocity.x.abs()),
-                DOUBLE_JUMP_FORCE,
-            );
-            self.frame = 0;
+            self.double_jump(dir.x)
         }
 
         if dir == Vector2::new(-self.dir(), 0.0) {
@@ -485,6 +483,15 @@ where
         } else {
             Box::new(self.transition(Air::<false>, false))
         }
+    }
+
+    fn double_jump(&mut self, dir: f32) {
+        self.has_air_action = false;
+        self.velocity = Vector2::new(
+            dir * DOUBLE_JUMP_X_FORCE.max(self.velocity.x.abs()),
+            DOUBLE_JUMP_FORCE,
+        );
+        self.frame = 0;
     }
 
     fn gravity(&mut self) {
