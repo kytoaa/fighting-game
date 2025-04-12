@@ -278,7 +278,7 @@ impl Entity for Sol<CrouchHeavy> {
                         HitInfo {
                             damage: 30,
                             hit_effect: HitEffect::Launcher(
-                                Vector2::new(10.0 * self.dir(), 90.0),
+                                Vector2::new(10.0 * self.dir(), 150.0), // NOTE: TEMPORARY
                                 KnockdownType::Soft,
                             ),
                             hitstun: 100,

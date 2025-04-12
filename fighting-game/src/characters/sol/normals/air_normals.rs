@@ -64,7 +64,7 @@ impl Entity for Sol<AirLight> {
                                     damage: AIR_LIGHT_DAMAGE,
                                     hitstun: 28 + active_frames_extra_hitstun,
                                     blockstun: 25 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Pushback(25.0 * self.dir()),
+                                    hit_effect: HitEffect::Pushback(30.0 * self.dir()),
                                     block_push: 8.0 * self.dir(),
                                 },
                                 air: HitInfo {
@@ -72,7 +72,7 @@ impl Entity for Sol<AirLight> {
                                     hitstun: 28 + active_frames_extra_hitstun,
                                     blockstun: 25 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(25.0 * self.dir(), 40.0),
+                                        Vector2::new(30.0 * self.dir(), 85.0),
                                         KnockdownType::Soft,
                                     ),
                                     block_push: 8.0 * self.dir(),
@@ -82,7 +82,7 @@ impl Entity for Sol<AirLight> {
                                     hitstun: 28 + active_frames_extra_hitstun,
                                     blockstun: 25 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(25.0 * self.dir(), 80.0),
+                                        Vector2::new(30.0 * self.dir(), 80.0),
                                         KnockdownType::Soft,
                                     ),
                                     block_push: 8.0 * self.dir(),
@@ -93,7 +93,7 @@ impl Entity for Sol<AirLight> {
                                 hit_type: crate::collision::HitType::Medium,
                             },
                         },
-                        self.position + Vector2::new(8.0 * self.dir(), -6.0),
+                        self.position + Vector2::new(5.0 * self.dir(), -6.0),
                         1,
                     );
 
@@ -105,7 +105,7 @@ impl Entity for Sol<AirLight> {
                             )),
                             owner: self.player,
                         },
-                        self.position + Vector2::new(8.0 * self.dir(), -6.0),
+                        self.position + Vector2::new(5.0 * self.dir(), -6.0),
                         1,
                     );
                 } else {
@@ -145,12 +145,16 @@ impl Entity for Sol<AirLight> {
                 "sol/normals/j.l/j.l3".into(),
                 LARGE_SPRITE_BASE_OFFSET + active_offset,
             ),
-            13..18 => (
+            13..16 => (
                 "sol/normals/j.l/j.l4".into(),
                 LARGE_SPRITE_BASE_OFFSET + Vector2::new(-11.0 * self.dir(), -7.0) + active_offset,
             ),
-            18.. => (
+            16..19 => (
                 "sol/normals/j.l/j.l5".into(),
+                LARGE_SPRITE_BASE_OFFSET + Vector2::new(-11.0 * self.dir(), -7.0) + active_offset,
+            ),
+            19.. => (
+                "sol/normals/j.l/j.l6".into(),
                 LARGE_SPRITE_BASE_OFFSET + Vector2::new(-11.0 * self.dir(), -7.0) + active_offset,
             ),
         })
