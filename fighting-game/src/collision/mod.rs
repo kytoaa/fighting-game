@@ -23,7 +23,7 @@ impl HitType {
             Self::Custom(frames) => frames,
         }
     }
-    pub const BLOCKED_HITSTOP_FRAMES: usize = 4;
+    pub const BLOCKED_HITSTOP_FRAMES: usize = 8;
 }
 
 #[derive(Debug, Clone)]

@@ -208,7 +208,7 @@ pub struct ButtonStates {
     pub utility: ButtonState,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct InputState {
     pub dir: InputDir,
     pub button_states: ButtonStates,

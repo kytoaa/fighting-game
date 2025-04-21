@@ -88,7 +88,7 @@ impl Entity for Sol<AirLight> {
                                     block_push: 8.0 * self.dir(),
                                 },
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
+                                attack_type: crate::collision::AttackType::High,
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitType::Medium,
                             },
@@ -122,6 +122,9 @@ impl Entity for Sol<AirLight> {
                     {
                         self.double_jump(input.move_dir().x);
                         return self.air_actionable_state(input);
+                    }
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                        return Box::new(self.transition(AirMid, true));
                     }
                 }
                 self
@@ -161,3 +164,154 @@ impl Entity for Sol<AirLight> {
     }
 }
 impl SolDamageableState for AirLight {}
+
+const AIR_MID_STARTUP: usize = 11;
+const AIR_MID_ACTIVE_1: usize = 4;
+const AIR_MID_ACTIVE_2: usize = 8;
+const AIR_MID_DAMAGE: u16 = 8;
+
+pub struct AirMid;
+impl Entity for Sol<AirMid> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const AIR_MID_ACTIVE_2_FRAME: usize = AIR_MID_STARTUP + AIR_MID_ACTIVE_1;
+        const END_FRAME: usize = AIR_MID_ACTIVE_2_FRAME + AIR_MID_ACTIVE_2;
+
+        if self.frame == 0 || self.frame == AIR_MID_ACTIVE_2_FRAME as u8 {
+            self.has_hit = false;
+        }
+
+        if self.is_grounded() {
+            return self.grounded_actionable_state(input);
+        }
+
+        self.frame += 1;
+
+        self.gravity();
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                    Vector2::ZERO,
+                    Vector2::new(20.0, 16.0),
+                )),
+                owner: self.player,
+            },
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+            1,
+        );
+
+        match self.frame as usize {
+            0..AIR_MID_STARTUP => self,
+            AIR_MID_STARTUP..END_FRAME => {
+                let hit_1 = self.frame < AIR_MID_ACTIVE_2_FRAME as u8;
+                if !self.has_hit {
+                    let active_frames_extra_hitstun = if hit_1 {
+                        AIR_MID_ACTIVE_1
+                    } else {
+                        AIR_MID_ACTIVE_2
+                    } - (self.frame as usize
+                        - if hit_1 {
+                            AIR_MID_STARTUP
+                        } else {
+                            AIR_MID_ACTIVE_2_FRAME
+                        });
+
+                    let info = AttackData {
+                        grounded: HitInfo {
+                            damage: AIR_MID_DAMAGE,
+                            hitstun: 10 + active_frames_extra_hitstun,
+                            blockstun: 7 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Pushback(10.0 * self.dir()),
+                            block_push: 8.0 * self.dir(),
+                        },
+                        air: HitInfo {
+                            damage: AIR_MID_DAMAGE,
+                            hitstun: 10 + active_frames_extra_hitstun,
+                            blockstun: 7 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(30.0 * self.dir(), 50.0),
+                                KnockdownType::Soft,
+                            ),
+                            block_push: 8.0 * self.dir(),
+                        },
+                        counterhit: HitInfo {
+                            damage: AIR_MID_DAMAGE,
+                            hitstun: 10 + active_frames_extra_hitstun,
+                            blockstun: 7 + active_frames_extra_hitstun,
+                            hit_effect: HitEffect::Launcher(
+                                Vector2::new(10.0 * self.dir(), 50.0),
+                                KnockdownType::Soft,
+                            ),
+                            block_push: 8.0 * self.dir(),
+                        },
+                        priority: 10,
+                        attack_type: crate::collision::AttackType::High,
+                        hitbox_id: 1,
+                        hit_type: crate::collision::HitType::Medium,
+                    };
+
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                                Vector2::ZERO,
+                                if hit_1 {
+                                    Vector2::new(14.0, 16.0)
+                                } else {
+                                    Vector2::new(10.0, 20.0)
+                                },
+                            )),
+                            owner: self.player,
+                            info,
+                        },
+                        self.position
+                            + if hit_1 {
+                                Vector2::new(5.0 * self.dir(), 8.0)
+                            } else {
+                                Vector2::new(5.0 * self.dir(), 4.0)
+                            },
+                        1,
+                    );
+                } else {
+                    if self.has_air_action
+                        && input.has_action(&Action::DoublePress(self.forward_dir()))
+                    {
+                        self.has_air_action = false;
+                        return Box::new(self.transition(Airdash, true));
+                    }
+                    if self.has_air_action
+                        && (input.has_action(&Action::JumpPress(InputDir::Dir7))
+                            || input.has_action(&Action::JumpPress(InputDir::Dir8))
+                            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
+                    {
+                        self.double_jump(input.move_dir().x);
+                        return self.air_actionable_state(input);
+                    }
+                }
+                self
+            }
+            _ => self.air_actionable_state(input),
+        }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const AIR_MID_ACTIVE_2_FRAME: usize = AIR_MID_STARTUP + AIR_MID_ACTIVE_1;
+        const END_FRAME: usize = AIR_MID_ACTIVE_2_FRAME + AIR_MID_ACTIVE_2;
+
+        Some(match self.frame as usize {
+            0..AIR_MID_STARTUP => ("sol/normals/j.m/j.m1".into(), LARGE_SPRITE_BASE_OFFSET),
+            AIR_MID_STARTUP..AIR_MID_ACTIVE_2_FRAME => {
+                ("sol/normals/j.m/j.m2".into(), LARGE_SPRITE_BASE_OFFSET)
+            }
+            AIR_MID_ACTIVE_2_FRAME..END_FRAME => {
+                ("sol/normals/j.m/j.m3".into(), LARGE_SPRITE_BASE_OFFSET)
+            }
+            _ => unreachable!(),
+        })
+    }
+}
+impl SolDamageableState for AirMid {}

@@ -22,6 +22,7 @@ pub struct App {
     show_hitboxes: bool,
     show_fps: bool,
     debug_paused: bool,
+    recorded_enemy_state: fighting_game::input::InputState,
 }
 
 pub struct RenderData {
@@ -90,6 +91,14 @@ impl winit::application::ApplicationHandler for App {
                 ) = (event.physical_key, event.state)
                 {
                     self.show_fps = !self.show_fps;
+                }
+                if let (
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyR),
+                    winit::event::ElementState::Pressed,
+                ) = (event.physical_key, event.state)
+                {
+                    let [input_state, _] = self.get_input_states();
+                    self.recorded_enemy_state = input_state;
                 }
             }
             winit::event::WindowEvent::CloseRequested => {
@@ -239,6 +248,7 @@ impl App {
                 show_hitboxes: false,
                 show_fps: false,
                 debug_paused: false,
+                recorded_enemy_state: fighting_game::input::InputState::default(),
             })
             .unwrap();
     }
@@ -299,7 +309,7 @@ impl App {
         )
         .into();
 
-        let mut other = InputState::default();
+        let other = self.recorded_enemy_state.clone(); //InputState::default();
 
         [
             InputState {

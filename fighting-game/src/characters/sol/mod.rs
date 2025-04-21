@@ -162,6 +162,11 @@ impl<S> Damageable for Sol<S>
 where
     S: SolDamageableState,
 {
+    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        Sol::hit(self, info)
+    }
+}
+impl<S> Sol<S> {
     fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
         self.combo_hit_count += 1;
         println!("{} hits", self.combo_hit_count);
@@ -199,12 +204,14 @@ where
 }
 
 impl Damageable for Sol<WalkState<true>> {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        let hit_info = &info.grounded;
+
+        self.velocity.x = hit_info.block_push;
+
+        if let crate::collision::AttackType::Low = info.attack_type {
+            return Sol::hit(self, info);
+        }
         (
             Box::new(self.transition(
                 BlockStun::<false> {
@@ -217,12 +224,14 @@ impl Damageable for Sol<WalkState<true>> {
     }
 }
 impl Damageable for Sol<Crouch<true>> {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        let hit_info = &info.grounded;
+
+        self.velocity.x = hit_info.block_push;
+
+        if let crate::collision::AttackType::High = info.attack_type {
+            return Sol::hit(self, info);
+        }
         (
             Box::new(self.transition(
                 BlockStun::<true> {
@@ -235,12 +244,14 @@ impl Damageable for Sol<Crouch<true>> {
     }
 }
 impl Damageable for Sol<Air<true>> {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        let hit_info = &info.air;
+
+        self.velocity.x = hit_info.block_push;
+
+        if let crate::collision::AttackType::Low = info.attack_type {
+            return Sol::hit(self, info);
+        }
         (
             Box::new(self.transition(
                 AirBlockStun {
@@ -253,12 +264,14 @@ impl Damageable for Sol<Air<true>> {
     }
 }
 impl Damageable for Sol<AirBlockStun> {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        let hit_info = &info.air;
+
+        self.velocity.x = hit_info.block_push;
+
+        if let crate::collision::AttackType::Low = info.attack_type {
+            return Sol::hit(self, info);
+        }
         (
             Box::new(self.transition(
                 AirBlockStun {
@@ -271,12 +284,23 @@ impl Damageable for Sol<AirBlockStun> {
     }
 }
 impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+        let hit_info = &info.grounded;
+
+        self.velocity.x = hit_info.block_push;
+
+        match CROUCHING {
+            true => {
+                if let crate::collision::AttackType::High = info.attack_type {
+                    return Sol::hit(self, info);
+                }
+            }
+            false => {
+                if let crate::collision::AttackType::High = info.attack_type {
+                    return Sol::hit(self, info);
+                }
+            }
+        }
         (
             Box::new(self.transition(
                 BlockStun::<CROUCHING> {
@@ -441,11 +465,14 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        if input.has_action(&Action::Pressed(Button::Mid, None)) {
-            return Ok(Box::new(self.transition(JumpMidStartup, true)));
-        }
         if input.has_action(&Action::Pressed(Button::Light, None)) {
             return Ok(Box::new(self.transition(AirLight, true)));
+        }
+        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+            return Ok(Box::new(self.transition(AirMid, true)));
+        }
+        if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+            return Ok(Box::new(self.transition(JumpMidStartup, true)));
         }
         Err(self)
     }
@@ -695,6 +722,16 @@ where
 {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.velocity = Vector2::ZERO;
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         self.grounded_actionable_state(input)
     }
 }
@@ -852,6 +889,8 @@ impl Entity for Sol<Tumble> {
 }
 impl SolDamageableState for Tumble {}
 
+const BLOCKSTUN_DRAG: f32 = 2.0;
+
 #[derive(Debug)]
 struct BlockStun<const CROUCHING: bool> {
     length: usize,
@@ -859,6 +898,7 @@ struct BlockStun<const CROUCHING: bool> {
 impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+        self.velocity = self.velocity.move_towards(&Vector2::ZERO, BLOCKSTUN_DRAG);
         if self.frame >= self.state.length as u8 {
             Box::new(self.transition(Stand, true))
         } else {
