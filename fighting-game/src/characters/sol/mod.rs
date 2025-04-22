@@ -409,7 +409,7 @@ where
             return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
         }
 
-        const CLOSE_MID_DISTANCE: f32 = 16.0;
+        const CLOSE_MID_DISTANCE: f32 = 14.0;
 
         // NOTE: c.m and f.m
         if input.has_action(&Action::Pressed(Button::Mid, None)) {

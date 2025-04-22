@@ -109,13 +109,22 @@ impl Entity for Sol<CloseMid> {
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
-                if self.frame as usize <= RECOVERY_FRAME + 7 {
+                if self.has_hit {
                     match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
+                    match self
+                        .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
+                    {
                         Ok(state) => return state,
                         Err(s) => self = s,
                     }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Light, None)) {
+                        return Box::new(self.transition(StandLight, true));
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(StandHeavy, true));
@@ -259,7 +268,25 @@ impl Entity for Sol<FarMid> {
                 }
                 self
             }
-            RECOVERY_FRAME..END_FRAME => self,
+            RECOVERY_FRAME..END_FRAME => {
+                if self.has_hit {
+                    match self.grounded_special_cancel(input) {
+                        Ok(state) => return state,
+                        Err(s) => self = s,
+                    }
+                    match self.grounded_movement_cancel_options_from_attack(
+                        input,
+                        RunStartState::dash_cancel(),
+                    ) {
+                        Ok(state) => return state,
+                        Err(state) => self = state,
+                    }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(StandHeavy, true));
+                    }
+                }
+                self
+            }
             _ => self.grounded_actionable_state(input),
         }
     }

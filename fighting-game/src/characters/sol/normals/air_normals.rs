@@ -1,6 +1,6 @@
 use super::{
-    Airdash, Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
-    RunStartState, Velocity, WALK_SPEED,
+    Airdash, Backdash, Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit,
+    Position, RunStartState, Velocity, WALK_SPEED,
 };
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
@@ -129,7 +129,34 @@ impl Entity for Sol<AirLight> {
                 }
                 self
             }
-            RECOVERY_FRAME..END_FRAME => self,
+            RECOVERY_FRAME..END_FRAME => {
+                if self.has_hit {
+                    if self.has_air_action
+                        && input.has_action(&Action::DoublePress(self.forward_dir()))
+                    {
+                        self.has_air_action = false;
+                        return Box::new(self.transition(Airdash, true));
+                    }
+                    if self.has_air_action
+                        && input.has_action(&Action::DoublePress(self.backward_dir()))
+                    {
+                        self.has_air_action = false;
+                        return Box::new(self.transition(Backdash, true));
+                    }
+                    if self.has_air_action
+                        && (input.has_action(&Action::JumpPress(InputDir::Dir7))
+                            || input.has_action(&Action::JumpPress(InputDir::Dir8))
+                            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
+                    {
+                        self.double_jump(input.move_dir().x);
+                        return self.air_actionable_state(input);
+                    }
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                        return Box::new(self.transition(AirMid, true));
+                    }
+                }
+                self
+            }
             _ => self.air_actionable_state(input),
         }
     }
@@ -277,6 +304,12 @@ impl Entity for Sol<AirMid> {
                     {
                         self.has_air_action = false;
                         return Box::new(self.transition(Airdash, true));
+                    }
+                    if self.has_air_action
+                        && input.has_action(&Action::DoublePress(self.backward_dir()))
+                    {
+                        self.has_air_action = false;
+                        return Box::new(self.transition(Backdash, true));
                     }
                     if self.has_air_action
                         && (input.has_action(&Action::JumpPress(InputDir::Dir7))
