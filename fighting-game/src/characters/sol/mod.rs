@@ -409,11 +409,9 @@ where
             return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
         }
 
-        const CLOSE_MID_DISTANCE: f32 = 14.0;
-
         // NOTE: c.m and f.m
         if input.has_action(&Action::Pressed(Button::Mid, None)) {
-            if self.distance_from_other_player < CLOSE_MID_DISTANCE {
+            if self.distance_from_other_player < CloseMid::MAX_DISTANCE {
                 return Ok(Box::new(self.transition(CloseMid, true)));
             } else {
                 return Ok(Box::new(self.transition(FarMid, true)));
@@ -472,7 +470,7 @@ where
             return Ok(Box::new(self.transition(AirMid, true)));
         }
         if input.has_action(&Action::Pressed(Button::Heavy, None)) {
-            return Ok(Box::new(self.transition(JumpMidStartup, true)));
+            return Ok(Box::new(self.transition(todo!(), true)));
         }
         Err(self)
     }

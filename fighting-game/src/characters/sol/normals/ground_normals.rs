@@ -18,6 +18,9 @@ const CLOSE_MID_RECOVERY: usize = 10;
 const CLOSE_MID_DAMAGE: u16 = 20;
 
 pub struct CloseMid;
+impl CloseMid {
+    pub const MAX_DISTANCE: f32 = 14.0;
+}
 impl Entity for Sol<CloseMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         const RECOVERY_FRAME: usize = CLOSE_MID_STARTUP + CLOSE_MID_ACTIVE;
@@ -255,10 +258,9 @@ impl Entity for Sol<FarMid> {
                         Ok(state) => return state,
                         Err(s) => self = s,
                     }
-                    match self.grounded_movement_cancel_options_from_attack(
-                        input,
-                        RunStartState::dash_cancel(),
-                    ) {
+                    match self
+                        .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
+                    {
                         Ok(state) => return state,
                         Err(state) => self = state,
                     }
@@ -346,7 +348,27 @@ impl Entity for Sol<StandLight> {
             1,
         );
 
-        if self.has_hit && self.frame as usize == STAND_LIGHT_STARTUP + 1 {
+        if self.frame as usize == STAND_LIGHT_STARTUP + 1 {
+            // NOTE: allows cancelling the first hit
+            if self.has_hit {
+                match self.grounded_movement_cancel_options_from_attack(
+                    input,
+                    RunStartState::dash_cancel(),
+                ) {
+                    Ok(state) => return state,
+                    Err(s) => self = s,
+                }
+                match self.grounded_special_cancel(input) {
+                    Ok(state) => return state,
+                    Err(s) => self = s,
+                }
+                if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                    return Box::new(self.transition(FarMid, true));
+                }
+                if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                    return Box::new(self.transition(StandHeavy, true));
+                }
+            }
             self.has_hit = false;
         }
 
@@ -360,19 +382,39 @@ impl Entity for Sol<StandLight> {
                             Vector2::new(10.0, 12.0),
                         )),
                         owner: self.player,
-                        info: AttackData::with_same_hitinfo(
-                            HitInfo {
+                        info: AttackData {
+                            grounded: HitInfo {
                                 damage: STAND_LIGHT_FIRST_HIT_DAMAGE,
-                                hitstun: 6,
-                                blockstun: 5,
+                                hitstun: 9,
+                                blockstun: 8,
                                 hit_effect: HitEffect::Pushback(20.0 * self.dir()),
                                 block_push: 25.0 * self.dir(),
                             },
-                            10,
-                            crate::collision::AttackType::Mid,
-                            1,
-                            crate::collision::HitType::Light,
-                        ),
+                            air: HitInfo {
+                                damage: STAND_LIGHT_FIRST_HIT_DAMAGE,
+                                hitstun: 9,
+                                blockstun: 8,
+                                hit_effect: HitEffect::Launcher(
+                                    Vector2::new(20.0 * self.dir(), 40.0),
+                                    KnockdownType::None,
+                                ),
+                                block_push: 25.0 * self.dir(),
+                            },
+                            counterhit: HitInfo {
+                                damage: STAND_LIGHT_FIRST_HIT_DAMAGE,
+                                hitstun: 9,
+                                blockstun: 8,
+                                hit_effect: HitEffect::Launcher(
+                                    Vector2::new(20.0 * self.dir(), 40.0),
+                                    KnockdownType::None,
+                                ),
+                                block_push: 25.0 * self.dir(),
+                            },
+                            priority: 10,
+                            attack_type: crate::collision::AttackType::Mid,
+                            hitbox_id: 1,
+                            hit_type: crate::collision::HitType::Light,
+                        },
                     },
                     self.position
                         + Vector2::new(8.0 * self.dir(), 8.0)
