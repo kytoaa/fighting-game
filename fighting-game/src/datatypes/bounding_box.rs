@@ -22,6 +22,9 @@ impl BoundingBox {
             Vector2::new(pos.x + size.x / 2.0, pos.y + size.y / 2.0),
         )
     }
+    pub const fn with_size(size: Vector2) -> Self {
+        Self::pos_size(Vector2::ZERO, size)
+    }
     pub fn from_point_cloud<T>(points: T) -> Option<Self>
     where
         T: IntoIterator<Item = Vector2>,

@@ -101,7 +101,7 @@ impl InputDir {
     }
 }
 impl InputDir {
-    const fn from_vector2(value: Vector2) -> Self {
+    pub const fn from_vector2(value: Vector2) -> Self {
         match value.into_floats() {
             (-1.0, -1.0) => InputDir::Dir1,
             (0.0, -1.0) => InputDir::Dir2,
@@ -115,7 +115,7 @@ impl InputDir {
             _ => panic!("not a valid input direction"),
         }
     }
-    const fn into_vector2(self) -> Vector2 {
+    pub const fn into_vector2(self) -> Vector2 {
         match self {
             InputDir::Dir1 => Vector2::new(-1.0, -1.0),
             InputDir::Dir2 => Vector2::new(0.0, -1.0),
@@ -128,16 +128,16 @@ impl InputDir {
             InputDir::Dir9 => Vector2::new(1.0, 1.0),
         }
     }
-    const fn is_up(self) -> bool {
+    pub const fn is_up(self) -> bool {
         self.into_vector2().y == Vector2::UP.y
     }
-    const fn is_down(self) -> bool {
+    pub const fn is_down(self) -> bool {
         self.into_vector2().y == Vector2::DOWN.y
     }
-    const fn is_right(self) -> bool {
+    pub const fn is_right(self) -> bool {
         self.into_vector2().x == Vector2::RIGHT.x
     }
-    const fn is_left(self) -> bool {
+    pub const fn is_left(self) -> bool {
         self.into_vector2().x == Vector2::LEFT.x
     }
 }

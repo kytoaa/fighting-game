@@ -154,6 +154,9 @@ impl InputHandler {
         self.button_states = input_state.button_states.clone();
     }
 
+    pub fn input_dir(&self) -> InputDir {
+        *self.direction_queue.back().unwrap()
+    }
     pub fn move_dir(&self) -> Vector2 {
         self.direction_queue.back().unwrap().into()
     }

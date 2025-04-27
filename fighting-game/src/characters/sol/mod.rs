@@ -26,6 +26,10 @@ const DEFAULT_COLLIDER: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
     Vector2::new(12.0, 24.0),
 );
+const CROUCHING_COLLIDER: BoundingBox = BoundingBox::pos_size(
+    Vector2::new(0.0, (16.0 - COLLIDER_SIZE.y) / 2.0),
+    Vector2::new(12.0, 16.0),
+);
 
 pub fn initial_state(player: usize) -> Box<dyn Entity> {
     Box::new(Sol {
@@ -404,9 +408,21 @@ where
             Err(s) => self = s,
         }
 
-        // NOTE: 2h
-        if input.has_action(&Action::Pressed(Button::Heavy, Some(InputDir::Dir2))) {
-            return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
+        if input.input_dir().is_down() {
+            // NOTE: 2l
+            if input.has_action(&Action::Pressed(Button::Light, None)) {
+                return Ok(Box::new(self.transition(CrouchLight, true)));
+            }
+
+            // NOTE: 2m
+            if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                return Ok(Box::new(self.transition(CrouchMid, true)));
+            }
+
+            // NOTE: 2h
+            if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
+            }
         }
 
         // NOTE: c.m and f.m
@@ -470,7 +486,7 @@ where
             return Ok(Box::new(self.transition(AirMid, true)));
         }
         if input.has_action(&Action::Pressed(Button::Heavy, None)) {
-            return Ok(Box::new(self.transition(todo!(), true)));
+            return Ok(Box::new(self.transition(AirHeavy, true)));
         }
         Err(self)
     }
@@ -562,11 +578,21 @@ impl<const BLOCKING: bool> Entity for Sol<WalkState<BLOCKING>>
 where
     Sol<WalkState<BLOCKING>>: Damageable,
 {
-    fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
         if self.frame >= WALK_ANIM_LENGTH * FRAMES_PER_WALK_ANIM_FRAME {
             self.frame = 0;
         }
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         self.velocity = input.move_dir().y(0.0) * WALK_SPEED;
         self.grounded_actionable_state(input)
     }
@@ -592,11 +618,21 @@ impl Entity for Sol<RunState>
 where
     Sol<RunState>: Damageable,
 {
-    fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
         if self.frame >= RUN_ANIM_LENGTH * FRAMES_PER_RUN_ANIM_FRAME {
             self.frame = 0;
         }
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         if input.move_dir() == Vector2::new(self.dir(), 0.0) {
             self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
             self.grounded_attack_options(input).unwrap_or_else(|s| s)
@@ -630,6 +666,16 @@ where
         // NOTE: stops instantly cancelling dash into something, adds a little commitment and stops
         // dash cancel cancels
         self.frame += 1;
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         if self.frame < FRAMES {
             self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
             return self;
@@ -668,8 +714,18 @@ impl Entity for Sol<Backdash> {
 }
 struct BackdashVulnerable;
 impl Entity for Sol<BackdashVulnerable> {
-    fn update(mut self: Box<Self>, _: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         if self.frame > BACKDASH_VULNERABLE as u8 {
             if self.grounded {
                 self.grounded_actionable_state(input)
@@ -692,6 +748,7 @@ struct Stand;
 impl Entity for Sol<Stand> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL_RATE);
+
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
                 shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
@@ -719,11 +776,12 @@ where
     Sol<Crouch<BLOCKING>>: Damageable,
 {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.velocity = Vector2::ZERO;
+        const DECEL: f32 = 8.0;
+        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
                 owner: self.player,
             },
             self.position,
@@ -745,8 +803,18 @@ struct JumpSquat {
 }
 impl SolDamageableState for JumpSquat {}
 impl Entity for Sol<JumpSquat> {
-    fn update(mut self: Box<Self>, _world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                owner: self.player,
+            },
+            self.position,
+            1,
+        );
+
         if self.frame > JUMPSQUAT_FRAMES as u8 {
             if self.velocity.x.abs() < 1.0 {
                 self.velocity.x = WALK_SPEED * self.state.direction;

@@ -1,4 +1,5 @@
 use super::{
+    crouching_normals::{CrouchLight, CrouchMid},
     Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
     RunStartState, Velocity, WALK_SPEED,
 };
@@ -99,11 +100,19 @@ impl Entity for Sol<CloseMid> {
                         Ok(state) => return state,
                         Err(s) => self = s,
                     }
-                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
-                        return Box::new(self.transition(FarMid, true));
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Light, None)) {
+                            return Box::new(self.transition(CrouchLight, true));
+                        }
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Light, None)) {
                         return Box::new(self.transition(StandLight, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                        return Box::new(self.transition(FarMid, true));
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(StandHeavy, true));
@@ -123,11 +132,19 @@ impl Entity for Sol<CloseMid> {
                         Ok(state) => return state,
                         Err(s) => self = s,
                     }
-                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
-                        return Box::new(self.transition(FarMid, true));
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Light, None)) {
+                            return Box::new(self.transition(CrouchLight, true));
+                        }
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Light, None)) {
                         return Box::new(self.transition(StandLight, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                        return Box::new(self.transition(FarMid, true));
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(StandHeavy, true));
@@ -264,6 +281,11 @@ impl Entity for Sol<FarMid> {
                         Ok(state) => return state,
                         Err(state) => self = state,
                     }
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
+                    }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(StandHeavy, true));
                     }
@@ -282,6 +304,11 @@ impl Entity for Sol<FarMid> {
                     ) {
                         Ok(state) => return state,
                         Err(state) => self = state,
+                    }
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(StandHeavy, true));
@@ -361,6 +388,11 @@ impl Entity for Sol<StandLight> {
                 match self.grounded_special_cancel(input) {
                     Ok(state) => return state,
                     Err(s) => self = s,
+                }
+                if input.input_dir().is_down() {
+                    if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                        return Box::new(self.transition(CrouchMid, true));
+                    }
                 }
                 if input.has_action(&Action::Pressed(Button::Mid, None)) {
                     return Box::new(self.transition(FarMid, true));
@@ -557,6 +589,11 @@ impl Entity for Sol<StandLight> {
                     ) {
                         Ok(state) => return state,
                         Err(s) => self = s,
+                    }
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(FarMid, true));
