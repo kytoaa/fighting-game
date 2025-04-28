@@ -75,6 +75,14 @@ pub enum HitEffect {
     Pushback(f32),
     Launcher(Vector2, KnockdownType),
 }
+impl HitEffect {
+    pub const fn x_vel(&self) -> f32 {
+        match self {
+            HitEffect::Pushback(x) => *x,
+            HitEffect::Launcher(Vector2 { x, y: _ }, _) => *x,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum KnockdownType {
     Hard,

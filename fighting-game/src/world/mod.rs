@@ -5,6 +5,8 @@ use std::collections::HashSet;
 
 const DELTA: f32 = 1.0 / 60.0;
 
+const BORDER_X: f32 = 100.0;
+
 pub struct World {
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
     hurtboxes: Vec<Spawn<Hurtbox>>,
@@ -138,6 +140,9 @@ impl World {
                 .take()
                 .unwrap();
 
+            let in_corner = hit_player.position().x.abs() >= BORDER_X - 10.0;
+            let pushback = hitbox.0.info.grounded.hit_effect.x_vel();
+
             let (hit_state, hit_connection) = hit_player.hit(&hitbox.0.info);
             _ = self
                 .players
@@ -151,12 +156,25 @@ impl World {
                 crate::collision::HitConnection::Invuln => 0,
             };
 
-            self.players
+            let player = self
+                .players
                 .get_mut(hitbox.0.owner)
                 .unwrap()
                 .as_mut()
-                .unwrap()
-                .on_hit(hit_connection);
+                .unwrap();
+            if in_corner {
+                if player.is_grounded() {
+                    player.set_velocity(player.velocity().x(pushback * -1.5));
+                } else {
+                    const AIR_PUSHBACK: f32 = 20.0;
+                    player.set_velocity(
+                        player
+                            .velocity()
+                            .x(AIR_PUSHBACK * if player.get_direction() { -1.0 } else { 1.0 }),
+                    );
+                }
+            }
+            player.on_hit(hit_connection);
 
             self.trigger_hitstop(hitstop_frames);
         }
@@ -222,8 +240,17 @@ impl World {
         };
 
         if collider_1.intersects(&collider_2) {
-            let velocity_1 = self.players[0].as_ref().unwrap().velocity();
-            let velocity_2 = self.players[1].as_ref().unwrap().velocity();
+            let mut velocity_1 = self.players[0].as_ref().unwrap().velocity();
+            let mut velocity_2 = self.players[1].as_ref().unwrap().velocity();
+
+            if collider_1.position().x.abs() >= BORDER_X {
+                velocity_1.x = -velocity_2.x;
+                velocity_2.x = 0.0;
+            }
+            if collider_2.position().x.abs() >= BORDER_X {
+                velocity_2.x = -velocity_1.x;
+                velocity_1.x = 0.0;
+            }
 
             let overlap = collider_1.overlap(&collider_2);
             match (velocity_1.x.abs() > 1.0, velocity_2.x.abs() > 1.0) {
@@ -273,6 +300,21 @@ impl World {
                 player.set_position(pos.y(0.0));
             } else {
                 player.set_grounded(false);
+            }
+            let pos = player.position();
+            if pos.x > BORDER_X {
+                player.set_position(pos.x(BORDER_X));
+                let vel = player.velocity();
+                if player.should_wall_bounce() && vel.x.abs() > 10.0 {
+                    player.set_velocity(vel.x(-vel.x * 0.5));
+                }
+            }
+            if pos.x < -BORDER_X {
+                player.set_position(pos.x(-BORDER_X));
+                let vel = player.velocity();
+                if player.should_wall_bounce() && vel.x.abs() > 10.0 {
+                    player.set_velocity(vel.x(-vel.x * 0.5));
+                }
             }
         }
         {

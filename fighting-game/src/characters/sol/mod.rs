@@ -943,7 +943,7 @@ impl Entity for Sol<Tumble> {
         // TODO: maybe remove this in future
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(self.collider.clone()),
+                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
                 owner: self.player,
             },
             self.position,
@@ -951,6 +951,14 @@ impl Entity for Sol<Tumble> {
         );
 
         self
+    }
+
+    fn should_wall_bounce(&self) -> bool {
+        match self.state.knockdown {
+            KnockdownType::Hard => true,
+            KnockdownType::Soft => true,
+            KnockdownType::None => false,
+        }
     }
 }
 impl SolDamageableState for Tumble {}

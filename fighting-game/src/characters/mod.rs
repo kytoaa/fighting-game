@@ -31,6 +31,9 @@ pub trait Entity:
     fn counterhit(&self) -> bool {
         false
     }
+    fn should_wall_bounce(&self) -> bool {
+        false
+    }
 }
 pub trait Damageable {
     fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection);

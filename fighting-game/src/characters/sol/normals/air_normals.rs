@@ -345,7 +345,7 @@ impl SolDamageableState for AirMid {}
 
 const AIR_HEAVY_STARTUP: usize = 9;
 const AIR_HEAVY_ACTIVE: usize = 3;
-const AIR_HEAVY_RECOVERY: usize = 17;
+const AIR_HEAVY_RECOVERY: usize = 15;
 const AIR_HEAVY_DAMAGE: u16 = 20;
 
 pub struct AirHeavy;
@@ -403,7 +403,7 @@ impl Entity for Sol<AirHeavy> {
                                     hitstun: 41 + active_frames_extra_hitstun,
                                     blockstun: 21 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(70.0 * self.dir(), 90.0),
+                                        Vector2::new(70.0 * self.dir(), 120.0),
                                         KnockdownType::Soft,
                                     ),
                                     block_push: 40.0 * self.dir(),
