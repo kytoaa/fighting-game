@@ -456,5 +456,16 @@ impl Entity for Sol<AirHeavy> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const RECOVERY_FRAME: usize = AIR_HEAVY_STARTUP + AIR_HEAVY_ACTIVE + 10;
+
+        Some(match self.frame as usize {
+            0..AIR_HEAVY_STARTUP => ("sol/normals/j.h/j.h1".into(), LARGE_SPRITE_BASE_OFFSET),
+            AIR_HEAVY_STARTUP..RECOVERY_FRAME => {
+                ("sol/normals/j.h/j.h2".into(), LARGE_SPRITE_BASE_OFFSET)
+            }
+            RECOVERY_FRAME.. => ("sol/normals/j.h/j.h1".into(), LARGE_SPRITE_BASE_OFFSET),
+        })
+    }
 }
 impl SolDamageableState for AirHeavy {}
