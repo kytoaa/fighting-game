@@ -33,10 +33,12 @@ impl Entity for Sol<AirLight> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                    20.0, 16.0,
+                ))),
                 owner: self.player,
             },
-            self.position,
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
             1,
         );
 

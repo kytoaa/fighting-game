@@ -164,7 +164,11 @@ impl World {
                 .unwrap();
             if in_corner {
                 if player.is_grounded() {
-                    player.set_velocity(player.velocity().x(pushback * -1.5));
+                    player.set_velocity(
+                        player
+                            .velocity()
+                            .x(pushback.abs().max(50.0) * pushback.signum() * -1.5),
+                    );
                 } else {
                     const AIR_PUSHBACK: f32 = 20.0;
                     player.set_velocity(

@@ -790,6 +790,14 @@ where
 
         self.grounded_actionable_state(input)
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(if BLOCKING {
+            // TODO: change to blocking when done
+            ("sol/crouch_idle".into(), BASE_SPRITE_OFFSET)
+        } else {
+            ("sol/crouch_idle".into(), BASE_SPRITE_OFFSET)
+        })
+    }
 }
 impl SolDamageableState for Crouch<false> {}
 
@@ -816,7 +824,7 @@ impl Entity for Sol<JumpSquat> {
         );
 
         if self.frame > JUMPSQUAT_FRAMES as u8 {
-            if self.velocity.x.abs() < 1.0 {
+            if self.state.direction != self.dir() || self.velocity.x.abs() < 1.0 {
                 self.velocity.x = WALK_SPEED * self.state.direction;
             }
             self.velocity.y = Vector2::UP.y * JUMP_FORCE;
@@ -970,14 +978,43 @@ struct BlockStun<const CROUCHING: bool> {
     length: usize,
 }
 impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
-    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
         self.velocity = self.velocity.move_towards(&Vector2::ZERO, BLOCKSTUN_DRAG);
+
+        if CROUCHING {
+            world.spawn_hurtbox(
+                crate::collision::Hurtbox {
+                    shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
+                    owner: self.player,
+                },
+                self.position,
+                1,
+            );
+        } else {
+            world.spawn_hurtbox(
+                crate::collision::Hurtbox {
+                    shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                    owner: self.player,
+                },
+                self.position,
+                1,
+            );
+        }
+
         if self.frame >= self.state.length as u8 {
-            Box::new(self.transition(Stand, true))
+            self.grounded_actionable_state(input)
         } else {
             self
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        // TODO: replace with sprites when theyre done
+        Some(if CROUCHING {
+            ("sol/crouch_idle".into(), BASE_SPRITE_OFFSET)
+        } else {
+            ("sol/idle".into(), BASE_SPRITE_OFFSET)
+        })
     }
 }
 #[derive(Debug)]

@@ -199,7 +199,7 @@ impl Entity for Sol<CrouchHeavy> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/jump_mid".into(), BASE_SPRITE_OFFSET))
+        Some(("sol/crouch_idle".into(), BASE_SPRITE_OFFSET))
     }
     fn actionable(&self) -> bool {
         false

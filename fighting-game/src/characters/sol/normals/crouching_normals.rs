@@ -35,7 +35,7 @@ impl Entity for Sol<CrouchLight> {
                 shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
                 owner: self.player,
             },
-            self.position,
+            self.position + Vector2::new(-3.0 * self.dir(), 0.0),
             1,
         );
 
@@ -86,7 +86,7 @@ impl Entity for Sol<CrouchLight> {
                                 hit_type: crate::collision::HitType::Light,
                             },
                         },
-                        self.position + Vector2::new(10.0 * self.dir(), -3.0),
+                        self.position + Vector2::new(6.0 * self.dir(), -3.0),
                         1,
                     );
 
@@ -97,7 +97,7 @@ impl Entity for Sol<CrouchLight> {
                             ))),
                             owner: self.player,
                         },
-                        self.position + Vector2::new(10.0 * self.dir(), -2.0),
+                        self.position + Vector2::new(6.0 * self.dir(), -2.0),
                         1,
                     )
                 } else {
@@ -157,6 +157,20 @@ impl Entity for Sol<CrouchLight> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const RECOVERY_FRAME: usize = CROUCH_LIGHT_STARTUP + CROUCH_LIGHT_ACTIVE + 3;
+
+        Some(match self.frame as usize {
+            0..CROUCH_LIGHT_STARTUP => (
+                "sol/normals/2l/2l1".into(),
+                BASE_SPRITE_OFFSET + Vector2::new(-2.0 * self.dir(), 0.0),
+            ),
+            CROUCH_LIGHT_STARTUP..RECOVERY_FRAME => {
+                ("sol/normals/2l/2l2".into(), BASE_SPRITE_OFFSET)
+            }
+            RECOVERY_FRAME.. => ("sol/normals/2l/2l3".into(), BASE_SPRITE_OFFSET),
+        })
     }
 }
 impl SolDamageableState for CrouchLight {}
