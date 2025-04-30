@@ -3,6 +3,18 @@ use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
 use crate::world::World;
 
+macro_rules! try_transition {
+    ($f:ident; $($arg:expr),*) => {
+        try_transition!(Self::$f; $($arg),*)
+    };
+    ($f:path; $($arg:expr),*) => {
+        match $f($($arg),*) {
+            Ok(state) => return state,
+            Err(e) => e,
+        }
+    };
+}
+
 pub mod sol;
 mod wrapper_state;
 

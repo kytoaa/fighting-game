@@ -99,6 +99,14 @@ impl InputDir {
             InputDir::Dir9 => InputDir::Dir7,
         }
     }
+    /// true: right, false: left
+    pub const fn dir(self, dir: bool) -> InputDir {
+        if !dir {
+            self.invert()
+        } else {
+            self
+        }
+    }
 }
 impl InputDir {
     pub const fn from_vector2(value: Vector2) -> Self {

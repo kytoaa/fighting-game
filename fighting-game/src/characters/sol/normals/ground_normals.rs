@@ -90,10 +90,8 @@ impl Entity for Sol<CloseMid> {
                         1,
                     );
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
+
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -122,10 +120,8 @@ impl Entity for Sol<CloseMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
+
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -271,10 +267,8 @@ impl Entity for Sol<FarMid> {
                         1,
                     );
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
+
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -294,10 +288,8 @@ impl Entity for Sol<FarMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
+
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -385,10 +377,8 @@ impl Entity for Sol<StandLight> {
                     Ok(state) => return state,
                     Err(s) => self = s,
                 }
-                match self.grounded_special_cancel(input) {
-                    Ok(state) => return state,
-                    Err(s) => self = s,
-                }
+                self = try_transition!(grounded_normal_cancel_options; self, input);
+
                 if input.input_dir().is_down() {
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(CrouchMid, true));
@@ -481,7 +471,7 @@ impl Entity for Sol<StandLight> {
                             hitstun: 9 + active_frames_extra_hitstun,
                             blockstun: 8 + active_frames_extra_hitstun,
                             hit_effect: HitEffect::Pushback(10.0 * self.dir()),
-                            block_push: 8.0 * self.dir(),
+                            block_push: 60.0 * self.dir(),
                         },
                         air: HitInfo {
                             damage: STAND_LIGHT_SECOND_HIT_DAMAGE,
@@ -501,7 +491,7 @@ impl Entity for Sol<StandLight> {
                                 Vector2::new(20.0 * self.dir(), 50.0),
                                 KnockdownType::None,
                             ),
-                            block_push: 0.0 * self.dir(),
+                            block_push: 60.0 * self.dir(),
                         },
                         priority: 10,
                         attack_type: crate::collision::AttackType::Mid,
@@ -579,10 +569,8 @@ impl Entity for Sol<StandLight> {
                         1,
                     );
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
+
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -732,19 +720,13 @@ impl Entity for Sol<StandHeavy> {
                         1,
                     );
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.frame < (RECOVERY_FRAME + 5) as u8 && self.has_hit {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                 }
                 self
             }

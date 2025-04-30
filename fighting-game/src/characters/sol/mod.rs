@@ -300,7 +300,7 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
                 }
             }
             false => {
-                if let crate::collision::AttackType::High = info.attack_type {
+                if let crate::collision::AttackType::Low = info.attack_type {
                     return Sol::hit(self, info);
                 }
             }
@@ -403,7 +403,11 @@ where
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        match self.grounded_special_cancel(input) {
+        match self.grounded_normal_cancel_options(input) {
+            Ok(state) => return Ok(state),
+            Err(s) => self = s,
+        }
+        match self.grounded_command_normal_cancel(input) {
             Ok(state) => return Ok(state),
             Err(s) => self = s,
         }
@@ -470,10 +474,7 @@ where
     }
     fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
         self.combo_hit_count = 0;
-        match self.air_attack_options(input) {
-            Ok(s) => s,
-            Err(s) => s.air_movement_state(input),
-        }
+        try_transition!(air_attack_options; self, input).air_movement_state(input)
     }
     fn air_attack_options(
         self: Box<Sol<S>>,
@@ -490,34 +491,42 @@ where
         }
         Err(self)
     }
+    fn air_movement_cancel_options(
+        mut self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if !self.has_air_action {
+            return Err(self);
+        }
+        if input.has_action(&Action::DoublePress(self.forward_dir()))
+            && input.move_dir().x == self.dir()
+        {
+            self.has_air_action = false;
+            return Ok(Box::new(self.transition(Airdash, true)));
+        }
+        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+            self.has_air_action = false;
+            return Ok(Box::new(self.transition(Backdash, true)));
+        }
+        let move_dir = input.move_dir();
+        if input.has_action(&Action::JumpPress(InputDir::Dir7))
+            || input.has_action(&Action::JumpPress(InputDir::Dir8))
+            || input.has_action(&Action::JumpPress(InputDir::Dir9))
+        {
+            self.double_jump(move_dir.x);
+            return Ok(self.air_actionable_state(input));
+        }
+        Err(self)
+    }
     fn air_movement_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
         let dir = input.move_dir();
 
         if self.grounded {
-            return if dir.x == -self.dir() {
-                Box::new(self.transition(WalkState::<true>, true))
-            } else if dir.x == self.dir() {
-                Box::new(self.transition(WalkState::<false>, true))
-            } else {
-                Box::new(self.transition(Stand, true))
-            };
+            // NOTE: resets frame as lands in case of walking, walking does not reset frame
+            self.frame = 0;
+            return self.grounded_actionable_state(input);
         }
-        if input.has_action(&Action::DoublePress(self.forward_dir())) && self.has_air_action {
-            self.has_air_action = false;
-            return Box::new(self.transition(Airdash, true));
-        }
-        if input.has_action(&Action::DoublePress(self.backward_dir())) && self.has_air_action {
-            self.has_air_action = false;
-            return Box::new(self.transition(Backdash, true));
-        }
-
-        if (input.has_action(&Action::JumpPress(InputDir::Dir7))
-            || input.has_action(&Action::JumpPress(InputDir::Dir8))
-            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
-            && self.has_air_action
-        {
-            self.double_jump(dir.x)
-        }
+        self = try_transition!(air_movement_cancel_options; self, input);
 
         if dir == Vector2::new(-self.dir(), 0.0) {
             Box::new(self.transition(Air::<true>, false))
@@ -541,7 +550,31 @@ where
         }
     }
 
-    fn grounded_special_cancel(
+    fn grounded_command_normal_cancel(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if input.has_action(&Action::Pressed(
+            Button::Heavy,
+            Some(InputDir::Dir3.dir(self.direction)),
+        )) {
+            return Ok(Box::new(self.transition(Heavy3, true)));
+        }
+
+        Err(self)
+    }
+
+    fn grounded_normal_cancel_options(
+        mut self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        self = match self.grounded_special_cancel_options(input) {
+            Ok(state) => return Ok(state),
+            Err(s) => s,
+        };
+        self.grounded_command_normal_cancel(input)
+    }
+    fn grounded_special_cancel_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
@@ -824,7 +857,7 @@ impl Entity for Sol<JumpSquat> {
         );
 
         if self.frame > JUMPSQUAT_FRAMES as u8 {
-            if self.state.direction != self.dir() || self.velocity.x.abs() < 1.0 {
+            if self.velocity.x * self.state.direction < 1.0 {
                 self.velocity.x = WALK_SPEED * self.state.direction;
             }
             self.velocity.y = Vector2::UP.y * JUMP_FORCE;

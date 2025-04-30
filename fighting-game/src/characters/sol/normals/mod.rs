@@ -6,5 +6,6 @@ mod ground_normals;
 use super::*;
 
 pub use air_normals::*;
+pub use command_normals::*;
 pub use crouching_normals::*;
 pub use ground_normals::*;

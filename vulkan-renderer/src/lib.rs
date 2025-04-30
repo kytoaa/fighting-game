@@ -367,7 +367,9 @@ impl GameState {
                         sprite_name.push_str(".png");
                         //println!("{}", &sprite_name);
                         renderer::Material::Sprite(
-                            assets.get_sprite_handle(&sprite_name).unwrap(),
+                            assets
+                                .get_sprite_handle(&sprite_name)
+                                .expect(&format!("failed to find sprite {}", &sprite_name)),
                             player.position() + offset,
                             !player.get_direction(),
                             0.5,

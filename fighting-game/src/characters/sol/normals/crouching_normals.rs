@@ -101,10 +101,7 @@ impl Entity for Sol<CrouchLight> {
                         1,
                     )
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -128,10 +125,7 @@ impl Entity for Sol<CrouchLight> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) < RECOVERY_FRAME + 2 {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -265,10 +259,7 @@ impl Entity for Sol<CrouchMid> {
                         1,
                     )
                 } else {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -283,10 +274,7 @@ impl Entity for Sol<CrouchMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) <= RECOVERY_FRAME + 5 {
-                    match self.grounded_special_cancel(input) {
-                        Ok(state) => return state,
-                        Err(s) => self = s,
-                    }
+                    self = try_transition!(grounded_normal_cancel_options; self, input);
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),

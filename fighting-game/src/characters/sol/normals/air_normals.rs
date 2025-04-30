@@ -103,48 +103,21 @@ impl Entity for Sol<AirLight> {
                         1,
                     );
                 } else {
-                    if self.has_air_action
-                        && input.has_action(&Action::DoublePress(self.forward_dir()))
-                    {
-                        self.has_air_action = false;
-                        return Box::new(self.transition(Airdash, true));
-                    }
-                    if self.has_air_action
-                        && (input.has_action(&Action::JumpPress(InputDir::Dir7))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir8))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
-                    {
-                        self.double_jump(input.move_dir().x);
-                        return self.air_actionable_state(input);
-                    }
+                    self = try_transition!(air_movement_cancel_options; self, input);
+
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(AirMid, true));
+                    }
+                    if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        return Box::new(self.transition(AirHeavy, true));
                     }
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
-                    if self.has_air_action
-                        && input.has_action(&Action::DoublePress(self.forward_dir()))
-                    {
-                        self.has_air_action = false;
-                        return Box::new(self.transition(Airdash, true));
-                    }
-                    if self.has_air_action
-                        && input.has_action(&Action::DoublePress(self.backward_dir()))
-                    {
-                        self.has_air_action = false;
-                        return Box::new(self.transition(Backdash, true));
-                    }
-                    if self.has_air_action
-                        && (input.has_action(&Action::JumpPress(InputDir::Dir7))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir8))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
-                    {
-                        self.double_jump(input.move_dir().x);
-                        return self.air_actionable_state(input);
-                    }
+                    self = try_transition!(air_movement_cancel_options; self, input);
+
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(AirMid, true));
                     }
@@ -292,26 +265,8 @@ impl Entity for Sol<AirMid> {
                         1,
                     );
                 } else {
-                    if self.has_air_action
-                        && input.has_action(&Action::DoublePress(self.forward_dir()))
-                    {
-                        self.has_air_action = false;
-                        return Box::new(self.transition(Airdash, true));
-                    }
-                    if self.has_air_action
-                        && input.has_action(&Action::DoublePress(self.backward_dir()))
-                    {
-                        self.has_air_action = false;
-                        return Box::new(self.transition(Backdash, true));
-                    }
-                    if self.has_air_action
-                        && (input.has_action(&Action::JumpPress(InputDir::Dir7))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir8))
-                            || input.has_action(&Action::JumpPress(InputDir::Dir9)))
-                    {
-                        self.double_jump(input.move_dir().x);
-                        return self.air_actionable_state(input);
-                    }
+                    self = try_transition!(air_movement_cancel_options; self, input);
+
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(AirHeavy, true));
                     }
@@ -441,12 +396,16 @@ impl Entity for Sol<AirHeavy> {
                         1,
                     )
                 } else {
+                    self = try_transition!(air_movement_cancel_options; self, input);
+
                     // NOTE: add special cancels
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
-                if self.has_hit {}
+                if self.has_hit {
+                    self = try_transition!(air_movement_cancel_options; self, input);
+                }
                 self
             }
             _ => self.air_actionable_state(input),
