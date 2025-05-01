@@ -297,5 +297,30 @@ impl Entity for Sol<CrouchMid> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const STARTUP_FRAME: usize = CROUCH_MID_STARTUP - 4;
+        const RECOVERY_FRAME: usize = CROUCH_MID_STARTUP + CROUCH_MID_ACTIVE;
+        const FINAL_FRAME: usize = RECOVERY_FRAME + 4;
+
+        Some(match self.frame as usize {
+            0..STARTUP_FRAME => ("sol/normals/2m/2m1".into(), BASE_SPRITE_OFFSET),
+            STARTUP_FRAME..CROUCH_MID_STARTUP => (
+                "sol/normals/2m/2m2".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 8.0 * self.dir(),
+            ),
+            CROUCH_MID_STARTUP..RECOVERY_FRAME => (
+                "sol/normals/2m/2m3".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 12.0 * self.dir(),
+            ),
+            RECOVERY_FRAME..FINAL_FRAME => (
+                "sol/normals/2m/2m4".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * self.dir(),
+            ),
+            FINAL_FRAME.. => (
+                "sol/normals/2m/2m5".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * self.dir(),
+            ),
+        })
+    }
 }
 impl SolDamageableState for CrouchMid {}
