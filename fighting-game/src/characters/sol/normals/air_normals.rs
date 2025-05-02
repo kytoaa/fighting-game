@@ -1,10 +1,10 @@
-use super::{Airdash, Backdash, Entity, Grounded};
+use super::{Entity, Grounded};
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
-use crate::input::{directions::InputDir, Action, Button, InputHandler};
+use crate::input::{Action, Button, InputHandler};
 use crate::world::World;
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, DEFAULT_COLLIDER};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
 
 const LARGE_SPRITE_BASE_OFFSET: Vector2 = BASE_SPRITE_OFFSET;
 
@@ -325,7 +325,7 @@ impl Entity for Sol<AirHeavy> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,

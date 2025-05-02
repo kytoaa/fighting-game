@@ -12,8 +12,10 @@ use crate::world::World;
 
 mod attacks;
 mod normals;
+mod specials;
 use attacks::*;
 use normals::*;
+use specials::*;
 
 const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
@@ -22,11 +24,11 @@ const MIN_RUN_FRAMES_BEFORE_CANCEL: u8 = 4;
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
 const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
 
-const DEFAULT_COLLIDER: BoundingBox = BoundingBox::pos_size(
+const STANDING_HURTBOX: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
     Vector2::new(12.0, 24.0),
 );
-const CROUCHING_COLLIDER: BoundingBox = BoundingBox::pos_size(
+const CROUCHING_HURTBOX: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (16.0 - COLLIDER_SIZE.y) / 2.0),
     Vector2::new(12.0, 16.0),
 );
@@ -403,7 +405,7 @@ where
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
-        match self.grounded_normal_cancel_options(input) {
+        match self.cancel_options_from_grounded_normal(input) {
             Ok(state) => return Ok(state),
             Err(s) => self = s,
         }
@@ -425,7 +427,7 @@ where
 
             // NOTE: 2h
             if input.has_action(&Action::Pressed(Button::Heavy, None)) {
-                return Ok(Box::new(self.transition(CrouchHeavyStartup(0), true)));
+                return Ok(Box::new(self.transition(CrouchHeavy, true)));
             }
         }
 
@@ -462,10 +464,11 @@ where
                 }
             }
             (d, 0.0) => {
+                let reset_frame = self.frame >= WALK_ANIM_LENGTH * FRAMES_PER_WALK_ANIM_FRAME;
                 if d.round() == -self.dir() {
-                    Box::new(self.transition(WalkState::<true>, false))
+                    Box::new(self.transition(WalkState::<true>, reset_frame))
                 } else {
-                    Box::new(self.transition(WalkState::<false>, false))
+                    Box::new(self.transition(WalkState::<false>, reset_frame))
                 }
             }
             (d, 1.0) => Box::new(self.transition(JumpSquat { direction: d }, true)),
@@ -564,7 +567,7 @@ where
         Err(self)
     }
 
-    fn grounded_normal_cancel_options(
+    fn cancel_options_from_grounded_normal(
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
@@ -619,7 +622,7 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -659,7 +662,7 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -702,7 +705,7 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -752,7 +755,7 @@ impl Entity for Sol<BackdashVulnerable> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -784,7 +787,7 @@ impl Entity for Sol<Stand> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -814,7 +817,7 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -849,7 +852,7 @@ impl Entity for Sol<JumpSquat> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -940,7 +943,7 @@ impl Entity for Sol<BasicHitstun> {
         self.frame += 1;
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -984,7 +987,7 @@ impl Entity for Sol<Tumble> {
         // TODO: maybe remove this in future
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -1018,7 +1021,7 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
         if CROUCHING {
             world.spawn_hurtbox(
                 crate::collision::Hurtbox {
-                    shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
+                    shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
                     owner: self.player,
                 },
                 self.position,
@@ -1027,7 +1030,7 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
         } else {
             world.spawn_hurtbox(
                 crate::collision::Hurtbox {
-                    shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                    shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                     owner: self.player,
                 },
                 self.position,

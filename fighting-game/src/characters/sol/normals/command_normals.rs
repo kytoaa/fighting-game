@@ -1,7 +1,4 @@
-use super::{
-    ground_normals::{CloseMid, FarMid, StandHeavy},
-    Airdash, Backdash, Entity, Grounded, RunStartState,
-};
+use super::Entity;
 use crate::collision::{
     AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, Hurtbox, KnockdownType,
 };
@@ -9,7 +6,7 @@ use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{directions::InputDir, Action, Button, InputHandler};
 use crate::world::World;
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, CROUCHING_COLLIDER, DEFAULT_COLLIDER};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, CROUCHING_HURTBOX, STANDING_HURTBOX};
 
 const HEAVY_3_STARTUP: usize = 8;
 const HEAVY_3_ACTIVE: usize = 3;
@@ -95,13 +92,13 @@ impl Entity for Sol<Heavy3> {
                         1,
                     );
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) < RECOVERY_FRAME + 2 {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                 }
                 self
             }
@@ -113,6 +110,29 @@ impl Entity for Sol<Heavy3> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const RECOVERY_FRAME: usize = HEAVY_3_STARTUP + HEAVY_3_ACTIVE;
+        const FINAL_FRAME: usize = RECOVERY_FRAME + HEAVY_3_RECOVERY / 2;
+
+        Some(match self.frame as usize {
+            0..HEAVY_3_STARTUP => (
+                "sol/command_normals/3h/3h1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+            HEAVY_3_STARTUP..RECOVERY_FRAME => (
+                "sol/command_normals/3h/3h2".into(),
+                BASE_SPRITE_OFFSET + Vector2::RIGHT * 4.0 * self.dir(),
+            ),
+            RECOVERY_FRAME..FINAL_FRAME => (
+                "sol/command_normals/3h/3h3".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+            FINAL_FRAME.. => (
+                "sol/command_normals/3h/3h4".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+        })
     }
 }
 impl SolDamageableState for Heavy3 {}
@@ -139,7 +159,7 @@ impl Entity for Sol<Heavy6> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),

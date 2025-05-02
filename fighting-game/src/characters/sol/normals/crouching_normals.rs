@@ -1,15 +1,15 @@
 use super::{
     ground_normals::{CloseMid, FarMid, StandHeavy},
-    Airdash, Backdash, Entity, Grounded, RunStartState,
+    Entity, RunStartState,
 };
 use crate::collision::{
     AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, Hurtbox, KnockdownType,
 };
 use crate::datatypes::{BoundingBox, Vector2};
-use crate::input::{directions::InputDir, Action, Button, InputHandler};
+use crate::input::{Action, Button, InputHandler};
 use crate::world::World;
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, CROUCHING_COLLIDER, DEFAULT_COLLIDER};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, CROUCHING_HURTBOX, STANDING_HURTBOX};
 
 const CROUCH_LIGHT_STARTUP: usize = 4;
 const CROUCH_LIGHT_ACTIVE: usize = 3;
@@ -32,7 +32,7 @@ impl Entity for Sol<CrouchLight> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
                 owner: self.player,
             },
             self.position + Vector2::new(-3.0 * self.dir(), 0.0),
@@ -101,7 +101,7 @@ impl Entity for Sol<CrouchLight> {
                         1,
                     )
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -125,7 +125,7 @@ impl Entity for Sol<CrouchLight> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) < RECOVERY_FRAME + 2 {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -190,7 +190,7 @@ impl Entity for Sol<CrouchMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(CROUCHING_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -259,7 +259,7 @@ impl Entity for Sol<CrouchMid> {
                         1,
                     )
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
                     {
@@ -274,7 +274,7 @@ impl Entity for Sol<CrouchMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) <= RECOVERY_FRAME + 5 {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
                         RunStartState::dash_cancel(),
@@ -324,3 +324,163 @@ impl Entity for Sol<CrouchMid> {
     }
 }
 impl SolDamageableState for CrouchMid {}
+
+const CROUCH_HEAVY_STARTUP: usize = 10;
+const CROUCH_HEAVY_EARLY_ACTIVE: usize = 3;
+const CROUCH_HEAVY_ACTIVE: usize = 3;
+const CROUCH_HEAVY_RECOVERY: usize = 25;
+const CROUCH_HEAVY_DAMAGE: u16 = 23;
+
+pub struct CrouchHeavy;
+impl Entity for Sol<CrouchHeavy> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const SECOND_ACTIVE: usize = CROUCH_HEAVY_STARTUP + CROUCH_HEAVY_EARLY_ACTIVE;
+        const RECOVERY_FRAME: usize = SECOND_ACTIVE + CROUCH_HEAVY_ACTIVE;
+        const END_FRAME: usize = RECOVERY_FRAME + CROUCH_HEAVY_RECOVERY;
+        const DECEL: f32 = 8.0;
+
+        if self.frame == 0 {
+            self.has_hit = false;
+        }
+
+        self.frame += 1;
+        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+
+        let hitbox_data = if self.frame as usize >= CROUCH_HEAVY_STARTUP
+            && (self.frame as usize) < RECOVERY_FRAME
+        {
+            let active_frames_extra_hitstun = (CROUCH_HEAVY_EARLY_ACTIVE + CROUCH_HEAVY_ACTIVE)
+                - (self.frame as usize - CROUCH_HEAVY_STARTUP);
+
+            Some(AttackData {
+                grounded: HitInfo {
+                    damage: CROUCH_HEAVY_DAMAGE,
+                    hitstun: 20 + active_frames_extra_hitstun,
+                    blockstun: 12 + active_frames_extra_hitstun,
+                    hit_effect: HitEffect::Launcher(
+                        Vector2::new(30.0 * self.dir(), 90.0),
+                        KnockdownType::None,
+                    ),
+                    block_push: 60.0 * self.dir(),
+                },
+                air: HitInfo {
+                    damage: CROUCH_HEAVY_DAMAGE,
+                    hitstun: 20 + active_frames_extra_hitstun,
+                    blockstun: 12 + active_frames_extra_hitstun,
+                    hit_effect: HitEffect::Launcher(
+                        Vector2::new(20.0 * self.dir(), 100.0),
+                        KnockdownType::Soft,
+                    ),
+                    block_push: 80.0 * self.dir(),
+                },
+                counterhit: HitInfo {
+                    damage: CROUCH_HEAVY_DAMAGE,
+                    hitstun: 20 + active_frames_extra_hitstun,
+                    blockstun: 12 + active_frames_extra_hitstun,
+                    hit_effect: HitEffect::Launcher(
+                        Vector2::new(20.0 * self.dir(), 100.0),
+                        KnockdownType::None,
+                    ),
+                    block_push: 60.0 * self.dir(),
+                },
+                priority: 10,
+                attack_type: crate::collision::AttackType::Mid,
+                hitbox_id: 1,
+                hit_type: crate::collision::HitType::Heavy,
+            })
+        } else {
+            None
+        };
+
+        if self.has_hit {
+            self = try_transition!(cancel_options_from_grounded_normal; self, input);
+            match self
+                .grounded_movement_cancel_options_from_attack(input, RunStartState::dash_cancel())
+            {
+                Ok(state) => return state,
+                Err(s) => self = s,
+            }
+        }
+
+        match self.frame as usize {
+            0..CROUCH_HEAVY_STARTUP => {
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
+                        owner: self.player,
+                    },
+                    self.position,
+                    1,
+                );
+                self
+            }
+            CROUCH_HEAVY_STARTUP..SECOND_ACTIVE => {
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
+                        owner: self.player,
+                    },
+                    self.position,
+                    1,
+                );
+                if !self.has_hit {
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                                10.0, 10.0,
+                            ))),
+                            info: hitbox_data.unwrap(),
+                            owner: self.player,
+                        },
+                        self.position + Vector2::new(10.0 * self.dir(), 8.0),
+                        1,
+                    );
+                }
+                self
+            }
+            SECOND_ACTIVE..RECOVERY_FRAME => {
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
+                        owner: self.player,
+                    },
+                    self.position,
+                    1,
+                );
+                if !self.has_hit {
+                    world.spawn_hitbox(
+                        Hitbox {
+                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                                10.0, 24.0,
+                            ))),
+                            info: hitbox_data.unwrap(),
+                            owner: self.player,
+                        },
+                        self.position + Vector2::new(10.0 * self.dir(), 15.0),
+                        1,
+                    );
+                }
+                self
+            }
+            RECOVERY_FRAME..END_FRAME => {
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
+                        owner: self.player,
+                    },
+                    self.position,
+                    1,
+                );
+                self
+            }
+            _ => self.grounded_actionable_state(input),
+        }
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+}
+impl SolDamageableState for CrouchHeavy {}

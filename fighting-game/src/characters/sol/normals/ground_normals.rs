@@ -1,17 +1,13 @@
 use super::{
     crouching_normals::{CrouchLight, CrouchMid},
-    Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
-    RunStartState, Velocity, WALK_SPEED,
+    Entity, RunStartState,
 };
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
 use crate::datatypes::{BoundingBox, Vector2};
-use crate::input::{
-    directions::{InputDir, Motion},
-    Action, Button, InputHandler,
-};
+use crate::input::{Action, Button, InputHandler};
 use crate::world::World;
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, DEFAULT_COLLIDER};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
 
 const CLOSE_MID_STARTUP: usize = 7;
 const CLOSE_MID_ACTIVE: usize = 6;
@@ -37,7 +33,7 @@ impl Entity for Sol<CloseMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -90,7 +86,7 @@ impl Entity for Sol<CloseMid> {
                         1,
                     );
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
@@ -120,7 +116,7 @@ impl Entity for Sol<CloseMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
@@ -193,7 +189,7 @@ impl Entity for Sol<FarMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position,
@@ -267,7 +263,7 @@ impl Entity for Sol<FarMid> {
                         1,
                     );
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                     match self
                         .grounded_movement_cancel_options_from_attack(input, RunStartState::<15>)
@@ -288,7 +284,7 @@ impl Entity for Sol<FarMid> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
@@ -360,7 +356,7 @@ impl Entity for Sol<StandLight> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
@@ -377,7 +373,7 @@ impl Entity for Sol<StandLight> {
                     Ok(state) => return state,
                     Err(s) => self = s,
                 }
-                self = try_transition!(grounded_normal_cancel_options; self, input);
+                self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                 if input.input_dir().is_down() {
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
@@ -569,7 +565,7 @@ impl Entity for Sol<StandLight> {
                         1,
                     );
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
 
                     match self.grounded_movement_cancel_options_from_attack(
                         input,
@@ -651,7 +647,7 @@ impl Entity for Sol<StandHeavy> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(DEFAULT_COLLIDER),
+                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
                 owner: self.player,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
@@ -720,13 +716,13 @@ impl Entity for Sol<StandHeavy> {
                         1,
                     );
                 } else {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.frame < (RECOVERY_FRAME + 5) as u8 && self.has_hit {
-                    self = try_transition!(grounded_normal_cancel_options; self, input);
+                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
                 }
                 self
             }
