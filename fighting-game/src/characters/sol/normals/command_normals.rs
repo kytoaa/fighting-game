@@ -92,13 +92,13 @@ impl Entity for Sol<Heavy3> {
                         1,
                     );
                 } else {
-                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
+                    self = try_transition!(grounded_special_cancel_options; self, input);
                 }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit && (self.frame as usize) < RECOVERY_FRAME + 2 {
-                    self = try_transition!(cancel_options_from_grounded_normal; self, input);
+                    self = try_transition!(grounded_special_cancel_options; self, input);
                 }
                 self
             }
