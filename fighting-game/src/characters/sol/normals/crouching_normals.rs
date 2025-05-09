@@ -112,6 +112,9 @@ impl Entity for Sol<CrouchLight> {
                         if input.has_action(&Action::Pressed(Button::Mid, None)) {
                             return Box::new(self.transition(CrouchMid, true));
                         }
+                        if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                            return Box::new(self.transition(CrouchHeavy, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         if self.distance_from_other_player < CloseMid::MAX_DISTANCE {
@@ -132,6 +135,14 @@ impl Entity for Sol<CrouchLight> {
                     ) {
                         Ok(state) => return state,
                         Err(s) => self = s,
+                    }
+                    if input.input_dir().is_down() {
+                        if input.has_action(&Action::Pressed(Button::Mid, None)) {
+                            return Box::new(self.transition(CrouchMid, true));
+                        }
+                        if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                            return Box::new(self.transition(CrouchHeavy, true));
+                        }
                     }
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         if self.distance_from_other_player < CloseMid::MAX_DISTANCE {
@@ -267,6 +278,9 @@ impl Entity for Sol<CrouchMid> {
                         Err(s) => self = s,
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        if input.input_dir().is_down() {
+                            return Box::new(self.transition(CrouchHeavy, true));
+                        }
                         return Box::new(self.transition(StandHeavy, true));
                     }
                 }
@@ -283,6 +297,9 @@ impl Entity for Sol<CrouchMid> {
                         Err(s) => self = s,
                     }
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
+                        if input.input_dir().is_down() {
+                            return Box::new(self.transition(CrouchHeavy, true));
+                        }
                         return Box::new(self.transition(StandHeavy, true));
                     }
                 }
@@ -423,6 +440,16 @@ impl Entity for Sol<CrouchHeavy> {
                     self.position,
                     1,
                 );
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            Vector2::new(10.0, 14.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position + Vector2::new(6.0 * self.dir(), 8.0),
+                    1,
+                );
                 if !self.has_hit {
                     world.spawn_hitbox(
                         Hitbox {
@@ -432,7 +459,7 @@ impl Entity for Sol<CrouchHeavy> {
                             info: hitbox_data.unwrap(),
                             owner: self.player,
                         },
-                        self.position + Vector2::new(10.0 * self.dir(), 8.0),
+                        self.position + Vector2::new(8.0 * self.dir(), 8.0),
                         1,
                     );
                 }
@@ -447,16 +474,26 @@ impl Entity for Sol<CrouchHeavy> {
                     self.position,
                     1,
                 );
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            Vector2::new(10.0, 20.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position + Vector2::new(8.0 * self.dir(), 16.0),
+                    1,
+                );
                 if !self.has_hit {
                     world.spawn_hitbox(
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
-                                10.0, 24.0,
+                                10.0, 28.0,
                             ))),
                             info: hitbox_data.unwrap(),
                             owner: self.player,
                         },
-                        self.position + Vector2::new(10.0 * self.dir(), 15.0),
+                        self.position + Vector2::new(10.0 * self.dir(), 24.0),
                         1,
                     );
                 }
@@ -481,6 +518,23 @@ impl Entity for Sol<CrouchHeavy> {
     }
     fn actionable(&self) -> bool {
         false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const SECOND_ACTIVE: usize = CROUCH_HEAVY_STARTUP + CROUCH_HEAVY_EARLY_ACTIVE;
+
+        Some(match self.frame as usize {
+            0..CROUCH_HEAVY_STARTUP => (
+                "sol/normals/2h/2h1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 9.0 * self.dir(),
+            ),
+            CROUCH_HEAVY_STARTUP..SECOND_ACTIVE => {
+                ("sol/normals/2h/2h2".into(), BASE_SPRITE_OFFSET)
+            }
+            SECOND_ACTIVE.. => (
+                "sol/normals/2h/2h3".into(),
+                BASE_SPRITE_OFFSET + Vector2::UP * 8.0,
+            ),
+        })
     }
 }
 impl SolDamageableState for CrouchHeavy {}
