@@ -459,7 +459,7 @@ impl Entity for Sol<CrouchHeavy> {
                             info: hitbox_data.unwrap(),
                             owner: self.player,
                         },
-                        self.position + Vector2::new(8.0 * self.dir(), 8.0),
+                        self.position + Vector2::new(4.0 * self.dir(), 8.0),
                         1,
                     );
                 }

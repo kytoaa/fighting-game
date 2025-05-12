@@ -10,10 +10,8 @@ use crate::input::{
 };
 use crate::world::World;
 
-mod attacks;
 mod normals;
 mod specials;
-use attacks::*;
 use normals::*;
 use specials::*;
 
@@ -483,6 +481,28 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        match self.air_special_cancel_options(input) {
+            s @ Ok(_) => s,
+            Err(s) => s.air_normal_options(input),
+        }
+    }
+    fn air_special_cancel_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        if input.has_motion_input(
+            &Motion::dp().direction(self.direction),
+            &Action::Pressed(Button::Heavy, None),
+        ) {
+            return Ok(Box::new(self.transition(VolcanicViper, true)));
+        }
+
+        Err(self)
+    }
+    fn air_normal_options(
+        self: Box<Sol<S>>,
+        input: &InputHandler,
+    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
         if input.has_action(&Action::Pressed(Button::Light, None)) {
             return Ok(Box::new(self.transition(AirLight, true)));
         }
@@ -581,12 +601,28 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        // NOTE: VOLCANIC VIPER!!!!
+        if input.has_motion_input(
+            &Motion::dp().direction(self.direction),
+            &Action::Pressed(Button::Heavy, None),
+        ) {
+            return Ok(Box::new(self.transition(VolcanicViper, true)));
+        }
+
         // NOTE: fafnir
         if input.has_motion_input(
             &Motion::half_circle().direction(self.direction),
             &Action::Pressed(Button::Heavy, None),
         ) {
-            return Ok(Box::new(self.transition(FafnirStartup(0), true)));
+            // TODO: fafnir
+        }
+
+        // NOTE: bandit revolver
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(self.direction),
+            &Action::Pressed(Button::Mid, None),
+        ) {
+            return Ok(Box::new(self.transition(BanditRevolverGrounded, true)));
         }
 
         // NOTE: gun flame

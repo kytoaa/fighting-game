@@ -111,12 +111,16 @@ impl World {
                  (hitbox_index, hurtbox_index)| {
                     let hitbox = &self.hitboxes[*hitbox_index];
                     let hurtbox = &self.hurtboxes[*hurtbox_index];
+                    // if owner has hit something
                     if let Some(collision) = acc.get(&hurtbox.0.owner) {
+                        // the hitbox in the hashmap
                         let other = &self.hitboxes[collision.0];
                         if other.0.info.priority > hitbox.0.info.priority {
+                            // if in hashmap has higher priority, return hashmap
                             return acc;
                         }
                     }
+                    // otherwise insert other collision
                     acc.insert(hurtbox.0.owner, (*hitbox_index, *hurtbox_index));
                     acc
                 },

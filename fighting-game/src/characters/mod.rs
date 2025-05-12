@@ -82,6 +82,9 @@ pub trait Grounded: Position {
 pub trait DistanceFromOtherPlayer {
     fn set_distance(&mut self, distance: f32);
 }
+pub trait HasCancelState {
+    fn cancel_state() -> Box<dyn Entity>;
+}
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}
 

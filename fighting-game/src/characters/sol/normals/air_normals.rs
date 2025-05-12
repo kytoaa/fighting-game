@@ -104,6 +104,7 @@ impl Entity for Sol<AirLight> {
                     );
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);
+                    self = try_transition!(air_special_cancel_options; self, input);
 
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(AirMid, true));
@@ -117,6 +118,7 @@ impl Entity for Sol<AirLight> {
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
                     self = try_transition!(air_movement_cancel_options; self, input);
+                    self = try_transition!(air_special_cancel_options; self, input);
 
                     if input.has_action(&Action::Pressed(Button::Mid, None)) {
                         return Box::new(self.transition(AirMid, true));
@@ -266,6 +268,7 @@ impl Entity for Sol<AirMid> {
                     );
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);
+                    self = try_transition!(air_special_cancel_options; self, input);
 
                     if input.has_action(&Action::Pressed(Button::Heavy, None)) {
                         return Box::new(self.transition(AirHeavy, true));
@@ -397,6 +400,7 @@ impl Entity for Sol<AirHeavy> {
                     )
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);
+                    self = try_transition!(air_special_cancel_options; self, input);
 
                     // NOTE: add special cancels
                 }
@@ -405,6 +409,7 @@ impl Entity for Sol<AirHeavy> {
             RECOVERY_FRAME..END_FRAME => {
                 if self.has_hit {
                     self = try_transition!(air_movement_cancel_options; self, input);
+                    self = try_transition!(air_special_cancel_options; self, input);
                 }
                 self
             }
