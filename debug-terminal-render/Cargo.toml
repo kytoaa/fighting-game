@@ -1,8 +1,0 @@
-[package]
-name = "debug-terminal-render"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-fighting-game = { path = "../fighting-game" }
-device_query = "3.0.0"
