@@ -92,7 +92,7 @@ impl Entity for Sol<VolcanicViper> {
                     world.spawn_hitbox(
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
-                                4.0, 10.0,
+                                2.0, 8.0,
                             ))),
                             info: AttackData {
                                 grounded: clean_hit_info.clone(),
@@ -101,7 +101,7 @@ impl Entity for Sol<VolcanicViper> {
                                 priority: 20,
                                 attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Heavy,
+                                hit_type: crate::collision::HitType::SuperHeavy,
                             },
                             owner: self.player,
                         },
@@ -113,6 +113,17 @@ impl Entity for Sol<VolcanicViper> {
             }
             ACTIVE_FRAME_2..RECOVERY_FRAME => {
                 self.gravity();
+
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            Vector2::new(16.0, 20.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+                    1,
+                );
 
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
@@ -159,7 +170,7 @@ impl Entity for Sol<VolcanicViper> {
                     world.spawn_hitbox(
                         Hitbox {
                             shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
-                                6.0, 10.0,
+                                4.0, 8.0,
                             ))),
                             info: AttackData {
                                 grounded: clean_hit_info.clone(),
@@ -180,10 +191,34 @@ impl Entity for Sol<VolcanicViper> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 self.gravity();
-                // TODO: hurtbox
+
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            Vector2::new(16.0, 20.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+                    1,
+                );
+
                 self
             }
-            _ => self.air_actionable_state(input),
+            _ => {
+                world.spawn_hurtbox(
+                    crate::collision::Hurtbox {
+                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            Vector2::new(16.0, 20.0),
+                        )),
+                        owner: self.player,
+                    },
+                    self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+                    1,
+                );
+
+                self.air_actionable_state(input)
+            }
         }
     }
     fn actionable(&self) -> bool {
@@ -191,6 +226,30 @@ impl Entity for Sol<VolcanicViper> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const START_FRAME: usize = VOLCANIC_VIPER_STARTUP - 2;
+        const ACTIVE_FRAME_2: usize = VOLCANIC_VIPER_STARTUP + VOLCANIC_VIPER_ACTIVE_1;
+        const RECOVERY_FRAME: usize = ACTIVE_FRAME_2 + VOLCANIC_VIPER_ACTIVE_2;
+
+        const OFFSET: Vector2 = BASE_SPRITE_OFFSET;
+
+        Some(match self.frame as usize {
+            0..START_FRAME => (
+                "sol/specials/volcanic_viper/volcanic_viper1".into(),
+                OFFSET + Vector2::DOWN * 8.0,
+            ),
+            START_FRAME..ACTIVE_FRAME_2 => (
+                "sol/specials/volcanic_viper/volcanic_viper2".into(),
+                OFFSET + Vector2::DOWN * 1.0,
+            ),
+            ACTIVE_FRAME_2..RECOVERY_FRAME => (
+                "sol/specials/volcanic_viper/volcanic_viper3".into(),
+                OFFSET + Vector2::UP * 5.0,
+            ),
+            _ if self.grounded => ("sol/run/run_stop".into(), BASE_SPRITE_OFFSET),
+            _ => ("sol/specials/volcanic_viper/volcanic_viper4".into(), OFFSET),
+        })
     }
 }
 impl SolDamageableState for VolcanicViper {}
