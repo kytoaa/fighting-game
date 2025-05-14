@@ -43,7 +43,7 @@ impl Vector2 {
         self.x * rhs.x + self.y * rhs.y
     }
     pub const fn to_const(&self, other: Self) -> Self {
-        (other).add(*self)
+        (other).sub(*self)
     }
 }
 impl Vector2 {
@@ -72,7 +72,7 @@ where
         if difference.magnitude() < delta {
             value
         } else {
-            *self + (difference.normalized() * delta)
+            self + (difference.normalized() * delta)
         }
     }
 }
