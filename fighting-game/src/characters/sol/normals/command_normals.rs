@@ -2,7 +2,7 @@ use super::Entity;
 use crate::collision::{
     AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, Hurtbox, KnockdownType,
 };
-use crate::datatypes::{BoundingBox, Vector2};
+use crate::datatypes::*;
 use crate::input::{directions::InputDir, Action, Button, InputHandler};
 use crate::world::World;
 
@@ -25,7 +25,7 @@ impl Entity for Sol<Heavy3> {
         }
 
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -155,7 +155,7 @@ impl Entity for Sol<Heavy6> {
 
         self.frame += 1;
 
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {

@@ -3,7 +3,7 @@ use super::{
     RunStartState, Velocity, WALK_SPEED,
 };
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
-use crate::datatypes::{BoundingBox, Vector2};
+use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
     Action, Button, InputHandler,

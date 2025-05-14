@@ -26,7 +26,7 @@ impl Entity for Sol<VolcanicViper> {
 
         match self.frame as usize {
             0..VOLCANIC_VIPER_STARTUP => {
-                self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+                self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
                 self
             }
             VOLCANIC_VIPER_STARTUP..ACTIVE_FRAME_2 => {

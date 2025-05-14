@@ -98,12 +98,12 @@ impl Entity for Sol<BanditRevolverGrounded> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 self.gravity();
-                self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+                self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
                 self
             }
             _ if !self.is_grounded() => {
                 self.gravity();
-                self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+                self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
                 self
             }
             _ => Box::new(self.transition(
@@ -139,7 +139,7 @@ impl<const FRAMES: usize> Entity for Sol<BanditRevolverGroundedRecovery<FRAMES>>
         );
 
         if (self.frame as usize) < FRAMES {
-            self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+            self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
             self
         } else {
             self.grounded_actionable_state(input)
@@ -232,12 +232,12 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
-                self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+                self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
                 self.gravity();
                 self
             }
             _ if !self.is_grounded() => {
-                self.velocity.x = self.velocity.y(0.0).move_towards(&Vector2::ZERO, DECEL).x;
+                self.velocity.x = self.velocity.y(0.0).move_towards(Vector2::ZERO, DECEL).x;
                 self.gravity();
                 self
             }

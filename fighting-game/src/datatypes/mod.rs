@@ -1,5 +1,6 @@
 mod bounding_box;
 mod bounding_circle;
+mod traits;
 mod vector2;
 
 #[macro_export]
@@ -18,6 +19,7 @@ pub type Point = Vector2;
 
 pub use bounding_box::*;
 pub use bounding_circle::*;
+pub use traits::*;
 pub use vector2::*;
 
 #[cfg(test)]

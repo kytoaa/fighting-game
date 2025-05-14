@@ -3,7 +3,7 @@ use super::{
     Entity, RunStartState,
 };
 use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
-use crate::datatypes::{BoundingBox, Vector2};
+use crate::datatypes::*;
 use crate::input::{Action, Button, InputHandler};
 use crate::world::World;
 
@@ -16,7 +16,7 @@ const CLOSE_MID_DAMAGE: u16 = 20;
 
 pub struct CloseMid;
 impl CloseMid {
-    pub const MAX_DISTANCE: f32 = 14.0;
+    pub const MAX_DISTANCE: f32 = 16.0;
 }
 impl Entity for Sol<CloseMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
@@ -29,7 +29,9 @@ impl Entity for Sol<CloseMid> {
         }
 
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        if !self.has_hit {
+            self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+        }
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -208,8 +210,8 @@ impl Entity for Sol<FarMid> {
                 self
             }
             FAR_MID_STARTUP..RECOVERY_FRAME => {
-                self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
                 if !self.has_hit {
+                    self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
                     let active_frames_extra_hitstun =
                         FAR_MID_ACTIVE - (self.frame as usize - FAR_MID_STARTUP);
                     world.spawn_hitbox(
@@ -232,7 +234,7 @@ impl Entity for Sol<FarMid> {
                                     hitstun: 20 + active_frames_extra_hitstun,
                                     blockstun: 15 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(80.0 * self.dir(), 35.0),
+                                        Vector2::new(80.0 * self.dir(), 55.0),
                                         KnockdownType::Soft,
                                     ),
                                     block_push: 60.0 * self.dir(),
@@ -242,7 +244,7 @@ impl Entity for Sol<FarMid> {
                                     hitstun: 20 + active_frames_extra_hitstun,
                                     blockstun: 15 + active_frames_extra_hitstun,
                                     hit_effect: HitEffect::Launcher(
-                                        Vector2::new(20.0 * self.dir(), 50.0),
+                                        Vector2::new(20.0 * self.dir(), 55.0),
                                         KnockdownType::None,
                                     ),
                                     block_push: 60.0 * self.dir(),
@@ -364,7 +366,7 @@ impl Entity for Sol<StandLight> {
 
         self.frame += 1;
 
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -661,7 +663,7 @@ impl Entity for Sol<StandHeavy> {
 
         self.frame += 1;
 
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {

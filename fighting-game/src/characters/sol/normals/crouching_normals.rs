@@ -5,7 +5,7 @@ use super::{
 use crate::collision::{
     AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, Hurtbox, KnockdownType,
 };
-use crate::datatypes::{BoundingBox, Vector2};
+use crate::datatypes::*;
 use crate::input::{Action, Button, InputHandler};
 use crate::world::World;
 
@@ -28,7 +28,7 @@ impl Entity for Sol<CrouchLight> {
         }
 
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -197,7 +197,7 @@ impl Entity for Sol<CrouchMid> {
         }
 
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -361,7 +361,7 @@ impl Entity for Sol<CrouchHeavy> {
         }
 
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         let hitbox_data = if self.frame as usize >= CROUCH_HEAVY_STARTUP
             && (self.frame as usize) < RECOVERY_FRAME

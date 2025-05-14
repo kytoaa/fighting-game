@@ -48,11 +48,11 @@ fn vector_tests() {
     assert_eq!(Vector2::new(12.0, 8.0) / 4.0, Vector2 { x: 3.0, y: 2.0 });
 
     assert_eq!(
-        Vector2::new(12.0, 8.0).move_towards(&Vector2::ZERO, 3.0),
+        Vector2::new(12.0, 8.0).move_towards(Vector2::ZERO, 3.0),
         Vector2::new(12.0, 8.0) - (Vector2::new(12.0, 8.0).normalized() * 3.0)
     );
     assert_eq!(
-        Vector2::new(3.0, 0.0).move_towards(&Vector2::ZERO, 5.0),
+        Vector2::new(3.0, 0.0).move_towards(Vector2::ZERO, 5.0),
         Vector2::ZERO
     );
 }
@@ -193,4 +193,21 @@ fn intersection_tests() {
     let box_a = BoundingBox::pos_size(vector!(2.0, 0.0), vector!(4.0, 6.0));
     let box_b = BoundingBox::pos_size(vector!(6.0, 0.0), vector!(4.0, 6.0));
     assert!(!box_a.intersects(&box_b));
+}
+
+#[test]
+fn move_towards_tests() {
+    let f = (7.2).move_towards(9.0, 1.0);
+    assert_float_eq!(f, 8.2);
+    let f = (7.2).move_towards(9.0, -1.0);
+    assert_float_eq!(f, 6.2);
+    let f = (7.2).move_towards(9.0, 5.0);
+    assert_float_eq!(f, 9.0);
+
+    let f = (-7.2).move_towards(-9.0, 1.0);
+    assert_float_eq!(f, -8.2);
+    let f = (-7.2).move_towards(-9.0, -1.0);
+    assert_float_eq!(f, -6.2);
+    let f = (-7.2).move_towards(-9.0, 5.0);
+    assert_float_eq!(f, -9.0);
 }

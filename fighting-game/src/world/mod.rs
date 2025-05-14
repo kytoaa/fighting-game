@@ -146,6 +146,7 @@ impl World {
 
             let in_corner = hit_player.position().x.abs() >= BORDER_X - 10.0;
             let pushback = hitbox.0.info.grounded.hit_effect.x_vel();
+            let pushback = pushback.abs().max(20.0).min(50.0) * pushback.signum();
 
             let (hit_state, hit_connection) = hit_player.hit(&hitbox.0.info);
             _ = self
@@ -314,14 +315,14 @@ impl World {
                 player.set_position(pos.x(BORDER_X));
                 let vel = player.velocity();
                 if player.should_wall_bounce() && vel.x.abs() > 10.0 {
-                    player.set_velocity(vel.x(-vel.x * 0.5));
+                    player.set_velocity(Vector2::new(-vel.x * 0.5, vel.y.max(30.0)));
                 }
             }
             if pos.x < -BORDER_X {
                 player.set_position(pos.x(-BORDER_X));
                 let vel = player.velocity();
                 if player.should_wall_bounce() && vel.x.abs() > 10.0 {
-                    player.set_velocity(vel.x(-vel.x * 0.5));
+                    player.set_velocity(Vector2::new(-vel.x * 0.5, vel.y.max(30.0)));
                 }
             }
         }

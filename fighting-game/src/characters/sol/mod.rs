@@ -3,7 +3,7 @@ use super::{
     Velocity,
 };
 use crate::collision::{AttackData, HitConnection, HitEffect, HitType, KnockdownType};
-use crate::datatypes::{BoundingBox, Vector2};
+use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
     Action, Button, InputHandler,
@@ -601,20 +601,18 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+        // NOTE: fafnir
+        if input.has_motion_input(
+            &Motion::half_circle().direction(self.direction),
+            &Action::Pressed(Button::Heavy, None),
+        ) {}
+
         // NOTE: VOLCANIC VIPER!!!!
         if input.has_motion_input(
             &Motion::dp().direction(self.direction),
             &Action::Pressed(Button::Heavy, None),
         ) {
             return Ok(Box::new(self.transition(VolcanicViper, true)));
-        }
-
-        // NOTE: fafnir
-        if input.has_motion_input(
-            &Motion::half_circle().direction(self.direction),
-            &Action::Pressed(Button::Heavy, None),
-        ) {
-            // TODO: fafnir
         }
 
         // NOTE: bandit revolver
@@ -819,7 +817,7 @@ const DECEL_RATE: f32 = 12.0;
 struct Stand;
 impl Entity for Sol<Stand> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL_RATE);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL_RATE);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -849,7 +847,7 @@ where
 {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         const DECEL: f32 = 8.0;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, DECEL);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -1052,7 +1050,7 @@ struct BlockStun<const CROUCHING: bool> {
 impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
-        self.velocity = self.velocity.move_towards(&Vector2::ZERO, BLOCKSTUN_DRAG);
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, BLOCKSTUN_DRAG);
 
         if CROUCHING {
             world.spawn_hurtbox(

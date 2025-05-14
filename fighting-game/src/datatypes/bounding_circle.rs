@@ -25,12 +25,12 @@ impl BoundingCircle {
 
 impl BoundingShape<Point> for BoundingCircle {
     fn intersects(&self, other: &Point) -> bool {
-        self.position.distance(&other) < self.radius
+        self.position.distance(*other) < self.radius
     }
 }
 impl BoundingShape<BoundingCircle> for BoundingCircle {
     fn intersects(&self, other: &BoundingCircle) -> bool {
-        self.position.distance(&other.position) < self.radius + other.radius
+        self.position.distance(other.position) < self.radius + other.radius
     }
 }
 impl BoundingShape<BoundingBox> for BoundingCircle {
