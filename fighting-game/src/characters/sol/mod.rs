@@ -605,7 +605,9 @@ where
         if input.has_motion_input(
             &Motion::half_circle().direction(self.direction),
             &Action::Pressed(Button::Heavy, None),
-        ) {}
+        ) {
+            return Ok(Box::new(self.transition(Fafnir, true)));
+        }
 
         // NOTE: VOLCANIC VIPER!!!!
         if input.has_motion_input(

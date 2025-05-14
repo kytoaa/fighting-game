@@ -13,9 +13,11 @@ use crate::world::World;
 use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
 
 mod bandit_revolver;
+mod fafnir;
 mod gunflame;
 mod volcanic_viper;
 
 pub use bandit_revolver::*;
+pub use fafnir::*;
 pub use gunflame::*;
 pub use volcanic_viper::*;
