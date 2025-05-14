@@ -85,7 +85,7 @@ impl Entity for Sol<AirLight> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::High,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Medium,
+                                hit_type: crate::collision::HitLevel::Medium,
                             },
                         },
                         self.position + Vector2::new(5.0 * self.dir(), -6.0),
@@ -245,7 +245,7 @@ impl Entity for Sol<AirMid> {
                         priority: 10,
                         attack_type: crate::collision::AttackType::High,
                         hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Medium,
+                        hit_type: crate::collision::HitLevel::Medium,
                     };
 
                     world.spawn_hitbox(
@@ -381,7 +381,7 @@ impl Entity for Sol<AirHeavy> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::High,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Heavy,
+                                hit_type: crate::collision::HitLevel::Heavy,
                             },
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 12.0),

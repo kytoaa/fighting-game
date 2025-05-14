@@ -81,7 +81,7 @@ impl Entity for Sol<Fafnir> {
                         priority: 10,
                         attack_type: crate::collision::AttackType::Mid,
                         hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Heavy,
+                        hit_type: crate::collision::HitLevel::Heavy,
                     };
 
                     world.spawn_hitbox(

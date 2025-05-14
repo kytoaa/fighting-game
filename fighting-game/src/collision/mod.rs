@@ -1,19 +1,20 @@
-use crate::datatypes::{BoundingBox, BoundingCircle, BoundingShape, Vector2};
+use crate::datatypes::{BoundingBox, BoundingShape, Vector2};
+use crate::world::EntityID;
 
-pub enum CollisionShape {
-    Box(BoundingBox),
-    Circle(BoundingCircle),
-}
+mod hit_data;
+
+pub struct CollisionShape(BoundingBox);
 
 #[derive(Debug, Clone, Copy)]
-pub enum HitType {
+pub enum HitLevel {
     Light,
     Medium,
     Heavy,
     SuperHeavy,
     Custom(usize),
 }
-impl HitType {
+
+impl HitLevel {
     pub fn get_hitstop_frames(self) -> usize {
         match self {
             Self::Light => 6,
@@ -26,68 +27,18 @@ impl HitType {
     pub const BLOCKED_HITSTOP_FRAMES: usize = 8;
 }
 
-#[derive(Debug, Clone)]
-pub struct HitInfo {
-    pub damage: u16,
-    pub hitstun: usize,
-    pub blockstun: usize,
-    pub hit_effect: HitEffect,
-    pub block_push: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct AttackData {
-    pub grounded: HitInfo,
-    pub air: HitInfo,
-    pub counterhit: HitInfo,
-    pub priority: usize,
-    pub attack_type: AttackType,
-    pub hitbox_id: usize,
-    pub hit_type: HitType,
-}
-impl AttackData {
-    pub fn with_same_hitinfo(
-        hit_info: HitInfo,
-        priority: usize,
-        attack_type: AttackType,
-        hitbox_id: usize,
-        hit_type: HitType,
-    ) -> Self {
-        Self {
-            grounded: hit_info.clone(),
-            air: hit_info.clone(),
-            counterhit: hit_info,
-            priority,
-            attack_type,
-            hitbox_id,
-            hit_type,
-        }
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum AttackType {
     High,
     Mid,
     Low,
+    Unblockable,
 }
-#[derive(Debug, Clone)]
-pub enum HitEffect {
-    Pushback(f32),
-    Launcher(Vector2, KnockdownType),
-}
-impl HitEffect {
-    pub const fn x_vel(&self) -> f32 {
-        match self {
-            HitEffect::Pushback(x) => *x,
-            HitEffect::Launcher(Vector2 { x, y: _ }, _) => *x,
-        }
-    }
-}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum KnockdownType {
     Hard,
     Soft,
-    None,
 }
 
 #[derive(Clone, Copy)]
@@ -99,28 +50,20 @@ pub enum HitConnection {
 
 pub struct Hurtbox {
     pub shape: CollisionShape,
-    pub owner: usize,
+    pub owner: EntityID,
 }
 pub struct Hitbox {
     pub shape: CollisionShape,
     pub info: AttackData,
-    pub owner: usize,
+    pub owner: EntityID,
 }
 
 impl CollisionShape {
     pub fn overlaps(&self, other: &CollisionShape) -> bool {
-        match (&self, &other) {
-            (CollisionShape::Box(b), CollisionShape::Box(b2)) => b.intersects(b2),
-            (CollisionShape::Box(b), CollisionShape::Circle(c)) => b.intersects(c),
-            (CollisionShape::Circle(c), CollisionShape::Box(b)) => c.intersects(b),
-            (CollisionShape::Circle(c), CollisionShape::Circle(c2)) => c.intersects(c2),
-        }
+        self.0.intersects(&other.0)
     }
     pub fn at_position(self, position: Vector2) -> Self {
-        match self {
-            CollisionShape::Box(b) => CollisionShape::Box(b.transformed(position)),
-            CollisionShape::Circle(c) => CollisionShape::Circle(c.transformed(position)),
-        }
+        CollisionShape(self.0.transformed(position))
     }
 }
 impl Hitbox {

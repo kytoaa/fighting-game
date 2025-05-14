@@ -2,7 +2,7 @@ use super::{
     Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded, HasCollider, OnHit, Position,
     Velocity,
 };
-use crate::collision::{AttackData, HitConnection, HitEffect, HitType, KnockdownType};
+use crate::collision::{AttackData, HitConnection, HitEffect, HitLevel, KnockdownType};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},

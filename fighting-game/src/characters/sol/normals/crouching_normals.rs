@@ -83,7 +83,7 @@ impl Entity for Sol<CrouchLight> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::Low,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Light,
+                                hit_type: crate::collision::HitLevel::Light,
                             },
                         },
                         self.position + Vector2::new(6.0 * self.dir(), -3.0),
@@ -252,7 +252,7 @@ impl Entity for Sol<CrouchMid> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Medium,
+                                hit_type: crate::collision::HitLevel::Medium,
                             },
                         },
                         self.position + Vector2::new(16.0 * self.dir(), 4.0),
@@ -403,7 +403,7 @@ impl Entity for Sol<CrouchHeavy> {
                 priority: 10,
                 attack_type: crate::collision::AttackType::Mid,
                 hitbox_id: 1,
-                hit_type: crate::collision::HitType::Heavy,
+                hit_type: crate::collision::HitLevel::Heavy,
             })
         } else {
             None

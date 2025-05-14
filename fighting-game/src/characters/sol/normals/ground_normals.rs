@@ -67,7 +67,7 @@ impl Entity for Sol<CloseMid> {
                                 10,
                                 crate::collision::AttackType::Mid,
                                 1,
-                                crate::collision::HitType::Medium,
+                                crate::collision::HitLevel::Medium,
                             ),
                         },
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
@@ -251,7 +251,7 @@ impl Entity for Sol<FarMid> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Medium,
+                                hit_type: crate::collision::HitLevel::Medium,
                             },
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 10.0),
@@ -447,7 +447,7 @@ impl Entity for Sol<StandLight> {
                             priority: 10,
                             attack_type: crate::collision::AttackType::Mid,
                             hitbox_id: 1,
-                            hit_type: crate::collision::HitType::Light,
+                            hit_type: crate::collision::HitLevel::Light,
                         },
                     },
                     self.position
@@ -508,7 +508,7 @@ impl Entity for Sol<StandLight> {
                         priority: 10,
                         attack_type: crate::collision::AttackType::Mid,
                         hitbox_id: 1,
-                        hit_type: crate::collision::HitType::Light,
+                        hit_type: crate::collision::HitLevel::Light,
                     };
 
                     world.spawn_hitbox(
@@ -717,7 +717,7 @@ impl Entity for Sol<StandHeavy> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Heavy,
+                                hit_type: crate::collision::HitLevel::Heavy,
                             },
                         },
                         self.position + Vector2::new(18.0 * self.dir(), 13.0),

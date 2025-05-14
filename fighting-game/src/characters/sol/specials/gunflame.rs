@@ -82,7 +82,7 @@ impl Entity for Sol<GunFlameFeint> {
                         1,
                         crate::collision::AttackType::Mid,
                         1,
-                        crate::collision::HitType::Light,
+                        crate::collision::HitLevel::Light,
                     ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), -4.0),

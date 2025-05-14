@@ -1,4 +1,4 @@
-use super::collision::{CollisionShape, HitType, Hitbox, Hurtbox};
+use super::collision::{CollisionShape, HitLevel, Hitbox, Hurtbox};
 use super::datatypes::{BoundingShape, Vector2};
 use super::input::InputHandler;
 use std::collections::HashSet;
@@ -15,6 +15,14 @@ pub struct World {
     hitstop_frames_left: usize,
 }
 struct Spawn<T>(T, usize);
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct EntityID(usize, EntityType);
+#[derive(PartialEq, Clone, Debug)]
+pub enum EntityType {
+    Unique,
+    Owned(usize),
+}
 
 impl World {
     pub fn new(players: [Option<Box<dyn crate::characters::Entity>>; 2]) -> Self {
@@ -157,7 +165,7 @@ impl World {
 
             let hitstop_frames = match hit_connection {
                 crate::collision::HitConnection::Hit => hitbox.0.info.hit_type.get_hitstop_frames(),
-                crate::collision::HitConnection::Blocked => HitType::BLOCKED_HITSTOP_FRAMES,
+                crate::collision::HitConnection::Blocked => HitLevel::BLOCKED_HITSTOP_FRAMES,
                 crate::collision::HitConnection::Invuln => 0,
             };
 

@@ -85,7 +85,7 @@ impl Entity for Sol<Heavy3> {
                                 priority: 10,
                                 attack_type: crate::collision::AttackType::Low,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitType::Medium,
+                                hit_type: crate::collision::HitLevel::Medium,
                             },
                         },
                         self.position + Vector2::new(6.0 * self.dir(), -1.0),
