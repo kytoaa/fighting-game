@@ -29,9 +29,7 @@ impl Entity for Sol<CloseMid> {
         }
 
         self.frame += 1;
-        if !self.has_hit {
-            self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
-        }
+        self.forward_drag(DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -205,13 +203,14 @@ impl Entity for Sol<FarMid> {
         );
 
         match self.frame as usize {
-            0..FAR_MID_STARTUP => {
+            0..3 => self,
+            3..FAR_MID_STARTUP => {
                 self.velocity = Vector2::RIGHT * ADVANCE_VELOCITY * self.dir();
                 self
             }
             FAR_MID_STARTUP..RECOVERY_FRAME => {
+                self.forward_drag(DECEL);
                 if !self.has_hit {
-                    self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
                     let active_frames_extra_hitstun =
                         FAR_MID_ACTIVE - (self.frame as usize - FAR_MID_STARTUP);
                     world.spawn_hitbox(
@@ -366,7 +365,7 @@ impl Entity for Sol<StandLight> {
 
         self.frame += 1;
 
-        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+        self.drag(DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
@@ -663,7 +662,7 @@ impl Entity for Sol<StandHeavy> {
 
         self.frame += 1;
 
-        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+        self.drag(DECEL);
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {

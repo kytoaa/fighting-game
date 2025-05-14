@@ -98,6 +98,24 @@ impl<S> Sol<S> {
             state: new_state,
         }
     }
+    fn gravity(&mut self) {
+        if !self.grounded {
+            self.velocity += Vector2::DOWN * GRAVITY;
+        }
+    }
+    fn forward_drag(&mut self, drag: f32) {
+        if self.velocity.x * self.dir() > 0.0 {
+            self.velocity.x = self.velocity.x.move_towards(0.0, drag);
+        }
+    }
+    fn backward_drag(&mut self, drag: f32) {
+        if self.velocity.x * self.dir() < 0.0 {
+            self.velocity.x = self.velocity.x.move_towards(0.0, drag);
+        }
+    }
+    fn drag(&mut self, drag: f32) {
+        self.velocity.x = self.velocity.x.move_towards(0.0, drag);
+    }
 }
 
 impl<S> Position for Sol<S> {
@@ -565,12 +583,6 @@ where
             DOUBLE_JUMP_FORCE,
         );
         self.frame = 0;
-    }
-
-    fn gravity(&mut self) {
-        if !self.grounded {
-            self.velocity += Vector2::DOWN * GRAVITY;
-        }
     }
 
     fn grounded_command_normal_cancel(
