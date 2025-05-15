@@ -2,8 +2,15 @@ use crate::datatypes::{BoundingBox, BoundingShape, Vector2};
 use crate::world::EntityID;
 
 mod hit_data;
+pub use hit_data::*;
 
 pub struct CollisionShape(BoundingBox);
+
+#[derive(Debug, Clone)]
+pub struct AttackData {
+    attack: HitData,
+    hit_level: HitLevel,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum HitLevel {
@@ -17,28 +24,14 @@ pub enum HitLevel {
 impl HitLevel {
     pub fn get_hitstop_frames(self) -> usize {
         match self {
-            Self::Light => 6,
-            Self::Medium => 9,
+            Self::Light => 8,
+            Self::Medium => 10,
             Self::Heavy => 12,
             Self::SuperHeavy => 20,
             Self::Custom(frames) => frames,
         }
     }
     pub const BLOCKED_HITSTOP_FRAMES: usize = 8;
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum AttackType {
-    High,
-    Mid,
-    Low,
-    Unblockable,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum KnockdownType {
-    Hard,
-    Soft,
 }
 
 #[derive(Clone, Copy)]
@@ -53,9 +46,9 @@ pub struct Hurtbox {
     pub owner: EntityID,
 }
 pub struct Hitbox {
-    pub shape: CollisionShape,
-    pub info: AttackData,
-    pub owner: EntityID,
+    shape: CollisionShape,
+    info: AttackData,
+    owner: EntityID,
 }
 
 impl CollisionShape {

@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 
-#[proc_macro_derive(Builder)]
+#[proc_macro_derive(Builder, attributes(no_builder))]
 pub fn builder_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_builder(&ast)
@@ -19,6 +19,14 @@ fn impl_builder(ast: &syn::DeriveInput) -> TokenStream {
     };
 
     let functions = fields.iter().map(|field| {
+        if field
+            .attrs
+            .iter()
+            .find(|attr| attr.path().is_ident("no_builder"))
+            .is_some()
+        {
+            return quote! {};
+        }
         let ident = &field.ident.as_ref().expect("not a named field struct");
         let ty = &field.ty;
         quote! {
