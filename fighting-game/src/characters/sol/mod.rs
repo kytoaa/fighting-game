@@ -3,7 +3,7 @@ use super::{
     HasCollider, HitstunInfo, OnHit, Position, Velocity,
 };
 use crate::collision::{
-    AttackData, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox, Hitbox, Hurtbox,
+    AttackData, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox, Hurtbox,
     KnockdownType, OnHitHitData,
 };
 use crate::datatypes::*;
@@ -365,7 +365,7 @@ impl<S> Sol<S>
 where
     Sol<S>: Entity + 'static,
 {
-    fn grounded_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
         match self.grounded_cancel_options(input) {
             Ok(state) => state,
             Err(s) => s.walk_block_state(input),
@@ -1025,11 +1025,9 @@ struct Tumble {
 }
 impl Entity for Sol<Tumble> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
-        self.gravity();
-        /*println!(
-            "grounded: {}, velocity: {:?}, frame: {}",
-            self.grounded, self.velocity, self.state.frame
-        );*/
+        if !self.grounded {
+            self.velocity += Vector2::DOWN * self.state.gravity;
+        }
         self.frame += 1;
         if self.grounded {
             return match self.state.knockdown {
@@ -1062,6 +1060,10 @@ struct FloatingCrumple {
 }
 impl Entity for Sol<FloatingCrumple> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        if !self.grounded {
+            self.velocity += Vector2::DOWN * self.state.gravity;
+        }
+
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
                 shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
@@ -1177,7 +1179,7 @@ impl Entity for Sol<HardKnockdown> {
     }
 }
 impl Damageable for Sol<HardKnockdown> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }

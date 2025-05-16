@@ -1,9 +1,11 @@
+#![allow(private_bounds)]
+
 use super::*;
 use macros::Builder;
 use std::marker::PhantomData;
 
 #[derive(Builder)]
-struct LauncherBuilder {
+pub struct LauncherBuilder {
     knockback: Vector2,
     gravity: f32,
     knockdown: KnockdownType,
@@ -35,7 +37,7 @@ impl LauncherBuilder {
 }
 
 #[derive(Builder)]
-struct FloatingCrumpleBuilder {
+pub struct FloatingCrumpleBuilder {
     knockback: Vector2,
     gravity: f32,
     landing_frames: usize,
@@ -51,7 +53,7 @@ impl FloatingCrumpleBuilder {
 }
 
 #[derive(Builder)]
-struct PushbackBuilder {
+pub struct PushbackBuilder {
     force: f32,
     frames: usize,
 }
@@ -91,11 +93,11 @@ impl HitEffect {
     }
 }
 
-struct Grounded;
-struct Air;
-struct Counterhit;
-struct Undefined;
-struct Default;
+pub struct Grounded(());
+pub struct Air(());
+pub struct Counterhit(());
+pub struct Undefined(());
+pub struct Default(());
 trait Changeable {}
 impl Changeable for Undefined {}
 impl Changeable for Default {}
@@ -105,7 +107,7 @@ impl Confirmable for Air {}
 impl Confirmable for Counterhit {}
 impl Confirmable for Default {}
 
-struct HitDataBuilder<G, A, C> {
+pub struct HitDataBuilder<G, A, C> {
     grounded: Option<HitEffect>,
     air: Option<HitEffect>,
     counterhit: Option<HitEffect>,
@@ -378,8 +380,8 @@ impl HitData {
     ) -> HitDataBuilder<Undefined, Air, Undefined> {
         let dir = effect.x_force().signum();
         HitDataBuilder {
-            grounded: Some(effect),
-            air: None,
+            grounded: None,
+            air: Some(effect),
             counterhit: None,
 
             damage,

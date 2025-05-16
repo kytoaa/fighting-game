@@ -326,14 +326,12 @@ impl Entity for Sol<CrouchHeavy> {
                     HitEffect::launcher(Vector2::new(20.0 * self.dir(), 90.0), KnockdownType::Soft)
                         .build(),
                 )
-                .counterhit_from_grounded(|g| {
+                .counterhit_from_grounded(|mut g| {
                     if let HitEffect::FloatingCrumple {
-                        knockback,
-                        gravity,
-                        landing_frames,
+                        knockback, gravity, ..
                     } = &mut g
                     {
-                        (*knockback).y += 15.0;
+                        knockback.y += 15.0;
                         *gravity = 5.0;
                         g
                     } else {

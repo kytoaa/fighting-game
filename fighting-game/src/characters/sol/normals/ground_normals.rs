@@ -226,7 +226,7 @@ impl Entity for Sol<FarMid> {
                                 )
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(80.0 * self.dir(), 60.0 * self.dir()),
+                                        Vector2::new(80.0 * self.dir(), 60.0),
                                         KnockdownType::Soft,
                                     )
                                     .build(),
@@ -434,7 +434,7 @@ impl Entity for Sol<StandLight> {
                     let attack_data: AttackData = AttackData {
                         attack: HitData::level_1(
                             STAND_LIGHT_SECOND_HIT_DAMAGE,
-                            Vector2::ZERO,
+                            Vector2::new(30.0 * self.dir(), 45.0),
                             active_frames_extra_hitstun,
                         )
                         .with_air(

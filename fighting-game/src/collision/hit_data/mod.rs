@@ -87,7 +87,7 @@ pub struct HitData {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-enum HitDataExtensions {
+pub enum HitDataExtensions {
     SetScaling(i32),
     SetProration(Proration),
     SetChipDamage(u32),
