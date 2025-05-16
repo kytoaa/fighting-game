@@ -1,17 +1,17 @@
 use super::Entity;
 use crate::collision::{
-    AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, Hurtbox, KnockdownType,
+    AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
 };
 use crate::datatypes::*;
 use crate::input::{directions::InputDir, Action, Button, InputHandler};
 use crate::world::World;
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, CROUCHING_HURTBOX, STANDING_HURTBOX};
+use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
 
 const HEAVY_3_STARTUP: usize = 8;
 const HEAVY_3_ACTIVE: usize = 3;
 const HEAVY_3_RECOVERY: usize = 18;
-const HEAVY_3_DAMAGE: u16 = 14;
+const HEAVY_3_DAMAGE: u32 = 14;
 
 pub struct Heavy3;
 impl Entity for Sol<Heavy3> {
@@ -28,12 +28,9 @@ impl Entity for Sol<Heavy3> {
         self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                    26.0, 10.0,
-                ))),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                26.0, 10.0,
+            )))),
             self.position + Vector2::new(4.0 * self.dir(), -1.0),
         );
 
@@ -45,48 +42,30 @@ impl Entity for Sol<Heavy3> {
                         HEAVY_3_ACTIVE - (self.frame as usize - HEAVY_3_STARTUP);
 
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                20.0, 8.0,
-                            ))),
-                            owner: self.player_id,
-                            info: AttackData {
-                                grounded: HitInfo {
-                                    damage: HEAVY_3_DAMAGE,
-                                    hitstun: 12 + active_frames_extra_hitstun,
-                                    blockstun: 9 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(30.0 * self.dir(), 80.0),
-                                        KnockdownType::Hard,
-                                    ),
-                                    block_push: 60.0 * self.dir(),
-                                },
-                                air: HitInfo {
-                                    damage: HEAVY_3_DAMAGE,
-                                    hitstun: 12 + active_frames_extra_hitstun,
-                                    blockstun: 9 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 8.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    HEAVY_3_DAMAGE,
+                                    HitEffect::launcher(
                                         Vector2::new(30.0 * self.dir(), 60.0),
                                         KnockdownType::Hard,
-                                    ),
-                                    block_push: 80.0 * self.dir(),
-                                },
-                                counterhit: HitInfo {
-                                    damage: HEAVY_3_DAMAGE,
-                                    hitstun: 12 + active_frames_extra_hitstun,
-                                    blockstun: 9 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(30.0 * self.dir(), 100.0),
-                                        KnockdownType::Hard,
-                                    ),
-                                    block_push: 60.0 * self.dir(),
-                                },
+                                    )
+                                    .build(),
+                                    12 + active_frames_extra_hitstun,
+                                    Proration::percent(90),
+                                    HitData::DEFAULT_LEVEL_3_SCALING,
+                                )
+                                .air_from_grounded(|g| g)
+                                .counterhit_from_grounded(|g| g)
+                                .meter_gain(HitData::DEFAULT_LEVEL_3_METER_GAIN)
+                                .attack_type(AttackType::Low)
+                                .build(),
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Low,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::Medium,
+                                hit_level: HitLevel::Heavy,
                             },
-                        },
+                        ),
                         self.position + Vector2::new(6.0 * self.dir(), -1.0),
                     );
                 } else {
@@ -138,7 +117,7 @@ impl SolDamageableState for Heavy3 {}
 const HEAVY_6_STARTUP: usize = 23;
 const HEAVY_6_ACTIVE: usize = 3;
 const HEAVY_6_RECOVERY: usize = 20;
-const HEAVY_6_DAMAGE: u16 = 30;
+const HEAVY_6_DAMAGE: u32 = 30;
 
 pub struct Heavy6;
 impl Entity for Sol<Heavy6> {
@@ -156,10 +135,7 @@ impl Entity for Sol<Heavy6> {
         self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
         );
 

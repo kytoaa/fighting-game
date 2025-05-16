@@ -175,10 +175,7 @@ impl Entity for Sol<CrouchMid> {
         self.drag(DECEL);
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(CROUCHING_HURTBOX),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(crate::collision::CollisionShape::new(CROUCHING_HURTBOX)),
             self.position,
         );
 
@@ -211,12 +208,9 @@ impl Entity for Sol<CrouchMid> {
                     );
 
                     world.spawn_hurtbox(
-                        Hurtbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                12.0, 12.0,
-                            ))),
-                            owner: self.player_id,
-                        },
+                        self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(
+                            Vector2::new(12.0, 12.0),
+                        ))),
                         self.position + Vector2::new(6.0 * self.dir(), 4.0),
                     )
                 } else {
@@ -319,42 +313,35 @@ impl Entity for Sol<CrouchHeavy> {
             let active_frames_extra_hitstun = (CROUCH_HEAVY_EARLY_ACTIVE + CROUCH_HEAVY_ACTIVE)
                 - (self.frame as usize - CROUCH_HEAVY_STARTUP);
 
-            Some(AttackData {
-                grounded: HitInfo {
-                    damage: CROUCH_HEAVY_DAMAGE,
-                    hitstun: 20 + active_frames_extra_hitstun,
-                    blockstun: 12 + active_frames_extra_hitstun,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(30.0 * self.dir(), 90.0),
-                        KnockdownType::None,
-                    ),
-                    block_push: 60.0 * self.dir(),
-                },
-                air: HitInfo {
-                    damage: CROUCH_HEAVY_DAMAGE,
-                    hitstun: 20 + active_frames_extra_hitstun,
-                    blockstun: 12 + active_frames_extra_hitstun,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(20.0 * self.dir(), 100.0),
-                        KnockdownType::Soft,
-                    ),
-                    block_push: 80.0 * self.dir(),
-                },
-                counterhit: HitInfo {
-                    damage: CROUCH_HEAVY_DAMAGE,
-                    hitstun: 20 + active_frames_extra_hitstun,
-                    blockstun: 12 + active_frames_extra_hitstun,
-                    hit_effect: HitEffect::Launcher(
-                        Vector2::new(20.0 * self.dir(), 100.0),
-                        KnockdownType::None,
-                    ),
-                    block_push: 60.0 * self.dir(),
-                },
-                priority: 10,
-                attack_type: crate::collision::AttackType::Mid,
-                hitbox_id: 1,
-                hit_type: crate::collision::HitLevel::Heavy,
-            })
+            Some(
+                HitData::grounded(
+                    CROUCH_HEAVY_DAMAGE,
+                    HitEffect::floating_crumple(Vector2::new(30.0 * self.dir(), 70.0), 5.5, 8)
+                        .build(),
+                    12 + active_frames_extra_hitstun,
+                    Proration::percent(90),
+                    HitData::DEFAULT_LEVEL_4_SCALING,
+                )
+                .with_air(
+                    HitEffect::launcher(Vector2::new(20.0 * self.dir(), 90.0), KnockdownType::Soft)
+                        .build(),
+                )
+                .counterhit_from_grounded(|g| {
+                    if let HitEffect::FloatingCrumple {
+                        knockback,
+                        gravity,
+                        landing_frames,
+                    } = &mut g
+                    {
+                        (*knockback).y += 15.0;
+                        *gravity = 5.0;
+                        g
+                    } else {
+                        unreachable!()
+                    }
+                })
+                .build(),
+            )
         } else {
             None
         };
@@ -372,40 +359,33 @@ impl Entity for Sol<CrouchHeavy> {
         match self.frame as usize {
             0..CROUCH_HEAVY_STARTUP => {
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(CROUCHING_HURTBOX),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(CROUCHING_HURTBOX)),
                     self.position,
                 );
                 self
             }
             CROUCH_HEAVY_STARTUP..SECOND_ACTIVE => {
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
                     self.position,
                 );
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
-                            Vector2::new(10.0, 14.0),
-                        )),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(
+                        BoundingBox::with_size(Vector2::new(10.0, 14.0)),
+                    )),
                     self.position + Vector2::new(6.0 * self.dir(), 8.0),
                 );
                 if !self.has_hit {
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                10.0, 10.0,
-                            ))),
-                            info: hitbox_data.unwrap(),
-                            owner: self.player_id,
-                        },
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(10.0, 10.0))),
+                            AttackData {
+                                attack: hitbox_data.unwrap(),
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Heavy,
+                            },
+                        ),
                         self.position + Vector2::new(4.0 * self.dir(), 8.0),
                     );
                 }
@@ -413,30 +393,26 @@ impl Entity for Sol<CrouchHeavy> {
             }
             SECOND_ACTIVE..RECOVERY_FRAME => {
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
                     self.position,
                 );
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
-                            Vector2::new(10.0, 20.0),
-                        )),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(
+                        BoundingBox::with_size(Vector2::new(10.0, 20.0)),
+                    )),
                     self.position + Vector2::new(8.0 * self.dir(), 16.0),
                 );
                 if !self.has_hit {
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                10.0, 28.0,
-                            ))),
-                            info: hitbox_data.unwrap(),
-                            owner: self.player_id,
-                        },
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(10.0, 28.0))),
+                            AttackData {
+                                attack: hitbox_data.unwrap(),
+                                hit_level: HitLevel::Heavy,
+                                hitbox_id: 1,
+                                priority: 10,
+                            },
+                        ),
                         self.position + Vector2::new(10.0 * self.dir(), 24.0),
                     );
                 }
@@ -444,10 +420,7 @@ impl Entity for Sol<CrouchHeavy> {
             }
             RECOVERY_FRAME..END_FRAME => {
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
                     self.position,
                 );
                 self

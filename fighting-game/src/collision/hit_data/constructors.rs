@@ -220,7 +220,7 @@ impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
     }
 }
 impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
-    pub fn counterhit_from_grounded<F>(
+    pub fn counterhit_from_grounded(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
     ) -> HitDataBuilder<Grounded, A, Counterhit> {
@@ -270,7 +270,7 @@ impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
     }
 }
 impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
-    pub fn air_from_grounded<F>(
+    pub fn air_from_grounded(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
     ) -> HitDataBuilder<Grounded, Air, C> {
@@ -295,7 +295,7 @@ impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
     }
 }
 impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
-    pub fn grounded_from_air<F>(
+    pub fn grounded_from_air(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
     ) -> HitDataBuilder<Grounded, Air, C> {
@@ -362,7 +362,7 @@ impl HitData {
 
             proration,
             scaling,
-            meter_gain: 100,
+            meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],
@@ -389,13 +389,16 @@ impl HitData {
 
             proration,
             scaling,
-            meter_gain: 100,
+            meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],
             _pd: PhantomData,
         }
     }
+
+    pub const DEFAULT_LEVEL_1_SCALING: i32 = 800;
+    pub const DEFAULT_LEVEL_1_METER_GAIN: u32 = 100;
     pub fn level_1(
         damage: u32,
         launch_force: Vector2,
@@ -413,14 +416,16 @@ impl HitData {
             blockstun: 11 + extra_hitstun,
 
             proration: Proration::percent(70),
-            scaling: 1500,
-            meter_gain: 100,
+            scaling: Self::DEFAULT_LEVEL_1_SCALING,
+            meter_gain: Self::DEFAULT_LEVEL_1_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],
             _pd: PhantomData,
         }
     }
+    pub const DEFAULT_LEVEL_2_SCALING: i32 = 1200;
+    pub const DEFAULT_LEVEL_2_METER_GAIN: u32 = 150;
     pub fn level_2(
         damage: u32,
         launch_force: Vector2,
@@ -438,14 +443,16 @@ impl HitData {
             blockstun: 13 + extra_hitstun,
 
             proration: Proration::percent(70),
-            scaling: 2000,
-            meter_gain: 150,
+            scaling: Self::DEFAULT_LEVEL_2_SCALING,
+            meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],
             _pd: PhantomData,
         }
     }
+    pub const DEFAULT_LEVEL_3_SCALING: i32 = 1500;
+    pub const DEFAULT_LEVEL_3_METER_GAIN: u32 = 200;
     pub fn level_3(
         damage: u32,
         launch_force: Vector2,
@@ -463,14 +470,16 @@ impl HitData {
             blockstun: 16 + extra_hitstun,
 
             proration: Proration::percent(70),
-            scaling: 2500,
-            meter_gain: 200,
+            scaling: Self::DEFAULT_LEVEL_3_SCALING,
+            meter_gain: Self::DEFAULT_LEVEL_3_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],
             _pd: PhantomData,
         }
     }
+    pub const DEFAULT_LEVEL_4_SCALING: i32 = 2000;
+    pub const DEFAULT_LEVEL_4_METER_GAIN: u32 = 250;
     pub fn level_4(
         damage: u32,
         launch_force: Vector2,
@@ -488,8 +497,8 @@ impl HitData {
             blockstun: 18 + extra_hitstun,
 
             proration: Proration::percent(70),
-            scaling: 3000,
-            meter_gain: 250,
+            scaling: Self::DEFAULT_LEVEL_4_SCALING,
+            meter_gain: Self::DEFAULT_LEVEL_4_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
             extensions: vec![],

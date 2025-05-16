@@ -4,7 +4,7 @@ const BANDIT_REVOLVER_GROUNDED_1_STARTUP: usize = 12;
 const BANDIT_REVOLVER_GROUNDED_1_ACTIVE: usize = 6;
 const BANDIT_REVOLVER_GROUNDED_1_RECOVERY: usize = 16;
 const BANDIT_REVOLVER_GROUNDED_1_LANDING_LAG: usize = 4;
-const BANDIT_REVOLVER_GROUNDED_1_DAMAGE: u16 = 11;
+const BANDIT_REVOLVER_GROUNDED_1_DAMAGE: u32 = 11;
 
 pub struct BanditRevolverGrounded;
 impl Entity for Sol<BanditRevolverGrounded> {
@@ -51,45 +51,36 @@ impl Entity for Sol<BanditRevolverGrounded> {
                     let active_frames_extra_hitstun = BANDIT_REVOLVER_GROUNDED_1_ACTIVE
                         - (self.frame as usize - BANDIT_REVOLVER_GROUNDED_1_STARTUP);
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                14.0, 14.0,
-                            ))),
-                            info: AttackData {
-                                grounded: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_1_DAMAGE,
-                                    hitstun: 11 + active_frames_extra_hitstun,
-                                    blockstun: 8 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Pushback(30.0 * self.dir()),
-                                    block_push: 60.0 * self.dir(),
-                                },
-                                air: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_1_DAMAGE,
-                                    hitstun: 11 + active_frames_extra_hitstun,
-                                    blockstun: 8 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(14.0, 14.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    BANDIT_REVOLVER_GROUNDED_1_DAMAGE,
+                                    HitEffect::pushback(
+                                        30.0 * self.dir(),
+                                        15 + active_frames_extra_hitstun,
+                                    )
+                                    .build(),
+                                    12 + active_frames_extra_hitstun,
+                                    Proration::percent(80),
+                                    HitData::DEFAULT_LEVEL_1_SCALING,
+                                )
+                                .with_air(
+                                    HitEffect::launcher(
                                         Vector2::new(50.0 * self.dir(), 60.0),
                                         KnockdownType::Soft,
-                                    ),
-                                    block_push: 80.0 * self.dir(),
-                                },
-                                counterhit: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_1_DAMAGE,
-                                    hitstun: 11 + active_frames_extra_hitstun,
-                                    blockstun: 8 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(50.0 * self.dir(), 60.0),
-                                        KnockdownType::Soft,
-                                    ),
-                                    block_push: 80.0 * self.dir(),
-                                },
+                                    )
+                                    .gravity(6.0)
+                                    .build(),
+                                )
+                                .counterhit_from_air(|a| a)
+                                .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                                .build(),
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::Light,
+                                hit_level: HitLevel::Light,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(10.0 * self.dir(), 6.0),
                     );
                 }
@@ -129,10 +120,7 @@ impl<const FRAMES: usize> Entity for Sol<BanditRevolverGroundedRecovery<FRAMES>>
         self.frame += 1;
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
             self.position,
         );
 
@@ -156,7 +144,7 @@ const BANDIT_REVOLVER_GROUNDED_2_STARTUP: usize = 6;
 const BANDIT_REVOLVER_GROUNDED_2_ACTIVE: usize = 2;
 const BANDIT_REVOLVER_GROUNDED_2_RECOVERY: usize = 8;
 const BANDIT_REVOLVER_GROUNDED_2_LANDING_LAG: usize = 15;
-const BANDIT_REVOLVER_GROUNDED_2_DAMAGE: u16 = 14;
+const BANDIT_REVOLVER_GROUNDED_2_DAMAGE: u32 = 14;
 
 struct BanditRevolverGroundedSecondHit;
 impl Entity for Sol<BanditRevolverGroundedSecondHit> {
@@ -181,48 +169,29 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
                     let active_frames_extra_hitstun = BANDIT_REVOLVER_GROUNDED_2_ACTIVE
                         - (self.frame as usize - BANDIT_REVOLVER_GROUNDED_2_STARTUP);
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                20.0, 14.0,
-                            ))),
-                            info: AttackData {
-                                grounded: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_2_DAMAGE,
-                                    hitstun: 43 + active_frames_extra_hitstun,
-                                    blockstun: 14 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 14.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    BANDIT_REVOLVER_GROUNDED_2_DAMAGE,
+                                    HitEffect::launcher(
                                         Vector2::new(100.0 * self.dir(), 100.0),
                                         KnockdownType::Soft,
-                                    ),
-                                    block_push: 60.0 * self.dir(),
-                                },
-                                air: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_2_DAMAGE,
-                                    hitstun: 43 + active_frames_extra_hitstun,
-                                    blockstun: 14 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(100.0 * self.dir(), 100.0),
-                                        KnockdownType::Soft,
-                                    ),
-                                    block_push: 80.0 * self.dir(),
-                                },
-                                counterhit: HitInfo {
-                                    damage: BANDIT_REVOLVER_GROUNDED_2_DAMAGE,
-                                    hitstun: 43 + active_frames_extra_hitstun,
-                                    blockstun: 14 + active_frames_extra_hitstun,
-                                    hit_effect: HitEffect::Launcher(
-                                        Vector2::new(100.0 * self.dir(), 100.0),
-                                        KnockdownType::Soft,
-                                    ),
-                                    block_push: 80.0 * self.dir(),
-                                },
+                                    )
+                                    .build(),
+                                    16 + active_frames_extra_hitstun,
+                                    Proration::percent(80),
+                                    HitData::DEFAULT_LEVEL_1_SCALING,
+                                )
+                                .air_from_grounded(|g| g)
+                                .counterhit_from_grounded(|g| g)
+                                .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                                .build(),
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::Light,
+                                hit_level: HitLevel::Light,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(14.0 * self.dir(), 6.0),
                     );
                 }

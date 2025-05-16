@@ -4,10 +4,10 @@ const VOLCANIC_VIPER_STARTUP: usize = 9;
 const VOLCANIC_VIPER_ACTIVE_1: usize = 5;
 const VOLCANIC_VIPER_ACTIVE_2: usize = 11;
 const VOLCANIC_VIPER_RECOVERY: usize = 45;
-const VOLCANIC_VIPER_DAMAGE_1: u16 = 15;
-const VOLCANIC_VIPER_DAMAGE_2: u16 = 22;
-const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1: u16 = 20;
-const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2: u16 = 38;
+const VOLCANIC_VIPER_DAMAGE_1: u32 = 15;
+const VOLCANIC_VIPER_DAMAGE_2: u32 = 22;
+const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1: u32 = 20;
+const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2: u32 = 38;
 
 pub struct VolcanicViper;
 impl Entity for Sol<VolcanicViper> {
@@ -18,7 +18,7 @@ impl Entity for Sol<VolcanicViper> {
         const DECEL: f32 = 4.0;
         const LAUNCH_VELOCITY: Vector2 = Vector2::new(30.0, 160.0);
 
-        if self.frame == 0 || self.frame == ACTIVE_FRAME_2 as u8 {
+        if self.frame == 0 || self.frame == ACTIVE_FRAME_2 {
             self.has_hit = false;
         }
 
@@ -38,60 +38,61 @@ impl Entity for Sol<VolcanicViper> {
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
                         VOLCANIC_VIPER_ACTIVE_1 - (self.frame as usize - VOLCANIC_VIPER_STARTUP);
-                    let hit_info = HitInfo {
-                        damage: VOLCANIC_VIPER_DAMAGE_1,
-                        hitstun: 50 + active_frames_extra_hitstun,
-                        blockstun: 12 + active_frames_extra_hitstun,
-                        hit_effect: HitEffect::Launcher(
+                    let hit_info = HitData::grounded(
+                        VOLCANIC_VIPER_DAMAGE_1,
+                        HitEffect::launcher(
                             Vector2::new(30.0 * self.dir(), LAUNCH_VELOCITY.y),
                             KnockdownType::Soft,
-                        ),
-                        block_push: 60.0 * self.dir(),
-                    };
+                        )
+                        .build(),
+                        12 + active_frames_extra_hitstun,
+                        Proration::percent(70),
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    )
+                    .air_from_grounded(|g| g)
+                    .counterhit_from_grounded(|g| g)
+                    .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .build();
+
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                12.0, 24.0,
-                            ))),
-                            info: AttackData {
-                                grounded: hit_info.clone(),
-                                air: hit_info.clone(),
-                                counterhit: hit_info.clone(),
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(12.0, 24.0))),
+                            AttackData {
+                                attack: hit_info.clone(),
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::Medium,
+                                hit_level: HitLevel::Medium,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(8.0 * self.dir(), 6.0),
                     );
-                    let clean_hit_info = {
-                        let mut info = hit_info;
-                        info.damage = VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1;
-                        info.hit_effect = HitEffect::Launcher(
+                    let clean_hit_info = HitData::grounded(
+                        VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1,
+                        HitEffect::launcher(
                             Vector2::new(30.0 * self.dir(), LAUNCH_VELOCITY.y),
                             KnockdownType::Hard,
-                        );
-                        info
-                    };
+                        )
+                        .build(),
+                        12 + active_frames_extra_hitstun,
+                        Proration::percent(70),
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    )
+                    .air_from_grounded(|g| g)
+                    .counterhit_from_grounded(|g| g)
+                    .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .build();
+
                     // NOTE: clean hit
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                2.0, 8.0,
-                            ))),
-                            info: AttackData {
-                                grounded: clean_hit_info.clone(),
-                                air: clean_hit_info.clone(),
-                                counterhit: clean_hit_info.clone(),
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(2.0, 8.0))),
+                            AttackData {
+                                attack: clean_hit_info,
                                 priority: 20,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::SuperHeavy,
+                                hit_level: HitLevel::SuperHeavy,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(4.0 * self.dir(), 6.0),
                     );
                 }
@@ -101,72 +102,71 @@ impl Entity for Sol<VolcanicViper> {
                 self.gravity();
 
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
-                            Vector2::new(16.0, 20.0),
-                        )),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                        16.0, 20.0,
+                    )))),
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
                 );
 
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
                         VOLCANIC_VIPER_ACTIVE_2 - (self.frame as usize - ACTIVE_FRAME_2);
-                    let hit_info = HitInfo {
-                        damage: VOLCANIC_VIPER_DAMAGE_2,
-                        hitstun: 50 + active_frames_extra_hitstun,
-                        blockstun: 12 + active_frames_extra_hitstun,
-                        hit_effect: HitEffect::Launcher(
+                    let hit_info = HitData::grounded(
+                        VOLCANIC_VIPER_DAMAGE_2,
+                        HitEffect::launcher(
                             Vector2::new(50.0 * self.dir(), LAUNCH_VELOCITY.y),
                             KnockdownType::Soft,
-                        ),
-                        block_push: 60.0 * self.dir(),
-                    };
+                        )
+                        .build(),
+                        12 + active_frames_extra_hitstun,
+                        Proration::percent(70),
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    )
+                    .air_from_grounded(|g| g)
+                    .counterhit_from_grounded(|g| g)
+                    .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .build();
+
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                18.0, 24.0,
-                            ))),
-                            info: AttackData {
-                                grounded: hit_info.clone(),
-                                air: hit_info.clone(),
-                                counterhit: hit_info.clone(),
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(18.0, 24.0))),
+                            AttackData {
+                                attack: hit_info,
                                 priority: 10,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::Heavy,
+                                hit_level: HitLevel::Heavy,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(8.0 * self.dir(), 12.0),
                     );
-                    let clean_hit_info = {
-                        let mut info = hit_info;
-                        info.damage = VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2;
-                        info.hit_effect = HitEffect::Launcher(
+
+                    let clean_hit_info = HitData::grounded(
+                        VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2,
+                        HitEffect::launcher(
                             Vector2::new(50.0 * self.dir(), LAUNCH_VELOCITY.y),
                             KnockdownType::Hard,
-                        );
-                        info
-                    };
+                        )
+                        .build(),
+                        12 + active_frames_extra_hitstun,
+                        Proration::percent(70),
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    )
+                    .air_from_grounded(|g| g)
+                    .counterhit_from_grounded(|g| g)
+                    .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .build();
+
                     // NOTE: clean hit
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                4.0, 8.0,
-                            ))),
-                            info: AttackData {
-                                grounded: clean_hit_info.clone(),
-                                air: clean_hit_info.clone(),
-                                counterhit: clean_hit_info.clone(),
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(4.0, 8.0))),
+                            AttackData {
+                                attack: clean_hit_info,
                                 priority: 20,
-                                attack_type: crate::collision::AttackType::Mid,
                                 hitbox_id: 1,
-                                hit_type: crate::collision::HitLevel::SuperHeavy,
+                                hit_level: HitLevel::SuperHeavy,
                             },
-                            owner: self.player_id,
-                        },
+                        ),
                         self.position + Vector2::new(5.0 * self.dir(), 9.0),
                     );
                 }
@@ -176,12 +176,9 @@ impl Entity for Sol<VolcanicViper> {
                 self.gravity();
 
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
-                            Vector2::new(16.0, 20.0),
-                        )),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                        16.0, 20.0,
+                    )))),
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
                 );
 
@@ -189,12 +186,9 @@ impl Entity for Sol<VolcanicViper> {
             }
             _ => {
                 world.spawn_hurtbox(
-                    crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
-                            Vector2::new(16.0, 20.0),
-                        )),
-                        owner: self.player_id,
-                    },
+                    self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                        16.0, 20.0,
+                    )))),
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
                 );
 

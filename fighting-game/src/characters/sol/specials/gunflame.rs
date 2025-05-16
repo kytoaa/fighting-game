@@ -22,7 +22,7 @@ impl<const FEINT: bool> Entity for Sol<GunFlameStartup<FEINT>> {
         } else {
             self.velocity.x *= GUNFLAME_DECEL;
         }
-        if self.frame > GUNFLAME_STARTUP as u8 {
+        if self.frame > GUNFLAME_STARTUP {
             if FEINT {
                 Box::new(self.transition(GunFlameFeint, true))
             } else {
@@ -65,30 +65,32 @@ impl Entity for Sol<GunFlameFeint> {
 
         if self.frame == 3 {
             world.spawn_hitbox(
-                Hitbox {
-                    shape: CollisionShape::new(BoundingBox::pos_size(
+                self.create_hitbox(
+                    CollisionShape::new(BoundingBox::pos_size(
                         Vector2::ZERO,
                         Vector2::new(4.0, 5.0),
                     )),
-                    owner: self.player_id,
-                    info: AttackData::with_same_hitinfo(
-                        HitInfo {
-                            damage: 10,
-                            hitstun: 15,
-                            blockstun: 8,
-                            hit_effect: HitEffect::Pushback(20.0 * self.dir()),
-                            block_push: 8.0 * self.dir(),
-                        },
-                        1,
-                        crate::collision::AttackType::Mid,
-                        1,
-                        crate::collision::HitLevel::Light,
-                    ),
-                },
+                    AttackData {
+                        attack: HitData::grounded(
+                            10,
+                            HitEffect::pushback(20.0 * self.dir(), 15).build(),
+                            8,
+                            Proration::percent(80),
+                            HitData::DEFAULT_LEVEL_2_SCALING,
+                        )
+                        .air_from_grounded(|g| g)
+                        .counterhit_from_grounded(|g| g)
+                        .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                        .build(),
+                        priority: 10,
+                        hitbox_id: 1,
+                        hit_level: HitLevel::Light,
+                    },
+                ),
                 self.position + Vector2::new(10.0 * self.dir(), -4.0),
             );
         }
-        if self.frame > GUNFLAME_FEINT_HOLD_LENGTH as u8 {
+        if self.frame > GUNFLAME_FEINT_HOLD_LENGTH {
             self.grounded_actionable_state(input)
         } else {
             self

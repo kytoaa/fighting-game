@@ -3,7 +3,7 @@ use super::*;
 const FAFNIR_STARTUP: usize = 20;
 const FAFNIR_ACTIVE: usize = 4;
 const FAFNIR_RECOVERY: usize = 18;
-const FAFNIR_DAMAGE: u16 = 35;
+const FAFNIR_DAMAGE: u32 = 35;
 
 pub struct Fafnir;
 impl Entity for Sol<Fafnir> {
@@ -22,13 +22,10 @@ impl Entity for Sol<Fafnir> {
         self.frame += 1;
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: CollisionShape::new(BoundingBox::pos_size(
-                    STANDING_HURTBOX.position(),
-                    STANDING_HURTBOX.size().x(22.0),
-                )),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(CollisionShape::new(BoundingBox::pos_size(
+                STANDING_HURTBOX.position(),
+                STANDING_HURTBOX.size().x(22.0),
+            ))),
             self.position,
         );
 
@@ -46,61 +43,53 @@ impl Entity for Sol<Fafnir> {
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
                         FAFNIR_ACTIVE - (self.frame as usize - FAFNIR_STARTUP);
-                    let attack_data = AttackData {
-                        grounded: HitInfo {
-                            damage: FAFNIR_DAMAGE,
-                            hitstun: 60 + active_frames_extra_hitstun,
-                            blockstun: 15,
-                            hit_effect: HitEffect::Launcher(
-                                Vector2::new(100.0 * self.dir(), 90.0),
-                                KnockdownType::Soft,
-                            ),
-                            block_push: 60.0 * self.dir(),
-                        },
-                        air: HitInfo {
-                            damage: FAFNIR_DAMAGE,
-                            hitstun: 60 + active_frames_extra_hitstun,
-                            blockstun: 15,
-                            hit_effect: HitEffect::Launcher(
-                                Vector2::new(100.0 * self.dir(), 120.0),
-                                KnockdownType::Hard,
-                            ),
-                            block_push: 80.0 * self.dir(),
-                        },
-                        counterhit: HitInfo {
-                            damage: FAFNIR_DAMAGE,
-                            hitstun: 60 + active_frames_extra_hitstun,
-                            blockstun: 15,
-                            hit_effect: HitEffect::Launcher(
-                                Vector2::new(100.0 * self.dir(), 120.0),
-                                KnockdownType::Hard,
-                            ),
-                            block_push: 80.0 * self.dir(),
-                        },
-                        priority: 10,
-                        attack_type: crate::collision::AttackType::Mid,
-                        hitbox_id: 1,
-                        hit_type: crate::collision::HitLevel::Heavy,
-                    };
+                    let attack_data = HitData::grounded(
+                        FAFNIR_DAMAGE,
+                        HitEffect::launcher(
+                            Vector2::new(100.0 * self.dir(), 90.0),
+                            KnockdownType::Soft,
+                        )
+                        .wall_bounce_velocity(Vector2::new(60.0, 60.0))
+                        .gravity(7.5)
+                        .build(),
+                        18 + active_frames_extra_hitstun,
+                        Proration::percent(80),
+                        HitData::DEFAULT_LEVEL_4_SCALING,
+                    )
+                    .with_air(
+                        HitEffect::launcher(
+                            Vector2::new(100.0 * self.dir(), 120.0),
+                            KnockdownType::Hard,
+                        )
+                        .wall_bounce_velocity(Vector2::new(60.0, 60.0))
+                        .gravity(7.5)
+                        .build(),
+                    )
+                    .counterhit_from_air(|a| a)
+                    .build();
 
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                18.0, 10.0,
-                            ))),
-                            info: attack_data.clone(),
-                            owner: self.player_id,
-                        },
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(18.0, 10.0))),
+                            AttackData {
+                                attack: attack_data.clone(),
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Heavy,
+                            },
+                        ),
                         self.position + Vector2::new(14.0 * self.dir(), 16.0),
                     );
                     world.spawn_hitbox(
-                        Hitbox {
-                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
-                                8.0, 16.0,
-                            ))),
-                            info: attack_data.clone(),
-                            owner: self.player_id,
-                        },
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(8.0, 16.0))),
+                            AttackData {
+                                attack: attack_data,
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Heavy,
+                            },
+                        ),
                         self.position + Vector2::new(6.0 * self.dir(), 6.0),
                     );
                 }

@@ -2,7 +2,9 @@ use super::{
     Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
     RunStartState, Velocity, WALK_SPEED,
 };
-use crate::collision::{AttackData, CollisionShape, HitEffect, HitInfo, Hitbox, KnockdownType};
+use crate::collision::{
+    AttackData, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
+};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
