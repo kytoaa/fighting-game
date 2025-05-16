@@ -5,11 +5,18 @@ mod hit_data;
 pub use hit_data::*;
 
 pub struct CollisionShape(BoundingBox);
+impl CollisionShape {
+    pub const fn get_bounding_box(&self) -> &BoundingBox {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct AttackData {
-    attack: HitData,
-    hit_level: HitLevel,
+    pub attack: HitData,
+    pub priority: usize,
+    pub hitbox_id: usize,
+    pub hit_level: HitLevel,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +42,7 @@ impl HitLevel {
 }
 
 #[derive(Clone, Copy)]
-pub enum HitConnection {
+pub enum HitConnectionStatus {
     Hit,
     Blocked,
     Invuln,
@@ -46,9 +53,9 @@ pub struct Hurtbox {
     pub owner: EntityID,
 }
 pub struct Hitbox {
-    shape: CollisionShape,
-    info: AttackData,
-    owner: EntityID,
+    pub shape: CollisionShape,
+    pub attack_data: AttackData,
+    pub owner: EntityID,
 }
 
 impl CollisionShape {
@@ -60,12 +67,22 @@ impl CollisionShape {
     }
 }
 impl Hitbox {
+    pub const fn new(owner: EntityID, shape: CollisionShape, attack_data: AttackData) -> Self {
+        Self {
+            owner,
+            shape,
+            attack_data,
+        }
+    }
     pub fn at_position(mut self, position: Vector2) -> Self {
         self.shape = self.shape.at_position(position);
         self
     }
 }
 impl Hurtbox {
+    pub const fn new(owner: EntityID, shape: CollisionShape) -> Self {
+        Self { owner, shape }
+    }
     pub fn at_position(mut self, position: Vector2) -> Self {
         self.shape = self.shape.at_position(position);
         self

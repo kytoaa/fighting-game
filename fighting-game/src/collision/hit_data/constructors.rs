@@ -407,7 +407,7 @@ impl HitData {
             blockstun: 11,
 
             proration: Proration::percent(90),
-            scaling: 100,
+            scaling: 1500,
             meter_gain: 100,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -430,7 +430,7 @@ impl HitData {
             blockstun: 13,
 
             proration: Proration::percent(90),
-            scaling: 100,
+            scaling: 2000,
             meter_gain: 150,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -453,7 +453,7 @@ impl HitData {
             blockstun: 16,
 
             proration: Proration::percent(90),
-            scaling: 100,
+            scaling: 2500,
             meter_gain: 200,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -476,7 +476,7 @@ impl HitData {
             blockstun: 18,
 
             proration: Proration::percent(90),
-            scaling: 100,
+            scaling: 3000,
             meter_gain: 250,
             meter_gain_modifier: 0,
             minimum_damage: 1,

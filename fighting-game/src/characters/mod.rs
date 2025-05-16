@@ -1,4 +1,4 @@
-use crate::collision::{AttackData, HitConnection};
+use crate::collision::{AttackData, HitConnectionStatus, OnHitHitData};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
 use crate::world::World;
@@ -20,6 +20,14 @@ mod wrapper_state;
 
 pub(crate) use wrapper_state::WrapperState;
 
+pub(crate) struct CharacterInitInfo {
+    pub max_health: u32,
+}
+
+pub struct HitstunInfo {
+    hit: OnHitHitData,
+}
+
 pub trait Entity:
     Damageable
     + OnHit
@@ -30,6 +38,7 @@ pub trait Entity:
     + Grounded
     + Direction
     + DistanceFromOtherPlayer
+    + GetHitstunInfo
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
@@ -48,10 +57,10 @@ pub trait Entity:
     }
 }
 pub trait Damageable {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection);
+    fn hit(self: Box<Self>, info: &OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus);
 }
 pub trait OnHit {
-    fn on_hit(&mut self, hit_type: HitConnection);
+    fn on_hit(&mut self, hit_type: HitConnectionStatus);
 }
 pub trait Position {
     fn position(&self) -> Vector2;
@@ -84,6 +93,9 @@ pub trait DistanceFromOtherPlayer {
 }
 pub trait HasCancelState {
     fn cancel_state() -> Box<dyn Entity>;
+}
+pub trait GetHitstunInfo {
+    fn get_hitstun_info(&self) -> Option<HitstunInfo>;
 }
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}

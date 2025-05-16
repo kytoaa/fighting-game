@@ -10,17 +10,21 @@ pub enum Character {
 }
 
 pub(crate) fn create_world(player_1: Character, player_2: Character) -> world::World {
-    let mut char_1 = get_character(player_1, 0);
-    char_1.set_position(Vector2::new(-50.0, 0.0));
-
-    let mut char_2 = get_character(player_2, 1);
-    char_2.set_position(Vector2::new(50.0, 0.0));
-
-    world::World::new([Some(char_1), Some(char_2)])
+    world::World::new((
+        |id| get_character(player_1, Vector2::new(-50.0, 0.0), id),
+        |id| get_character(player_2, Vector2::new(50.0, 0.0), id),
+    ))
 }
 
-fn get_character(character: Character, player: usize) -> Box<dyn Entity> {
+fn get_character(
+    character: Character,
+    position: Vector2,
+    id: world::EntityID,
+) -> (Box<dyn Entity>, characters::CharacterInitInfo) {
     match character {
-        Character::Sol => characters::sol::initial_state(player),
+        Character::Sol => (
+            Box::new(characters::sol::initial_state(id, position)),
+            characters::sol::init_info(),
+        ),
     }
 }

@@ -37,6 +37,12 @@ impl Vector2 {
     pub const fn y(&self, value: f32) -> Self {
         Vector2::new(self.x, value)
     }
+    pub const fn flip_x(&self) -> Self {
+        Vector2::new(-self.x, self.y)
+    }
+    pub const fn flip_y(&self) -> Self {
+        Vector2::new(self.x, -self.y)
+    }
 }
 impl Vector2 {
     pub const fn dot_const(&self, rhs: Self) -> f32 {

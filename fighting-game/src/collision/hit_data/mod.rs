@@ -22,6 +22,9 @@ impl Proration {
     pub const fn percent(value: u32) -> Proration {
         Self(value)
     }
+    pub const fn scale_damage(&self, value: u32) -> u32 {
+        value * self.0 / 100
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,25 +65,25 @@ pub struct HitData {
     air: HitEffect,
     counterhit: HitEffect,
 
-    damage: u32,
-    attack_type: AttackType,
-    block_pushback: f32,
-    blockstun: usize,
+    pub(crate) damage: u32,
+    pub(crate) attack_type: AttackType,
+    pub(crate) block_pushback: f32,
+    pub(crate) blockstun: usize,
 
     /// proration is a percentage, calculated by doing `damage * proration / 100`
-    proration: Proration,
+    pub(crate) proration: Proration,
 
     /// increases scaling on hit, decreases on block, negative scaling reduces scaling of next combo
-    scaling: i32,
+    pub(crate) scaling: i32,
 
     /// amount of meter gained on hit, on block is half
-    meter_gain: u32,
+    pub(crate) meter_gain: u32,
     /// changes rate of meter gain, 1000 being default rate of gain
-    meter_gain_modifier: i32,
+    pub(crate) meter_gain_modifier: i32,
 
-    minimum_damage: u32,
+    pub(crate) minimum_damage: u32,
 
-    extensions: Box<[HitDataExtensions]>,
+    pub(crate) extensions: Box<[HitDataExtensions]>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -93,10 +96,35 @@ enum HitDataExtensions {
 
 #[derive(Debug, Clone)]
 pub struct OnHitHitData {
-    hit_effect: HitEffect,
+    pub hit_effect: HitEffect,
 
-    damage: u32,
-    attack_type: AttackType,
-    block_pushback: f32,
-    blockstun: usize,
+    pub damage: u32,
+    pub attack_type: AttackType,
+    pub block_pushback: f32,
+    pub blockstun: usize,
+
+    _p: std::marker::PhantomData<()>,
+}
+
+impl HitData {
+    pub fn as_on_hit_hitdata(
+        &self,
+        grounded: bool,
+        counterhit: bool,
+        damage_scaling: impl FnOnce(u32) -> u32,
+    ) -> OnHitHitData {
+        OnHitHitData {
+            hit_effect: match (grounded, counterhit) {
+                (_, true) => self.counterhit.clone(),
+                (false, false) => self.air.clone(),
+                (true, false) => self.grounded.clone(),
+            },
+            damage: (damage_scaling)(self.damage),
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            _p: std::marker::PhantomData,
+        }
+    }
 }

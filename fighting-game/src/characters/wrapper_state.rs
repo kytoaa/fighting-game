@@ -32,7 +32,7 @@ impl<const FRAMES: usize, F> Damageable for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         self.entity.hit(info)
     }
 }
@@ -40,7 +40,7 @@ impl<const FRAMES: usize, F> OnHit for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    fn on_hit(&mut self, hit_type: HitConnection) {
+    fn on_hit(&mut self, hit_type: HitConnectionStatus) {
         self.entity.on_hit(hit_type)
     }
 }

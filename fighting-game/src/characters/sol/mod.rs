@@ -1,14 +1,14 @@
 use super::{
-    Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded, HasCollider, OnHit, Position,
-    Velocity,
+    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded,
+    HasCollider, OnHit, Position, Velocity,
 };
-use crate::collision::{AttackData, HitConnection, HitEffect, HitLevel, KnockdownType};
+use crate::collision::{AttackData, HitConnectionStatus, HitEffect, HitLevel, KnockdownType};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
     Action, Button, InputHandler,
 };
-use crate::world::World;
+use crate::world::{EntityID, World};
 
 mod normals;
 mod specials;
@@ -31,10 +31,10 @@ const CROUCHING_HURTBOX: BoundingBox = BoundingBox::pos_size(
     Vector2::new(12.0, 16.0),
 );
 
-pub fn initial_state(player: usize) -> Box<dyn Entity> {
-    Box::new(Sol {
+pub const fn initial_state(player: EntityID, position: Vector2) -> impl Entity {
+    Sol {
         player,
-        position: Vector2::ZERO,
+        position,
         velocity: Vector2::ZERO,
         collider: BoundingBox::pos_size(Vector2::ZERO, COLLIDER_SIZE),
         direction: true,
@@ -45,11 +45,14 @@ pub fn initial_state(player: usize) -> Box<dyn Entity> {
         frame: 0,
         combo_hit_count: 0,
         state: Stand,
-    })
+    }
+}
+pub const fn init_info() -> CharacterInitInfo {
+    CharacterInitInfo { max_health: 500 }
 }
 
 struct Sol<S> {
-    player: usize,
+    player: EntityID,
     position: Vector2,
     velocity: Vector2,
     collider: BoundingBox,
@@ -184,12 +187,12 @@ impl<S> Damageable for Sol<S>
 where
     S: SolDamageableState,
 {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         Sol::hit(self, info)
     }
 }
 impl<S> Sol<S> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         self.combo_hit_count += 1;
         println!("{} hits", self.combo_hit_count);
         let hit_info = if self.is_grounded() {
@@ -220,13 +223,13 @@ impl<S> Sol<S> {
                     ))
                 }
             },
-            HitConnection::Hit,
+            HitConnectionStatus::Hit,
         )
     }
 }
 
 impl Damageable for Sol<WalkState<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         let hit_info = &info.grounded;
 
         self.velocity.x = hit_info.block_push;
@@ -241,12 +244,12 @@ impl Damageable for Sol<WalkState<true>> {
                 },
                 true,
             )),
-            HitConnection::Blocked,
+            HitConnectionStatus::Blocked,
         )
     }
 }
 impl Damageable for Sol<Crouch<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         let hit_info = &info.grounded;
 
         self.velocity.x = hit_info.block_push;
@@ -261,12 +264,12 @@ impl Damageable for Sol<Crouch<true>> {
                 },
                 true,
             )),
-            HitConnection::Blocked,
+            HitConnectionStatus::Blocked,
         )
     }
 }
 impl Damageable for Sol<Air<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         let hit_info = &info.air;
 
         self.velocity.x = hit_info.block_push;
@@ -281,12 +284,12 @@ impl Damageable for Sol<Air<true>> {
                 },
                 true,
             )),
-            HitConnection::Blocked,
+            HitConnectionStatus::Blocked,
         )
     }
 }
 impl Damageable for Sol<AirBlockStun> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         let hit_info = &info.air;
 
         self.velocity.x = hit_info.block_push;
@@ -301,12 +304,12 @@ impl Damageable for Sol<AirBlockStun> {
                 },
                 true,
             )),
-            HitConnection::Blocked,
+            HitConnectionStatus::Blocked,
         )
     }
 }
 impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnection) {
+    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
         let hit_info = &info.grounded;
 
         self.velocity.x = hit_info.block_push;
@@ -330,20 +333,20 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
                 },
                 true,
             )),
-            HitConnection::Blocked,
+            HitConnectionStatus::Blocked,
         )
     }
 }
 impl Damageable for Sol<Backdash> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        (self, HitConnection::Invuln)
+    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        (self, HitConnectionStatus::Invuln)
     }
 }
 
 impl<S> OnHit for Sol<S> {
-    fn on_hit(&mut self, hit_connection: HitConnection) {
+    fn on_hit(&mut self, hit_connection: HitConnectionStatus) {
         match hit_connection {
-            HitConnection::Hit | HitConnection::Blocked => self.has_hit = true,
+            HitConnectionStatus::Hit | HitConnectionStatus::Blocked => self.has_hit = true,
             _ => (),
         }
     }
@@ -1132,8 +1135,8 @@ impl Entity for Sol<SoftKnockdown> {
     }
 }
 impl Damageable for Sol<SoftKnockdown> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        (self, HitConnection::Invuln)
+    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        (self, HitConnectionStatus::Invuln)
     }
 }
 
@@ -1150,7 +1153,7 @@ impl Entity for Sol<HardKnockdown> {
     }
 }
 impl Damageable for Sol<HardKnockdown> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnection) {
-        (self, HitConnection::Invuln)
+    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        (self, HitConnectionStatus::Invuln)
     }
 }
