@@ -144,6 +144,10 @@ impl<G, A, C> HitDataBuilder<G, A, C> {
         self.minimum_damage = value;
         self
     }
+    pub const fn proration(mut self, proration: Proration) -> Self {
+        self.proration = proration;
+        self
+    }
     pub fn add_extension(mut self, value: HitDataExtensions) -> Self {
         self.extensions.push(value);
         self
@@ -215,7 +219,7 @@ impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
         }
     }
 }
-impl<A, U: Changeable> HitDataBuilder<Grounded, A, U> {
+impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
     pub fn counterhit_from_grounded<F>(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
@@ -240,8 +244,8 @@ impl<A, U: Changeable> HitDataBuilder<Grounded, A, U> {
         }
     }
 }
-impl<G, U: Changeable> HitDataBuilder<G, Air, U> {
-    pub fn counterhit_from_air<F>(
+impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
+    pub fn counterhit_from_air(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
     ) -> HitDataBuilder<G, Air, Counterhit> {
@@ -265,7 +269,7 @@ impl<G, U: Changeable> HitDataBuilder<G, Air, U> {
         }
     }
 }
-impl<C, U: Changeable> HitDataBuilder<Grounded, U, C> {
+impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
     pub fn air_from_grounded<F>(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
@@ -290,7 +294,7 @@ impl<C, U: Changeable> HitDataBuilder<Grounded, U, C> {
         }
     }
 }
-impl<C, U: Changeable> HitDataBuilder<U, Air, C> {
+impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
     pub fn grounded_from_air<F>(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
@@ -395,18 +399,20 @@ impl HitData {
     pub fn level_1(
         damage: u32,
         launch_force: Vector2,
+        extra_hitstun: usize,
     ) -> HitDataBuilder<Default, Default, Undefined> {
+        let dir = launch_force.x.signum();
         HitDataBuilder {
-            grounded: Some(HitEffect::pushback(50.0, 14).build()),
+            grounded: Some(HitEffect::pushback(50.0 * dir, 14 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
             counterhit: None,
 
             damage,
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
-            blockstun: 11,
+            blockstun: 11 + extra_hitstun,
 
-            proration: Proration::percent(90),
+            proration: Proration::percent(70),
             scaling: 1500,
             meter_gain: 100,
             meter_gain_modifier: 0,
@@ -418,18 +424,20 @@ impl HitData {
     pub fn level_2(
         damage: u32,
         launch_force: Vector2,
+        extra_hitstun: usize,
     ) -> HitDataBuilder<Default, Default, Undefined> {
+        let dir = launch_force.x.signum();
         HitDataBuilder {
-            grounded: Some(HitEffect::pushback(55.0, 16).build()),
+            grounded: Some(HitEffect::pushback(55.0 * dir, 16 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
             counterhit: None,
 
             damage,
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
-            blockstun: 13,
+            blockstun: 13 + extra_hitstun,
 
-            proration: Proration::percent(90),
+            proration: Proration::percent(70),
             scaling: 2000,
             meter_gain: 150,
             meter_gain_modifier: 0,
@@ -441,18 +449,20 @@ impl HitData {
     pub fn level_3(
         damage: u32,
         launch_force: Vector2,
+        extra_hitstun: usize,
     ) -> HitDataBuilder<Default, Default, Undefined> {
+        let dir = launch_force.x.signum();
         HitDataBuilder {
-            grounded: Some(HitEffect::pushback(60.0, 19).build()),
+            grounded: Some(HitEffect::pushback(60.0 * dir, 19 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
             counterhit: None,
 
             damage,
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
-            blockstun: 16,
+            blockstun: 16 + extra_hitstun,
 
-            proration: Proration::percent(90),
+            proration: Proration::percent(70),
             scaling: 2500,
             meter_gain: 200,
             meter_gain_modifier: 0,
@@ -464,18 +474,20 @@ impl HitData {
     pub fn level_4(
         damage: u32,
         launch_force: Vector2,
+        extra_hitstun: usize,
     ) -> HitDataBuilder<Default, Default, Undefined> {
+        let dir = launch_force.x.signum();
         HitDataBuilder {
-            grounded: Some(HitEffect::pushback(65.0, 21).build()),
+            grounded: Some(HitEffect::pushback(65.0 * dir, 21 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
             counterhit: None,
 
             damage,
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
-            blockstun: 18,
+            blockstun: 18 + extra_hitstun,
 
-            proration: Proration::percent(90),
+            proration: Proration::percent(70),
             scaling: 3000,
             meter_gain: 250,
             meter_gain_modifier: 0,

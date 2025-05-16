@@ -1,8 +1,11 @@
 use super::{
     CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded,
-    HasCollider, OnHit, Position, Velocity,
+    HasCollider, HitstunInfo, OnHit, Position, Velocity,
 };
-use crate::collision::{AttackData, HitConnectionStatus, HitEffect, HitLevel, KnockdownType};
+use crate::collision::{
+    AttackData, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox, Hitbox, Hurtbox,
+    KnockdownType, OnHitHitData,
+};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
@@ -17,7 +20,7 @@ use specials::*;
 
 const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
-const MIN_RUN_FRAMES_BEFORE_CANCEL: u8 = 4;
+const MIN_RUN_FRAMES_BEFORE_CANCEL: usize = 4;
 
 const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
 const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
@@ -33,7 +36,7 @@ const CROUCHING_HURTBOX: BoundingBox = BoundingBox::pos_size(
 
 pub const fn initial_state(player: EntityID, position: Vector2) -> impl Entity {
     Sol {
-        player,
+        player_id: player,
         position,
         velocity: Vector2::ZERO,
         collider: BoundingBox::pos_size(Vector2::ZERO, COLLIDER_SIZE),
@@ -43,7 +46,6 @@ pub const fn initial_state(player: EntityID, position: Vector2) -> impl Entity {
         has_air_action: true,
         distance_from_other_player: f32::MAX,
         frame: 0,
-        combo_hit_count: 0,
         state: Stand,
     }
 }
@@ -52,7 +54,7 @@ pub const fn init_info() -> CharacterInitInfo {
 }
 
 struct Sol<S> {
-    player: EntityID,
+    player_id: EntityID,
     position: Vector2,
     velocity: Vector2,
     collider: BoundingBox,
@@ -61,8 +63,7 @@ struct Sol<S> {
     grounded: bool,
     has_air_action: bool,
     distance_from_other_player: f32,
-    frame: u8,
-    combo_hit_count: u8,
+    frame: usize,
     state: S,
 }
 impl<S> Sol<S> {
@@ -87,7 +88,7 @@ impl<S> Sol<S> {
     }
     fn transition<N>(self, new_state: N, reset_frame: bool) -> Sol<N> {
         Sol {
-            player: self.player,
+            player_id: self.player_id,
             position: self.position,
             velocity: self.velocity,
             collider: self.collider,
@@ -97,7 +98,6 @@ impl<S> Sol<S> {
             has_air_action: self.has_air_action,
             distance_from_other_player: self.distance_from_other_player,
             frame: if reset_frame { 0 } else { self.frame },
-            combo_hit_count: self.combo_hit_count,
             state: new_state,
         }
     }
@@ -118,6 +118,19 @@ impl<S> Sol<S> {
     }
     fn drag(&mut self, drag: f32) {
         self.velocity.x = self.velocity.x.move_towards(0.0, drag);
+    }
+    const fn create_hitbox(&self, shape: CollisionShape, attack_data: AttackData) -> Hitbox {
+        Hitbox {
+            shape,
+            owner: self.player_id,
+            attack_data,
+        }
+    }
+    const fn create_hurtbox(&self, shape: CollisionShape) -> Hurtbox {
+        Hurtbox {
+            shape,
+            owner: self.player_id,
+        }
     }
 }
 
@@ -187,37 +200,51 @@ impl<S> Damageable for Sol<S>
 where
     S: SolDamageableState,
 {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         Sol::hit(self, info)
     }
 }
 impl<S> Sol<S> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        self.combo_hit_count += 1;
-        println!("{} hits", self.combo_hit_count);
-        let hit_info = if self.is_grounded() {
-            &info.grounded
-        } else {
-            &info.air
-        };
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         (
-            match &hit_info.hit_effect {
-                HitEffect::Pushback(force) => {
+            match &info.hit_effect {
+                HitEffect::Pushback { force, frames } => {
                     self.velocity.x = *force;
+                    Box::new(self.transition(BasicHitstun { length: *frames }, true))
+                }
+                HitEffect::Launcher {
+                    knockback,
+                    gravity,
+                    knockdown,
+                    momentum_scaling,
+                    ground_bounce_velocity,
+                    wall_bounce_velocity,
+                } => {
+                    self.velocity = Vector2::new(
+                        self.velocity.x * momentum_scaling.0 + knockback.x,
+                        self.velocity.y * momentum_scaling.1 + knockback.y,
+                    );
+                    self.grounded = false;
                     Box::new(self.transition(
-                        BasicHitstun {
-                            length: hit_info.hitstun,
+                        Tumble {
+                            gravity: *gravity,
+                            knockdown: *knockdown,
+                            ground_bounce_velocity: *ground_bounce_velocity,
+                            wall_bounce_velocity: *wall_bounce_velocity,
                         },
                         true,
                     ))
                 }
-                HitEffect::Launcher(force, knockdown) => {
-                    self.velocity = *force;
-                    self.grounded = false;
+                HitEffect::FloatingCrumple {
+                    knockback,
+                    gravity,
+                    landing_frames,
+                } => {
+                    self.velocity = *knockback;
                     Box::new(self.transition(
-                        Tumble {
-                            length: hit_info.hitstun,
-                            knockdown: *knockdown,
+                        FloatingCrumple {
+                            gravity: *gravity,
+                            landing_frames: *landing_frames,
                         },
                         true,
                     ))
@@ -226,13 +253,12 @@ impl<S> Sol<S> {
             HitConnectionStatus::Hit,
         )
     }
+    fn hit_on_block<const CROUCHING: bool>() {}
 }
 
 impl Damageable for Sol<WalkState<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        let hit_info = &info.grounded;
-
-        self.velocity.x = hit_info.block_push;
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::Low = info.attack_type {
             return Sol::hit(self, info);
@@ -240,7 +266,7 @@ impl Damageable for Sol<WalkState<true>> {
         (
             Box::new(self.transition(
                 BlockStun::<false> {
-                    length: hit_info.blockstun,
+                    length: info.blockstun,
                 },
                 true,
             )),
@@ -249,10 +275,8 @@ impl Damageable for Sol<WalkState<true>> {
     }
 }
 impl Damageable for Sol<Crouch<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        let hit_info = &info.grounded;
-
-        self.velocity.x = hit_info.block_push;
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::High = info.attack_type {
             return Sol::hit(self, info);
@@ -260,7 +284,7 @@ impl Damageable for Sol<Crouch<true>> {
         (
             Box::new(self.transition(
                 BlockStun::<true> {
-                    length: hit_info.blockstun,
+                    length: info.blockstun + 1,
                 },
                 true,
             )),
@@ -269,50 +293,34 @@ impl Damageable for Sol<Crouch<true>> {
     }
 }
 impl Damageable for Sol<Air<true>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        let hit_info = &info.air;
-
-        self.velocity.x = hit_info.block_push;
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::Low = info.attack_type {
             return Sol::hit(self, info);
         }
         (
-            Box::new(self.transition(
-                AirBlockStun {
-                    length: hit_info.blockstun,
-                },
-                true,
-            )),
+            Box::new(self.transition(AirBlockStun { length: 15 }, true)),
             HitConnectionStatus::Blocked,
         )
     }
 }
 impl Damageable for Sol<AirBlockStun> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        let hit_info = &info.air;
-
-        self.velocity.x = hit_info.block_push;
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::Low = info.attack_type {
             return Sol::hit(self, info);
         }
         (
-            Box::new(self.transition(
-                AirBlockStun {
-                    length: hit_info.blockstun,
-                },
-                true,
-            )),
+            Box::new(self.transition(AirBlockStun { length: 15 }, true)),
             HitConnectionStatus::Blocked,
         )
     }
 }
 impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
-    fn hit(mut self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        let hit_info = &info.grounded;
-
-        self.velocity.x = hit_info.block_push;
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+        self.velocity.x = info.block_pushback;
 
         match CROUCHING {
             true => {
@@ -329,7 +337,7 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
         (
             Box::new(self.transition(
                 BlockStun::<CROUCHING> {
-                    length: hit_info.blockstun,
+                    length: info.blockstun + if CROUCHING { 1 } else { 0 },
                 },
                 true,
             )),
@@ -338,7 +346,7 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
     }
 }
 impl Damageable for Sol<Backdash> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }
@@ -358,7 +366,6 @@ where
     Sol<S>: Entity + 'static,
 {
     fn grounded_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
-        self.combo_hit_count = 0;
         match self.grounded_cancel_options(input) {
             Ok(state) => state,
             Err(s) => s.walk_block_state(input),
@@ -396,7 +403,7 @@ where
         }
         Err(self)
     }
-    fn grounded_movement_cancel_options_from_attack<const FRAMES: u8>(
+    fn grounded_movement_cancel_options_from_attack<const FRAMES: usize>(
         self: Box<Sol<S>>,
         input: &InputHandler,
         dash_cancel_state: RunStartState<FRAMES>,
@@ -495,7 +502,6 @@ where
         }
     }
     fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
-        self.combo_hit_count = 0;
         try_transition!(air_attack_options; self, input).air_movement_state(input)
     }
     fn air_attack_options(
@@ -658,8 +664,8 @@ where
     }
 }
 
-const WALK_ANIM_LENGTH: u8 = 4;
-const FRAMES_PER_WALK_ANIM_FRAME: u8 = 10;
+const WALK_ANIM_LENGTH: usize = 4;
+const FRAMES_PER_WALK_ANIM_FRAME: usize = 10;
 struct WalkState<const BLOCKING: bool>;
 impl<const BLOCKING: bool> Entity for Sol<WalkState<BLOCKING>>
 where
@@ -673,11 +679,10 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         self.velocity = input.move_dir().y(0.0) * WALK_SPEED;
@@ -686,11 +691,14 @@ where
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         let mut path: String = "sol/walk/walk".into();
         path.push(
-            (if !BLOCKING {
-                '1' as u8 + (self.frame / FRAMES_PER_WALK_ANIM_FRAME)
-            } else {
-                '4' as u8 - (self.frame / FRAMES_PER_WALK_ANIM_FRAME)
-            }) as char,
+            char::from_u32(
+                (if !BLOCKING {
+                    '1' as usize + (self.frame / FRAMES_PER_WALK_ANIM_FRAME)
+                } else {
+                    '4' as usize - (self.frame / FRAMES_PER_WALK_ANIM_FRAME)
+                }) as u32,
+            )
+            .unwrap(),
         );
 
         Some((path.into(), BASE_SPRITE_OFFSET))
@@ -698,8 +706,8 @@ where
 }
 impl SolDamageableState for WalkState<false> {}
 
-const RUN_ANIM_LENGTH: u8 = 6;
-const FRAMES_PER_RUN_ANIM_FRAME: u8 = 5;
+const RUN_ANIM_LENGTH: usize = 6;
+const FRAMES_PER_RUN_ANIM_FRAME: usize = 5;
 struct RunState;
 impl Entity for Sol<RunState>
 where
@@ -713,11 +721,10 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         if input.move_dir() == Vector2::new(self.dir(), 0.0) {
@@ -729,14 +736,17 @@ where
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         let mut path: String = "sol/run/run".into();
-        path.push(('1' as u8 + (self.frame / FRAMES_PER_RUN_ANIM_FRAME)) as char);
+        path.push(
+            char::from_u32(('1' as u8 as usize + (self.frame / FRAMES_PER_RUN_ANIM_FRAME)) as u32)
+                .unwrap(),
+        );
 
         Some((path.into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for RunState {}
 
-struct RunStartState<const FRAMES: u8 = MIN_RUN_FRAMES_BEFORE_CANCEL>;
+struct RunStartState<const FRAMES: usize = MIN_RUN_FRAMES_BEFORE_CANCEL>;
 impl RunStartState {
     const fn dash_cancel() -> RunStartState<10> {
         RunStartState
@@ -745,7 +755,7 @@ impl RunStartState {
         RunStartState
     }
 }
-impl<const FRAMES: u8> Entity for Sol<RunStartState<FRAMES>>
+impl<const FRAMES: usize> Entity for Sol<RunStartState<FRAMES>>
 where
     Sol<RunStartState<FRAMES>>: Damageable,
 {
@@ -756,11 +766,10 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         if self.frame < FRAMES {
@@ -773,12 +782,15 @@ where
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         let mut path: String = "sol/run/run".into();
-        path.push(('1' as u8 + (self.frame / FRAMES_PER_RUN_ANIM_FRAME)) as char);
+        path.push(
+            char::from_u32(('1' as u8 as usize + (self.frame / FRAMES_PER_RUN_ANIM_FRAME)) as u32)
+                .unwrap(),
+        );
 
         Some((path.into(), BASE_SPRITE_OFFSET))
     }
 }
-impl<const FRAMES: u8> SolDamageableState for RunStartState<FRAMES> {}
+impl<const FRAMES: usize> SolDamageableState for RunStartState<FRAMES> {}
 
 const BACKDASH_VELOCITY: f32 = 70.0;
 const BACKDASH_FRAMES: usize = 6;
@@ -789,7 +801,7 @@ impl Entity for Sol<Backdash> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.velocity = Vector2::new(-self.dir() * BACKDASH_VELOCITY, 0.0);
         self.frame += 1;
-        if self.frame > BACKDASH_FRAMES as u8 {
+        if self.frame > BACKDASH_FRAMES {
             Box::new(self.transition(BackdashVulnerable, true))
         } else {
             self
@@ -806,14 +818,13 @@ impl Entity for Sol<BackdashVulnerable> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
-        if self.frame > BACKDASH_VULNERABLE as u8 {
+        if self.frame > BACKDASH_VULNERABLE {
             if self.grounded {
                 self.grounded_actionable_state(input)
             } else {
@@ -838,11 +849,10 @@ impl Entity for Sol<Stand> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         self.grounded_actionable_state(input)
@@ -868,11 +878,10 @@ where
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(CROUCHING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         self.grounded_actionable_state(input)
@@ -903,14 +912,13 @@ impl Entity for Sol<JumpSquat> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
-        if self.frame > JUMPSQUAT_FRAMES as u8 {
+        if self.frame > JUMPSQUAT_FRAMES {
             if self.velocity.x * self.state.direction < 1.0 {
                 self.velocity.x = WALK_SPEED * self.state.direction;
             }
@@ -959,10 +967,10 @@ impl Entity for Sol<Airdash> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.velocity = Vector2::new(AIRDASH_SPEED * self.dir(), 0.0);
         self.frame += 1;
-        if self.frame > AIRDASH_LENGTH as u8 {
+        if self.frame > AIRDASH_LENGTH {
             Box::new(self.transition(Air::<false>, true))
         } else {
-            if self.frame > AIRDASH_ACTIONABLE_FRAME as u8 {
+            if self.frame > AIRDASH_ACTIONABLE_FRAME {
                 match self.air_attack_options(input) {
                     Ok(s) => s,
                     Err(s) => s,
@@ -994,13 +1002,12 @@ impl Entity for Sol<BasicHitstun> {
         self.frame += 1;
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
-        if self.frame > self.state.length as u8 {
+        if self.frame > self.state.length {
             Box::new(self.transition(Stand, true))
         } else {
             self
@@ -1011,8 +1018,10 @@ impl SolDamageableState for BasicHitstun {}
 
 #[derive(Debug)]
 struct Tumble {
-    length: usize,
+    gravity: f32,
     knockdown: KnockdownType,
+    ground_bounce_velocity: Option<Vector2>,
+    wall_bounce_velocity: Option<Vector2>,
 }
 impl Entity for Sol<Tumble> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
@@ -1023,40 +1032,57 @@ impl Entity for Sol<Tumble> {
         );*/
         self.frame += 1;
         if self.grounded {
-            let length = self
-                .state
-                .length
-                .checked_sub(self.frame as usize)
-                .unwrap_or(3); // NOTE: 3 frames of hitstun minimum
             return match self.state.knockdown {
                 KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
                 KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
-                KnockdownType::None => Box::new(self.transition(BasicHitstun { length }, true)),
             };
         }
 
         // TODO: maybe remove this in future
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         self
     }
 
     fn should_wall_bounce(&self) -> bool {
-        match self.state.knockdown {
-            KnockdownType::Hard => true,
-            KnockdownType::Soft => true,
-            KnockdownType::None => false,
-        }
+        true
     }
 }
 impl SolDamageableState for Tumble {}
+
+struct FloatingCrumple {
+    gravity: f32,
+    landing_frames: usize,
+}
+impl Entity for Sol<FloatingCrumple> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
+            },
+            self.position,
+        );
+
+        if self.grounded {
+            self.frame += 1;
+            if self.frame >= self.state.landing_frames {
+                return self.grounded_actionable_state(input);
+            }
+        }
+        self
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+}
+impl SolDamageableState for FloatingCrumple {}
 
 const BLOCKSTUN_DRAG: f32 = 2.0;
 
@@ -1072,24 +1098,22 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
         if CROUCHING {
             world.spawn_hurtbox(
                 crate::collision::Hurtbox {
-                    shape: crate::collision::CollisionShape::Box(CROUCHING_HURTBOX),
-                    owner: self.player,
+                    shape: crate::collision::CollisionShape::new(CROUCHING_HURTBOX),
+                    owner: self.player_id,
                 },
                 self.position,
-                1,
             );
         } else {
             world.spawn_hurtbox(
                 crate::collision::Hurtbox {
-                    shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                    owner: self.player,
+                    shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                    owner: self.player_id,
                 },
                 self.position,
-                1,
             );
         }
 
-        if self.frame >= self.state.length as u8 {
+        if self.frame >= self.state.length {
             self.grounded_actionable_state(input)
         } else {
             self
@@ -1111,7 +1135,7 @@ struct AirBlockStun {
 impl Entity for Sol<AirBlockStun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
-        if self.frame >= self.state.length as u8 {
+        if self.frame >= self.state.length {
             Box::new(self.transition(Stand, true))
         } else {
             self
@@ -1119,15 +1143,15 @@ impl Entity for Sol<AirBlockStun> {
     }
 }
 
-const HARD_KNOCKDOWN_FRAMES: usize = 30;
-const SOFT_KNOCKDOWN_FRAMES: usize = 15;
+const HARD_KNOCKDOWN_FRAMES: usize = 50;
+const SOFT_KNOCKDOWN_FRAMES: usize = 25;
 
 #[derive(Debug)]
 struct SoftKnockdown;
 impl Entity for Sol<SoftKnockdown> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
-        if self.frame >= SOFT_KNOCKDOWN_FRAMES as u8 {
+        if self.frame >= SOFT_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
         } else {
             self
@@ -1135,7 +1159,7 @@ impl Entity for Sol<SoftKnockdown> {
     }
 }
 impl Damageable for Sol<SoftKnockdown> {
-    fn hit(self: Box<Self>, _: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }
@@ -1145,7 +1169,7 @@ struct HardKnockdown;
 impl Entity for Sol<HardKnockdown> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
-        if self.frame >= HARD_KNOCKDOWN_FRAMES as u8 {
+        if self.frame >= HARD_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
         } else {
             self

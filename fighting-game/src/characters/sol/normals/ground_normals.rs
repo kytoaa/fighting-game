@@ -33,11 +33,10 @@ impl Entity for Sol<CloseMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         match self.frame as usize {
@@ -48,11 +47,11 @@ impl Entity for Sol<CloseMid> {
                         CLOSE_MID_ACTIVE - (self.frame as usize - CLOSE_MID_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(10.0, 18.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData::with_same_hitinfo(
                                 HitInfo {
                                     damage: CLOSE_MID_DAMAGE,
@@ -71,19 +70,17 @@ impl Entity for Sol<CloseMid> {
                             ),
                         },
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
-                        1,
                     );
 
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(12.0, 20.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
-                        1,
                     );
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
@@ -195,11 +192,10 @@ impl Entity for Sol<FarMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         match self.frame as usize {
@@ -215,11 +211,11 @@ impl Entity for Sol<FarMid> {
                         FAR_MID_ACTIVE - (self.frame as usize - FAR_MID_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(16.0, 18.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData {
                                 grounded: HitInfo {
                                     damage: FAR_MID_DAMAGE,
@@ -255,19 +251,17 @@ impl Entity for Sol<FarMid> {
                             },
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 10.0),
-                        1,
                     );
 
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(18.0, 20.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 10.0),
-                        1,
                     );
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
@@ -369,11 +363,10 @@ impl Entity for Sol<StandLight> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
-            1,
         );
 
         if self.frame as usize == STAND_LIGHT_STARTUP + 1 {
@@ -411,11 +404,11 @@ impl Entity for Sol<StandLight> {
             STAND_LIGHT_STARTUP => {
                 world.spawn_hitbox(
                     Hitbox {
-                        shape: CollisionShape::Box(BoundingBox::pos_size(
+                        shape: CollisionShape::new(BoundingBox::pos_size(
                             Vector2::ZERO,
                             Vector2::new(10.0, 12.0),
                         )),
-                        owner: self.player,
+                        owner: self.player_id,
                         info: AttackData {
                             grounded: HitInfo {
                                 damage: STAND_LIGHT_FIRST_HIT_DAMAGE,
@@ -453,21 +446,19 @@ impl Entity for Sol<StandLight> {
                     self.position
                         + Vector2::new(8.0 * self.dir(), 8.0)
                         + Vector2::RIGHT * 6.0 * self.dir(),
-                    1,
                 );
 
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                        shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                             Vector2::ZERO,
                             Vector2::new(12.0, 14.0),
                         )),
-                        owner: self.player,
+                        owner: self.player_id,
                     },
                     self.position
                         + Vector2::new(8.0 * self.dir(), 8.0)
                         + Vector2::RIGHT * 6.0 * self.dir(),
-                    1,
                 );
 
                 self
@@ -513,72 +504,67 @@ impl Entity for Sol<StandLight> {
 
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(10.0, 12.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: attack_data.clone(),
                         },
                         self.position
                             + Vector2::new(14.0 * self.dir(), 24.0)
                             + Vector2::RIGHT * 6.0 * self.dir(),
-                        1,
                     );
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(8.0, 10.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: attack_data.clone(),
                         },
                         self.position
                             + Vector2::new(9.0 * self.dir(), 17.0)
                             + Vector2::RIGHT * 6.0 * self.dir(),
-                        1,
                     );
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(8.0, 10.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: attack_data,
                         },
                         self.position
                             + Vector2::new(5.0 * self.dir(), 10.0)
                             + Vector2::RIGHT * 6.0 * self.dir(),
-                        1,
                     );
 
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(10.0, 12.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position
                             + Vector2::new(9.0 * self.dir(), 17.0)
                             + Vector2::RIGHT * 6.0 * self.dir(),
-                        1,
                     );
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(10.0, 12.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position
                             + Vector2::new(5.0 * self.dir(), 10.0)
                             + Vector2::RIGHT * 6.0 * self.dir(),
-                        1,
                     );
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
@@ -666,8 +652,8 @@ impl Entity for Sol<StandHeavy> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
             1,
@@ -681,11 +667,11 @@ impl Entity for Sol<StandHeavy> {
                         STAND_HEAVY_ACTIVE - (self.frame as usize - STAND_HEAVY_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::pos_size(
+                            shape: CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(20.0, 15.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData {
                                 grounded: HitInfo {
                                     damage: STAND_HEAVY_DAMAGE,
@@ -721,18 +707,16 @@ impl Entity for Sol<StandHeavy> {
                             },
                         },
                         self.position + Vector2::new(18.0 * self.dir(), 13.0),
-                        1,
                     );
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::pos_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
                                 Vector2::new(12.0, 17.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(12.0 * self.dir(), 13.0),
-                        1,
                     );
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);

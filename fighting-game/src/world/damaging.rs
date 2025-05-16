@@ -54,7 +54,8 @@ pub(super) fn hit_player(
         )
     });
 
-    let (player, hit_status) = player.hit(&on_hit_hitdata);
+    let on_hit_hitdata_damage = on_hit_hitdata.damage;
+    let (player, hit_status) = player.hit(on_hit_hitdata);
 
     let combo_info = match hit_status {
         crate::collision::HitConnectionStatus::Hit => {
@@ -62,16 +63,16 @@ pub(super) fn hit_player(
                 hits: 0,
                 total_damage: 0,
                 proration: hit_data.proration.clone(),
-                target: hit_player_id.clone(),
+                target: hit_player_id,
                 scaling: 0,
             });
 
             combo_info.hits += 1;
-            combo_info.total_damage += on_hit_hitdata.damage;
+            combo_info.total_damage += on_hit_hitdata_damage;
             combo_info.scaling += hit_data.scaling;
 
             player_data.scaling += hit_data.scaling;
-            player_data.health = player_data.health.saturating_sub(on_hit_hitdata.damage);
+            player_data.health = player_data.health.saturating_sub(on_hit_hitdata_damage);
             player_data.burst_meter += super::players::burst_gain(hit_data.damage, combo_info.hits);
             player_data.meter_gain =
                 (player_data.meter_gain as i32 + hit_data.meter_gain_modifier) as u32;

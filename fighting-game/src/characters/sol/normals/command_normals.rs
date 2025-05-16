@@ -29,13 +29,12 @@ impl Entity for Sol<Heavy3> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                shape: crate::collision::CollisionShape::new(BoundingBox::with_size(Vector2::new(
                     26.0, 10.0,
                 ))),
-                owner: self.player,
+                owner: self.player_id,
             },
             self.position + Vector2::new(4.0 * self.dir(), -1.0),
-            1,
         );
 
         match self.frame as usize {
@@ -47,10 +46,10 @@ impl Entity for Sol<Heavy3> {
 
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 20.0, 8.0,
                             ))),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData {
                                 grounded: HitInfo {
                                     damage: HEAVY_3_DAMAGE,
@@ -89,7 +88,6 @@ impl Entity for Sol<Heavy3> {
                             },
                         },
                         self.position + Vector2::new(6.0 * self.dir(), -1.0),
-                        1,
                     );
                 } else {
                     self = try_transition!(grounded_special_cancel_options; self, input);
@@ -159,11 +157,10 @@ impl Entity for Sol<Heavy6> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position + Vector2::RIGHT * 6.0 * self.dir(),
-            1,
         );
 
         match self.frame as usize {

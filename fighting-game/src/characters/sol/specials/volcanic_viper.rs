@@ -50,7 +50,7 @@ impl Entity for Sol<VolcanicViper> {
                     };
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 12.0, 24.0,
                             ))),
                             info: AttackData {
@@ -62,10 +62,9 @@ impl Entity for Sol<VolcanicViper> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::Medium,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(8.0 * self.dir(), 6.0),
-                        1,
                     );
                     let clean_hit_info = {
                         let mut info = hit_info;
@@ -79,7 +78,7 @@ impl Entity for Sol<VolcanicViper> {
                     // NOTE: clean hit
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 2.0, 8.0,
                             ))),
                             info: AttackData {
@@ -91,10 +90,9 @@ impl Entity for Sol<VolcanicViper> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::SuperHeavy,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(4.0 * self.dir(), 6.0),
-                        1,
                     );
                 }
                 self
@@ -104,13 +102,12 @@ impl Entity for Sol<VolcanicViper> {
 
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
                             Vector2::new(16.0, 20.0),
                         )),
-                        owner: self.player,
+                        owner: self.player_id,
                     },
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
-                    1,
                 );
 
                 if !self.has_hit {
@@ -128,7 +125,7 @@ impl Entity for Sol<VolcanicViper> {
                     };
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 18.0, 24.0,
                             ))),
                             info: AttackData {
@@ -140,10 +137,9 @@ impl Entity for Sol<VolcanicViper> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::Heavy,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(8.0 * self.dir(), 12.0),
-                        1,
                     );
                     let clean_hit_info = {
                         let mut info = hit_info;
@@ -157,7 +153,7 @@ impl Entity for Sol<VolcanicViper> {
                     // NOTE: clean hit
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 4.0, 8.0,
                             ))),
                             info: AttackData {
@@ -169,10 +165,9 @@ impl Entity for Sol<VolcanicViper> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::SuperHeavy,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(5.0 * self.dir(), 9.0),
-                        1,
                     );
                 }
                 self
@@ -182,13 +177,12 @@ impl Entity for Sol<VolcanicViper> {
 
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
                             Vector2::new(16.0, 20.0),
                         )),
-                        owner: self.player,
+                        owner: self.player_id,
                     },
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
-                    1,
                 );
 
                 self
@@ -196,13 +190,12 @@ impl Entity for Sol<VolcanicViper> {
             _ => {
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
-                        shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                        shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
                             Vector2::new(16.0, 20.0),
                         )),
-                        owner: self.player,
+                        owner: self.player_id,
                     },
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
-                    1,
                 );
 
                 self.air_actionable_state(input)

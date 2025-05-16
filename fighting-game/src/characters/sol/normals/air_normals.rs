@@ -33,13 +33,12 @@ impl Entity for Sol<AirLight> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                shape: crate::collision::CollisionShape::new(BoundingBox::with_size(Vector2::new(
                     20.0, 16.0,
                 ))),
-                owner: self.player,
+                owner: self.player_id,
             },
             self.position + Vector2::new(-3.0 * self.dir(), 6.0),
-            1,
         );
 
         match self.frame as usize {
@@ -50,10 +49,10 @@ impl Entity for Sol<AirLight> {
                         AIR_LIGHT_ACTIVE - (self.frame as usize - AIR_LIGHT_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 18.0, 14.0,
                             ))),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData {
                                 grounded: HitInfo {
                                     damage: AIR_LIGHT_DAMAGE,
@@ -89,18 +88,16 @@ impl Entity for Sol<AirLight> {
                             },
                         },
                         self.position + Vector2::new(5.0 * self.dir(), -6.0),
-                        1,
                     );
 
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
                                 Vector2::new(20.0, 16.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(5.0 * self.dir(), -6.0),
-                        1,
                     );
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);
@@ -189,13 +186,12 @@ impl Entity for Sol<AirMid> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                shape: crate::collision::CollisionShape::new(BoundingBox::with_size(Vector2::new(
                     20.0, 16.0,
                 ))),
-                owner: self.player,
+                owner: self.player_id,
             },
             self.position + Vector2::new(-3.0 * self.dir(), 6.0),
-            1,
         );
 
         match self.frame as usize {
@@ -250,12 +246,12 @@ impl Entity for Sol<AirMid> {
 
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(if hit_1 {
+                            shape: CollisionShape::new(BoundingBox::with_size(if hit_1 {
                                 Vector2::new(14.0, 16.0)
                             } else {
                                 Vector2::new(10.0, 20.0)
                             })),
-                            owner: self.player,
+                            owner: self.player_id,
                             info,
                         },
                         self.position
@@ -264,7 +260,6 @@ impl Entity for Sol<AirMid> {
                             } else {
                                 Vector2::new(5.0 * self.dir(), 4.0)
                             },
-                        1,
                     );
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);
@@ -328,11 +323,10 @@ impl Entity for Sol<AirHeavy> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         match self.frame as usize {
@@ -343,10 +337,10 @@ impl Entity for Sol<AirHeavy> {
                         AIR_HEAVY_ACTIVE - (self.frame as usize - AIR_HEAVY_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 18.0, 14.0,
                             ))),
-                            owner: self.player,
+                            owner: self.player_id,
                             info: AttackData {
                                 grounded: HitInfo {
                                     damage: AIR_HEAVY_DAMAGE,
@@ -385,18 +379,16 @@ impl Entity for Sol<AirHeavy> {
                             },
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 12.0),
-                        1,
                     );
 
                     world.spawn_hurtbox(
                         crate::collision::Hurtbox {
-                            shape: crate::collision::CollisionShape::Box(BoundingBox::with_size(
+                            shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
                                 Vector2::new(12.0, 18.0),
                             )),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(6.0 * self.dir(), 12.0),
-                        1,
                     )
                 } else {
                     self = try_transition!(air_movement_cancel_options; self, input);

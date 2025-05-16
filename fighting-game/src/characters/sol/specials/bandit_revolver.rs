@@ -52,7 +52,7 @@ impl Entity for Sol<BanditRevolverGrounded> {
                         - (self.frame as usize - BANDIT_REVOLVER_GROUNDED_1_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 14.0, 14.0,
                             ))),
                             info: AttackData {
@@ -88,10 +88,9 @@ impl Entity for Sol<BanditRevolverGrounded> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::Light,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(10.0 * self.dir(), 6.0),
-                        1,
                     );
                 }
                 self
@@ -131,11 +130,10 @@ impl<const FRAMES: usize> Entity for Sol<BanditRevolverGroundedRecovery<FRAMES>>
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::Box(STANDING_HURTBOX),
-                owner: self.player,
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         if (self.frame as usize) < FRAMES {
@@ -184,7 +182,7 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
                         - (self.frame as usize - BANDIT_REVOLVER_GROUNDED_2_STARTUP);
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 20.0, 14.0,
                             ))),
                             info: AttackData {
@@ -223,10 +221,9 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
                                 hitbox_id: 1,
                                 hit_type: crate::collision::HitLevel::Light,
                             },
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(14.0 * self.dir(), 6.0),
-                        1,
                     );
                 }
                 self

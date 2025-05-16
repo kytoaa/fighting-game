@@ -38,7 +38,6 @@ pub trait Entity:
     + Grounded
     + Direction
     + DistanceFromOtherPlayer
-    + GetHitstunInfo
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
@@ -55,9 +54,12 @@ pub trait Entity:
     fn should_wall_bounce(&self) -> bool {
         false
     }
+    fn get_hitstun_info(&self) -> Option<&HitstunInfo> {
+        None
+    }
 }
 pub trait Damageable {
-    fn hit(self: Box<Self>, info: &OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus);
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus);
 }
 pub trait OnHit {
     fn on_hit(&mut self, hit_type: HitConnectionStatus);
@@ -93,9 +95,6 @@ pub trait DistanceFromOtherPlayer {
 }
 pub trait HasCancelState {
     fn cancel_state() -> Box<dyn Entity>;
-}
-pub trait GetHitstunInfo {
-    fn get_hitstun_info(&self) -> Option<HitstunInfo>;
 }
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}

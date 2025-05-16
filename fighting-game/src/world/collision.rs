@@ -54,7 +54,7 @@ impl World {
                 &mut self.players[hurtbox.0.owner.id()],
                 &mut self.player_data[hurtbox.0.owner.id()],
                 &mut self.combo,
-                hurtbox.0.owner.clone(),
+                hurtbox.0.owner,
                 &hitbox.0.attack_data.attack,
             );
 

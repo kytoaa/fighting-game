@@ -29,9 +29,9 @@ pub struct World {
 
 struct Spawn<T>(T, usize);
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub struct EntityID(usize, EntityType);
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum EntityType {
     Unique,
     Owned(usize),

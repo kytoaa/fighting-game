@@ -9,6 +9,9 @@ impl CollisionShape {
     pub const fn get_bounding_box(&self) -> &BoundingBox {
         &self.0
     }
+    pub const fn new(bounding_box: BoundingBox) -> Self {
+        Self(bounding_box)
+    }
 }
 
 #[derive(Debug, Clone)]

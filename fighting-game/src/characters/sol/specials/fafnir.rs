@@ -23,14 +23,13 @@ impl Entity for Sol<Fafnir> {
 
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
-                shape: CollisionShape::Box(BoundingBox::pos_size(
+                shape: CollisionShape::new(BoundingBox::pos_size(
                     STANDING_HURTBOX.position(),
                     STANDING_HURTBOX.size().x(22.0),
                 )),
-                owner: self.player,
+                owner: self.player_id,
             },
             self.position,
-            1,
         );
 
         match self.frame as usize {
@@ -86,25 +85,23 @@ impl Entity for Sol<Fafnir> {
 
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 18.0, 10.0,
                             ))),
                             info: attack_data.clone(),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(14.0 * self.dir(), 16.0),
-                        1,
                     );
                     world.spawn_hitbox(
                         Hitbox {
-                            shape: CollisionShape::Box(BoundingBox::with_size(Vector2::new(
+                            shape: CollisionShape::new(BoundingBox::with_size(Vector2::new(
                                 8.0, 16.0,
                             ))),
                             info: attack_data.clone(),
-                            owner: self.player,
+                            owner: self.player_id,
                         },
                         self.position + Vector2::new(6.0 * self.dir(), 6.0),
-                        1,
                     );
                 }
                 self

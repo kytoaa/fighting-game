@@ -66,11 +66,11 @@ impl Entity for Sol<GunFlameFeint> {
         if self.frame == 3 {
             world.spawn_hitbox(
                 Hitbox {
-                    shape: CollisionShape::Box(BoundingBox::pos_size(
+                    shape: CollisionShape::new(BoundingBox::pos_size(
                         Vector2::ZERO,
                         Vector2::new(4.0, 5.0),
                     )),
-                    owner: self.player,
+                    owner: self.player_id,
                     info: AttackData::with_same_hitinfo(
                         HitInfo {
                             damage: 10,
@@ -86,7 +86,6 @@ impl Entity for Sol<GunFlameFeint> {
                     ),
                 },
                 self.position + Vector2::new(10.0 * self.dir(), -4.0),
-                1,
             );
         }
         if self.frame > GUNFLAME_FEINT_HOLD_LENGTH as u8 {

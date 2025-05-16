@@ -2,7 +2,7 @@ use super::*;
 
 pub struct WrapperState<const FRAMES: usize, F>
 where
-    F: Fn(usize) -> Option<(Box<str>, Vector2)>,
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
     entity: Box<dyn Entity>,
     frame: usize,
@@ -32,7 +32,7 @@ impl<const FRAMES: usize, F> Damageable for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    fn hit(self: Box<Self>, info: &AttackData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         self.entity.hit(info)
     }
 }
