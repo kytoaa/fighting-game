@@ -86,12 +86,12 @@ impl World {
 
 impl World {
     pub fn update(&mut self, input_providers: &[InputHandler]) {
+        self.update_hitbox_hurtboxes();
+
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
             return;
         }
-
-        self.update_hitbox_hurtboxes();
 
         for i in 0..2 {
             let player = self.players[i].take().unwrap();

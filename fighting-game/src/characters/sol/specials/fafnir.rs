@@ -105,5 +105,12 @@ impl Entity for Sol<Fafnir> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn moveable(&self) -> bool {
+        if self.frame < FAFNIR_STARTUP {
+            false
+        } else {
+            true
+        }
+    }
 }
 impl SolDamageableState for Fafnir {}

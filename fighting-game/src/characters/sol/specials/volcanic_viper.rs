@@ -226,5 +226,8 @@ impl Entity for Sol<VolcanicViper> {
             _ => ("sol/specials/volcanic_viper/volcanic_viper4".into(), OFFSET),
         })
     }
+    fn moveable(&self) -> bool {
+        false
+    }
 }
 impl SolDamageableState for VolcanicViper {}

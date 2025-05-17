@@ -28,6 +28,15 @@ where
         self.entity.actionable()
     }
 }
+impl<const FRAMES: usize, F> HasID for WrapperState<FRAMES, F>
+where
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
+{
+    fn id(&self) -> EntityID {
+        self.entity.id()
+    }
+}
+
 impl<const FRAMES: usize, F> Damageable for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,

@@ -44,7 +44,7 @@ impl HitLevel {
     pub const BLOCKED_HITSTOP_FRAMES: usize = 8;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum HitConnectionStatus {
     Hit,
     Blocked,

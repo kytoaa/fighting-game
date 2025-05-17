@@ -623,10 +623,10 @@ impl Entity for Sol<StandHeavy> {
                                 .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(80.0 * self.dir(), 50.0),
+                                        Vector2::new(80.0 * self.dir(), 60.0),
                                         KnockdownType::Soft,
                                     )
-                                    .gravity(7.5)
+                                    .gravity(7.8)
                                     .wall_bounce_velocity(Vector2::new(80.0, 50.0))
                                     .build(),
                                 )

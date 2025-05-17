@@ -1,7 +1,7 @@
 use crate::collision::{AttackData, HitConnectionStatus, OnHitHitData};
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::InputHandler;
-use crate::world::World;
+use crate::world::{EntityID, World};
 
 macro_rules! try_transition {
     ($f:ident; $($arg:expr),*) => {
@@ -29,7 +29,8 @@ pub struct HitstunInfo {
 }
 
 pub trait Entity:
-    Damageable
+    HasID
+    + Damageable
     + OnHit
     + Position
     + Velocity
@@ -42,7 +43,7 @@ pub trait Entity:
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/idle".into(), Vector2::UP * 10.0))
+        Some(("sol/idle".into(), Vector2::UP * 8.0))
         //None
     }
     fn actionable(&self) -> bool {
@@ -56,6 +57,9 @@ pub trait Entity:
     }
     fn get_hitstun_info(&self) -> Option<&HitstunInfo> {
         None
+    }
+    fn moveable(&self) -> bool {
+        true
     }
 }
 pub trait Damageable {
@@ -95,6 +99,9 @@ pub trait DistanceFromOtherPlayer {
 }
 pub trait HasCancelState {
     fn cancel_state() -> Box<dyn Entity>;
+}
+pub trait HasID {
+    fn id(&self) -> EntityID;
 }
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}

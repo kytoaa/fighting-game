@@ -108,6 +108,9 @@ impl Entity for Sol<BanditRevolverGrounded> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn moveable(&self) -> bool {
+        false
+    }
 }
 impl SolDamageableState for BanditRevolverGrounded {}
 
@@ -218,6 +221,9 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn moveable(&self) -> bool {
+        false
     }
 }
 impl SolDamageableState for BanditRevolverGroundedSecondHit {}

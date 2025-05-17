@@ -1,6 +1,6 @@
 use super::{
     CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded,
-    HasCollider, HitstunInfo, OnHit, Position, Velocity,
+    HasCollider, HasID, HitstunInfo, OnHit, Position, Velocity,
 };
 use crate::collision::{
     AttackData, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox, Hurtbox,
@@ -21,9 +21,10 @@ use specials::*;
 const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
 const MIN_RUN_FRAMES_BEFORE_CANCEL: usize = 4;
+const BASE_DRAG: f32 = 4.0;
 
-const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 10.0);
-const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 12.0);
+const BASE_SPRITE_OFFSET: Vector2 = Vector2::new(0.0, 8.0);
+const COLLIDER_SIZE: Vector2 = Vector2::new(8.0, 16.0);
 
 const STANDING_HURTBOX: BoundingBox = BoundingBox::pos_size(
     Vector2::new(0.0, (24.0 - COLLIDER_SIZE.y) / 2.0),
@@ -117,7 +118,10 @@ impl<S> Sol<S> {
         }
     }
     fn drag(&mut self, drag: f32) {
-        self.velocity.x = self.velocity.x.move_towards(0.0, drag);
+        self.velocity.x = self
+            .velocity
+            .x
+            .move_towards(0.0, if self.has_hit { BASE_DRAG } else { drag });
     }
     const fn create_hitbox(&self, shape: CollisionShape, attack_data: AttackData) -> Hitbox {
         Hitbox {
@@ -134,6 +138,11 @@ impl<S> Sol<S> {
     }
 }
 
+impl<S> HasID for Sol<S> {
+    fn id(&self) -> EntityID {
+        self.player_id
+    }
+}
 impl<S> Position for Sol<S> {
     fn position(&self) -> Vector2 {
         self.position
@@ -1000,6 +1009,11 @@ struct BasicHitstun {
 impl Entity for Sol<BasicHitstun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+
+        if world.position_colliding_with_wall(self.position).is_some() {
+            world.player_hit_wall(self.as_mut());
+        }
+
         world.spawn_hurtbox(
             crate::collision::Hurtbox {
                 shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
@@ -1029,11 +1043,24 @@ impl Entity for Sol<Tumble> {
             self.velocity += Vector2::DOWN * self.state.gravity;
         }
         self.frame += 1;
+        if let Some(dir) = world.position_colliding_with_wall(self.position) {
+            if let Some(velocity) = self.state.wall_bounce_velocity {
+                println!("wall bounce");
+                self.velocity = velocity.x(velocity.x * dir);
+            } else {
+                world.player_hit_wall(self.as_mut());
+            }
+        }
         if self.grounded {
-            return match self.state.knockdown {
-                KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
-                KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
-            };
+            if let Some(velocity) = self.state.ground_bounce_velocity {
+                println!("ground bounce");
+                self.velocity = velocity.x(velocity.x * self.dir());
+            } else {
+                return match self.state.knockdown {
+                    KnockdownType::Hard => Box::new(self.transition(HardKnockdown, true)),
+                    KnockdownType::Soft => Box::new(self.transition(SoftKnockdown, true)),
+                };
+            }
         }
 
         // TODO: maybe remove this in future
@@ -1062,6 +1089,10 @@ impl Entity for Sol<FloatingCrumple> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         if !self.grounded {
             self.velocity += Vector2::DOWN * self.state.gravity;
+        }
+
+        if world.position_colliding_with_wall(self.position).is_some() {
+            world.player_hit_wall(self.as_mut());
         }
 
         world.spawn_hurtbox(
@@ -1095,6 +1126,11 @@ struct BlockStun<const CROUCHING: bool> {
 impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
+
+        if world.position_colliding_with_wall(self.position).is_some() {
+            world.player_hit_wall(self.as_mut());
+        }
+
         self.velocity = self.velocity.move_towards(Vector2::ZERO, BLOCKSTUN_DRAG);
 
         if CROUCHING {

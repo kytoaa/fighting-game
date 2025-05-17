@@ -58,6 +58,8 @@ impl World {
                 &hitbox.0.attack_data.attack,
             );
 
+            println!("{:?}", hit_status);
+
             if hitbox.0.owner.is_player() {
                 self.players
                     .get_mut(hitbox.0.owner.id())
