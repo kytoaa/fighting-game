@@ -11,17 +11,49 @@ pub struct LauncherBuilder {
     knockdown: KnockdownType,
     momentum_scaling: (f32, f32),
     #[no_builder]
-    ground_bounce_velocity: Option<Vector2>,
+    ground_bounce_velocity: Option<(Vector2, f32)>,
     #[no_builder]
-    wall_bounce_velocity: Option<Vector2>,
+    wall_bounce_velocity: Option<(Vector2, f32)>,
 }
 impl LauncherBuilder {
     pub const fn ground_bounce_velocity(mut self, value: Vector2) -> Self {
-        self.ground_bounce_velocity = Some(value);
+        self.ground_bounce_velocity = Some((
+            value,
+            match self.ground_bounce_velocity {
+                Some((_, g)) => g,
+                None => self.gravity,
+            },
+        ));
         self
     }
     pub const fn wall_bounce_velocity(mut self, value: Vector2) -> Self {
-        self.wall_bounce_velocity = Some(value);
+        self.wall_bounce_velocity = Some((
+            value,
+            match self.wall_bounce_velocity {
+                Some((_, g)) => g,
+                None => self.gravity,
+            },
+        ));
+        self
+    }
+    pub const fn wall_bounce_gravity(mut self, value: f32) -> Self {
+        self.wall_bounce_velocity = Some((
+            match self.wall_bounce_velocity {
+                Some((v, _)) => v,
+                _ => Vector2::ZERO,
+            },
+            value,
+        ));
+        self
+    }
+    pub const fn ground_bounce_gravity(mut self, value: f32) -> Self {
+        self.ground_bounce_velocity = Some((
+            match self.ground_bounce_velocity {
+                Some((v, _)) => v,
+                _ => Vector2::ZERO,
+            },
+            value,
+        ));
         self
     }
     pub const fn build(self) -> HitEffect {
@@ -117,6 +149,8 @@ pub struct HitDataBuilder<G, A, C> {
     block_pushback: f32,
     blockstun: usize,
 
+    wall_pushback_mult: f32,
+
     proration: Proration,
     scaling: i32,
     meter_gain: u32,
@@ -146,8 +180,12 @@ impl<G, A, C> HitDataBuilder<G, A, C> {
         self.minimum_damage = value;
         self
     }
-    pub const fn proration(mut self, proration: Proration) -> Self {
-        self.proration = proration;
+    pub const fn proration(mut self, value: Proration) -> Self {
+        self.proration = value;
+        self
+    }
+    pub const fn wall_pushback_mult(mut self, value: f32) -> Self {
+        self.wall_pushback_mult = value;
         self
     }
     pub fn add_extension(mut self, value: HitDataExtensions) -> Self {
@@ -166,6 +204,8 @@ impl<A, C, U: Changeable> HitDataBuilder<U, A, C> {
             attack_type: self.attack_type,
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
 
             proration: self.proration,
             scaling: self.scaling,
@@ -189,6 +229,8 @@ impl<G, C, U: Changeable> HitDataBuilder<G, U, C> {
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
 
+            wall_pushback_mult: self.wall_pushback_mult,
+
             proration: self.proration,
             scaling: self.scaling,
             meter_gain: self.meter_gain,
@@ -210,6 +252,8 @@ impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
             attack_type: self.attack_type,
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
 
             proration: self.proration,
             scaling: self.scaling,
@@ -236,6 +280,8 @@ impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
 
+            wall_pushback_mult: self.wall_pushback_mult,
+
             proration: self.proration,
             scaling: self.scaling,
             meter_gain: self.meter_gain,
@@ -260,6 +306,8 @@ impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
             attack_type: self.attack_type,
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
 
             proration: self.proration,
             scaling: self.scaling,
@@ -286,6 +334,8 @@ impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
 
+            wall_pushback_mult: self.wall_pushback_mult,
+
             proration: self.proration,
             scaling: self.scaling,
             meter_gain: self.meter_gain,
@@ -311,6 +361,8 @@ impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
 
+            wall_pushback_mult: self.wall_pushback_mult,
+
             proration: self.proration,
             scaling: self.scaling,
             meter_gain: self.meter_gain,
@@ -332,6 +384,8 @@ impl<G: Confirmable, A: Confirmable, C: Confirmable> HitDataBuilder<G, A, C> {
             attack_type: self.attack_type,
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
 
             proration: self.proration,
             scaling: self.scaling,
@@ -362,6 +416,8 @@ impl HitData {
             block_pushback: 60.0 * dir,
             blockstun,
 
+            wall_pushback_mult: 1.0,
+
             proration,
             scaling,
             meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
@@ -388,6 +444,8 @@ impl HitData {
             attack_type: AttackType::Mid,
             block_pushback: 60.0 * dir,
             blockstun,
+
+            wall_pushback_mult: 1.0,
 
             proration,
             scaling,
@@ -417,6 +475,8 @@ impl HitData {
             block_pushback: 40.0,
             blockstun: 11 + extra_hitstun,
 
+            wall_pushback_mult: 1.0,
+
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_1_SCALING,
             meter_gain: Self::DEFAULT_LEVEL_1_METER_GAIN,
@@ -443,6 +503,8 @@ impl HitData {
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
             blockstun: 13 + extra_hitstun,
+
+            wall_pushback_mult: 1.0,
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_2_SCALING,
@@ -471,6 +533,8 @@ impl HitData {
             block_pushback: 40.0,
             blockstun: 16 + extra_hitstun,
 
+            wall_pushback_mult: 1.0,
+
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_3_SCALING,
             meter_gain: Self::DEFAULT_LEVEL_3_METER_GAIN,
@@ -497,6 +561,8 @@ impl HitData {
             attack_type: AttackType::Mid,
             block_pushback: 40.0,
             blockstun: 18 + extra_hitstun,
+
+            wall_pushback_mult: 1.0,
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_4_SCALING,

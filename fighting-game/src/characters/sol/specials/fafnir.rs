@@ -49,7 +49,7 @@ impl Entity for Sol<Fafnir> {
                             Vector2::new(100.0 * self.dir(), 90.0),
                             KnockdownType::Soft,
                         )
-                        .wall_bounce_velocity(Vector2::new(60.0, 60.0))
+                        .wall_bounce_velocity(Vector2::new(60.0, 80.0))
                         .gravity(7.5)
                         .build(),
                         18 + active_frames_extra_hitstun,
@@ -61,10 +61,11 @@ impl Entity for Sol<Fafnir> {
                             Vector2::new(100.0 * self.dir(), 120.0),
                             KnockdownType::Hard,
                         )
-                        .wall_bounce_velocity(Vector2::new(60.0, 60.0))
-                        .gravity(7.5)
+                        .wall_bounce_velocity(Vector2::new(60.0, 70.0))
+                        .wall_bounce_gravity(5.0)
                         .build(),
                     )
+                    .wall_pushback_mult(0.6)
                     .counterhit_from_air(|a| a)
                     .build();
 

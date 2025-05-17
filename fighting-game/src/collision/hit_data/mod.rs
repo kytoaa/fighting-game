@@ -10,13 +10,13 @@ pub enum AttackType {
     Unblockable,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KnockdownType {
     Hard,
     Soft,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Proration(u32);
 impl Proration {
     pub const fn percent(value: u32) -> Proration {
@@ -36,8 +36,8 @@ pub enum HitEffect {
         momentum_scaling: (f32, f32),
 
         /// momentum off the wall, facing away from it
-        ground_bounce_velocity: Option<Vector2>,
-        wall_bounce_velocity: Option<Vector2>,
+        ground_bounce_velocity: Option<(Vector2, f32)>,
+        wall_bounce_velocity: Option<(Vector2, f32)>,
     },
     FloatingCrumple {
         knockback: Vector2,
@@ -70,6 +70,8 @@ pub struct HitData {
     pub(crate) block_pushback: f32,
     pub(crate) blockstun: usize,
 
+    pub(crate) wall_pushback_mult: f32,
+
     /// proration is a percentage, calculated by doing `damage * proration / 100`
     pub(crate) proration: Proration,
 
@@ -91,6 +93,8 @@ pub enum HitDataExtensions {
     SetScaling(i32),
     SetProration(Proration),
     SetChipDamage(u32),
+    SetBlockScaling(i32),
+    /// if player is within the BoundingBox (relative to the player) trigger the cleanhit
     CleanHit(BoundingBox, HitEffect),
 }
 
@@ -102,6 +106,7 @@ pub struct OnHitHitData {
     pub attack_type: AttackType,
     pub block_pushback: f32,
     pub blockstun: usize,
+    pub wall_pushback_mult: f32,
 
     _p: std::marker::PhantomData<()>,
 }
@@ -123,6 +128,7 @@ impl HitData {
             attack_type: self.attack_type,
             block_pushback: self.block_pushback,
             blockstun: self.blockstun,
+            wall_pushback_mult: self.wall_pushback_mult,
 
             _p: std::marker::PhantomData,
         }

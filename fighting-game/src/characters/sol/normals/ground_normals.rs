@@ -31,7 +31,7 @@ impl Entity for Sol<CloseMid> {
         }
 
         self.frame += 1;
-        self.forward_drag(DECEL);
+        self.drag(DECEL);
 
         world.spawn_hurtbox(
             self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
@@ -66,6 +66,7 @@ impl Entity for Sol<CloseMid> {
                                 .air_from_grounded(|g| g)
                                 .counterhit_from_grounded(|g| g)
                                 .block_pushback(40.0 * self.dir())
+                                .wall_pushback_mult(4.0)
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,
@@ -179,9 +180,10 @@ const FAR_MID_DAMAGE: u32 = 14;
 pub struct FarMid;
 impl Entity for Sol<FarMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const ADVANCE_START: usize = 5;
         const RECOVERY_FRAME: usize = FAR_MID_STARTUP + FAR_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + FAR_MID_RECOVERY;
-        const ADVANCE_VELOCITY: f32 = 90.0;
+        const ADVANCE_VELOCITY: f32 = 140.0;
         const DECEL: f32 = ADVANCE_VELOCITY / FAR_MID_ACTIVE as f32;
 
         if self.frame == 0 {
@@ -196,8 +198,8 @@ impl Entity for Sol<FarMid> {
         );
 
         match self.frame as usize {
-            0..3 => self,
-            3..FAR_MID_STARTUP => {
+            0..ADVANCE_START => self,
+            ADVANCE_START..FAR_MID_STARTUP => {
                 self.velocity = Vector2::RIGHT * ADVANCE_VELOCITY * self.dir();
                 self
             }
@@ -226,9 +228,11 @@ impl Entity for Sol<FarMid> {
                                 )
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(80.0 * self.dir(), 60.0),
+                                        Vector2::new(80.0 * self.dir(), 0.0),
                                         KnockdownType::Soft,
                                     )
+                                    .gravity(6.0)
+                                    .ground_bounce_velocity(Vector2::new(80.0, 50.0))
                                     .build(),
                                 )
                                 .with_counterhit(
@@ -307,8 +311,7 @@ impl Entity for Sol<FarMid> {
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         const FAR_MID_STARTUP_SECOND_FRAME: usize = 3;
-        const FAR_MID_RECOVER_FRAME: usize =
-            FAR_MID_STARTUP + FAR_MID_ACTIVE + FAR_MID_RECOVERY / 2;
+        const FAR_MID_RECOVER_FRAME: usize = FAR_MID_STARTUP + FAR_MID_ACTIVE + 5;
         Some((
             match self.frame as usize {
                 0..FAR_MID_STARTUP_SECOND_FRAME => "sol/normals/f.m/f.m1",
@@ -626,7 +629,9 @@ impl Entity for Sol<StandHeavy> {
                                         Vector2::new(80.0 * self.dir(), 60.0),
                                         KnockdownType::Soft,
                                     )
-                                    .gravity(7.8)
+                                    .gravity(7.5)
+                                    .ground_bounce_velocity(Vector2::new(80.0, 70.0))
+                                    .ground_bounce_gravity(5.0)
                                     .wall_bounce_velocity(Vector2::new(80.0, 50.0))
                                     .build(),
                                 )

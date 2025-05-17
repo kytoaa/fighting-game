@@ -12,6 +12,7 @@ use players::TrackedPlayerData;
 
 const DELTA: f32 = 1.0 / 60.0;
 const BORDER_X: f32 = 100.0;
+const MIN_WALL_BOUNCE_HEIGHT: f32 = 4.0;
 
 pub struct World {
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
@@ -25,6 +26,8 @@ pub struct World {
     id_counter: usize,
 
     hitstop_frames_left: usize,
+
+    frame: usize,
 }
 
 struct Spawn<T>(T, usize);
@@ -80,6 +83,8 @@ impl World {
             id_counter: 2,
 
             hitstop_frames_left: 0,
+
+            frame: 0,
         }
     }
 }
@@ -87,6 +92,8 @@ impl World {
 impl World {
     pub fn update(&mut self, input_providers: &[InputHandler]) {
         self.update_hitbox_hurtboxes();
+
+        self.frame += 1;
 
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;

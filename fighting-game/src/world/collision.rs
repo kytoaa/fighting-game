@@ -1,7 +1,5 @@
-use super::{EntityType, World, BORDER_X};
+use super::World;
 use crate::collision::HitLevel;
-use crate::datatypes::*;
-use std::collections::HashSet;
 
 impl World {
     pub(super) fn update_hitbox_hurtboxes(&mut self) {

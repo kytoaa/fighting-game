@@ -1,6 +1,8 @@
 use super::{EntityID, World};
-use crate::collision::{HitConnectionStatus, HitData, Proration};
+use crate::collision::{HitConnectionStatus, HitData, HitDataExtensions, Proration};
+use crate::datatypes::BoundingShape;
 
+#[derive(Debug)]
 pub(super) struct ComboInfo {
     hits: usize,
     total_damage: u32,
@@ -28,7 +30,7 @@ pub(super) fn hit_player(
 ) -> HitConnectionStatus {
     let player = hit_player.take().unwrap();
 
-    let combo_info = combo.take();
+    let mut combo_info = combo.take();
     if combo_info
         .as_ref()
         .map(|c| c.target != hit_player_id)
@@ -37,9 +39,22 @@ pub(super) fn hit_player(
         panic!("combo was not reset");
     }
 
+    for extension in &hit_data.extensions {
+        match extension {
+            HitDataExtensions::SetScaling(scaling) => player_data.scaling = *scaling,
+            HitDataExtensions::SetProration(proration) => {
+                combo_info = combo_info.map(|mut combo| {
+                    combo.proration = *proration;
+                    combo
+                })
+            }
+            _ => (),
+        }
+    }
+
     let (grounded, counterhit) = (player.is_grounded(), player.counterhit());
 
-    let on_hit_hitdata = hit_data.as_on_hit_hitdata(grounded, counterhit, |damage| {
+    let mut on_hit_hitdata = hit_data.as_on_hit_hitdata(grounded, counterhit, |damage| {
         total_damage_scaling(
             damage,
             combo_info
@@ -53,8 +68,25 @@ pub(super) fn hit_player(
             player.counterhit(),
         )
     });
+    on_hit_hitdata.hit_effect = hit_data
+        .extensions
+        .iter()
+        .find_map(|extension| {
+            if let HitDataExtensions::CleanHit(bb, effect) = extension {
+                if bb.intersects(&player.position()) {
+                    Some(effect.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .unwrap_or(on_hit_hitdata.hit_effect);
 
+    let on_hit_hitdata = on_hit_hitdata;
     let on_hit_hitdata_damage = on_hit_hitdata.damage;
+
     let (player, hit_status) = player.hit(on_hit_hitdata);
 
     let combo_info = match hit_status {
@@ -81,7 +113,20 @@ pub(super) fn hit_player(
             Some(combo_info)
         }
         crate::collision::HitConnectionStatus::Blocked => {
-            player_data.scaling -= hit_data.scaling * if grounded { 1 } else { 2 };
+            let block_scaling = hit_data
+                .extensions
+                .iter()
+                .find_map(|extension| {
+                    if let HitDataExtensions::SetBlockScaling(scaling) = extension {
+                        Some(*scaling)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(hit_data.scaling)
+                * if grounded { 1 } else { 2 };
+
+            player_data.scaling = max(player_data.scaling - block_scaling, -10000);
             player_data.add_meter(hit_data.meter_gain / 2);
 
             None
@@ -91,7 +136,9 @@ pub(super) fn hit_player(
 
     *combo = combo_info;
 
-    hit_player.insert(player);
+    _ = hit_player.insert(player);
+
+    println!("{:?}", combo);
 
     hit_status
 }
