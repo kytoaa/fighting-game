@@ -119,7 +119,7 @@ pub struct HitData {
 
     /// increases scaling on hit, decreases on block, negative scaling reduces scaling of next combo
     pub(crate) scaling: i32,
-    /// scaling to apply on block, percentage from 0-100% or greater, default of 200
+    /// scaling to apply on block, percentage from 0-100% or greater, default of 50
     pub(crate) scaling_on_block_mult: u32,
 
     /// amount of meter gained on hit, on block is half

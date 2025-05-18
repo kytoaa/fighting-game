@@ -62,6 +62,7 @@ impl World {
             if player_data.frames_since_scaling_set >= 60 && player_data.scaling < 0 {
                 player_data.scaling = player_data.scaling.move_towards(0, 3000 / 60);
             }
+            player_data.frames_since_scaling_set += 1;
         }
     }
 }

@@ -81,6 +81,9 @@ impl Entity for Sol<VolcanicViper> {
                     .air_from_grounded(|g| g)
                     .counterhit_from_grounded(|g| g)
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .add_extension(HitDataExtension::SetScaling(
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    ))
                     .build();
 
                     // NOTE: clean hit
@@ -157,6 +160,9 @@ impl Entity for Sol<VolcanicViper> {
                     .air_from_grounded(|g| g)
                     .counterhit_from_grounded(|g| g)
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
+                    .add_extension(HitDataExtension::SetScaling(
+                        HitData::DEFAULT_LEVEL_1_SCALING,
+                    ))
                     .build();
 
                     // NOTE: clean hit

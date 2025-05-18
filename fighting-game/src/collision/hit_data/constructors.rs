@@ -401,7 +401,7 @@ impl HitData {
 
             proration,
             scaling,
-            scaling_on_block_mult: 200,
+            scaling_on_block_mult: 50,
             meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -455,7 +455,7 @@ impl HitData {
 
             damage,
             attack_type: AttackType::Mid,
-            block_pushback: 40.0,
+            block_pushback: 40.0 * dir,
             blockstun: 11 + extra_hitstun,
 
             wall_pushback_mult: 1.0,
@@ -485,7 +485,7 @@ impl HitData {
 
             damage,
             attack_type: AttackType::Mid,
-            block_pushback: 40.0,
+            block_pushback: 40.0 * dir,
             blockstun: 13 + extra_hitstun,
 
             wall_pushback_mult: 1.0,
@@ -515,7 +515,7 @@ impl HitData {
 
             damage,
             attack_type: AttackType::Mid,
-            block_pushback: 40.0,
+            block_pushback: 40.0 * dir,
             blockstun: 16 + extra_hitstun,
 
             wall_pushback_mult: 1.0,
@@ -545,7 +545,7 @@ impl HitData {
 
             damage,
             attack_type: AttackType::Mid,
-            block_pushback: 40.0,
+            block_pushback: 40.0 * dir,
             blockstun: 18 + extra_hitstun,
 
             wall_pushback_mult: 1.0,

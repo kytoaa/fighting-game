@@ -80,6 +80,13 @@ impl World {
                 crate::collision::HitConnectionStatus::Invuln => 0,
             };
 
+            println!(
+                "hits: {}, damage: {}, scaling: {}",
+                self.combo.as_ref().map(|c| c.hits()).unwrap_or(0),
+                self.combo.as_ref().map(|c| c.total_damage()).unwrap_or(0),
+                self.player_data[hurtbox.0.owner.id()].scaling
+            );
+
             self.trigger_hitstop(hitstop_frames);
         }
 

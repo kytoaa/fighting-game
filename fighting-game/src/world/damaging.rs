@@ -23,6 +23,13 @@ impl ComboInfo {
     pub fn add_attack(&mut self, attack: AttackID) {
         self.attacks_used.push(attack);
     }
+
+    pub const fn hits(&self) -> usize {
+        self.hits
+    }
+    pub const fn total_damage(&self) -> u32 {
+        self.total_damage
+    }
 }
 
 pub(super) fn hit_player(
@@ -162,7 +169,7 @@ pub(super) fn hit_player(
                 * hit_data.scaling_on_block_mult as i32
                 / 100;
 
-            player_data.add_scaling(block_scaling);
+            player_data.add_scaling(-block_scaling);
             player_data.add_meter(hit_data.meter_gain / 2);
 
             None
@@ -173,8 +180,6 @@ pub(super) fn hit_player(
     *combo = combo_info;
 
     _ = hit_player.insert(player);
-
-    println!("{:?}", combo);
 
     hit_status
 }
