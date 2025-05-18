@@ -3,7 +3,8 @@ use super::{
     Entity, RunStartState,
 };
 use crate::collision::{
-    AttackData, BounceInfo, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
+    AttackData, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect, HitLevel,
+    KnockdownType, Proration,
 };
 use crate::datatypes::*;
 use crate::input::{Action, Button, InputHandler};
@@ -67,6 +68,7 @@ impl Entity for Sol<CloseMid> {
                                 .counterhit_from_grounded(|g| g)
                                 .block_pushback(40.0 * self.dir())
                                 .wall_pushback_mult(3.0)
+                                .add_extension(HitDataExtension::UsagesBeforeScaling(4))
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,

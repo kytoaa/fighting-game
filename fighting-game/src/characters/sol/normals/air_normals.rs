@@ -1,7 +1,7 @@
 use super::{Entity, Grounded};
 use crate::collision::{
-    AttackData, AttackType, BounceInfo, CollisionShape, HitData, HitEffect, HitLevel,
-    KnockdownType, Proration,
+    AttackData, AttackType, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect,
+    HitLevel, KnockdownType, Proration,
 };
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{Action, Button, InputHandler};
@@ -337,6 +337,7 @@ impl Entity for Sol<AirHeavy> {
                                 })
                                 .counterhit_from_air(|a| a)
                                 .meter_gain(HitData::DEFAULT_LEVEL_3_METER_GAIN)
+                                .add_extension(HitDataExtension::UsagesBeforeScaling(4))
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,

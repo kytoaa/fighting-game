@@ -156,8 +156,11 @@ impl World {
                 && other_player.moveable()
             {
                 other_player.add_velocity(Vector2::new(
-                    -player.velocity().x * 1.2 * pushback_multiplier,
-                    other_player.velocity().y,
+                    -player.velocity().x
+                        * 1.2
+                        * pushback_multiplier
+                        * if other_player.is_grounded() { 1.0 } else { 0.4 },
+                    0.0,
                 ));
             }
         }
