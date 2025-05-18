@@ -76,6 +76,7 @@ impl Entity for Sol<AirLight> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Medium,
+                                attack_id: "sol j.l".into(),
                             },
                         ),
                         self.position + Vector2::new(5.0 * self.dir(), -6.0),
@@ -220,6 +221,7 @@ impl Entity for Sol<AirMid> {
                         priority: 10,
                         hitbox_id: 1,
                         hit_level: HitLevel::Light,
+                        attack_id: "sol j.m".into(),
                     };
 
                     world.spawn_hitbox(
@@ -339,6 +341,7 @@ impl Entity for Sol<AirHeavy> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Heavy,
+                                attack_id: "sol j.h".into(),
                             },
                         ),
                         self.position + Vector2::new(10.0 * self.dir(), 12.0),

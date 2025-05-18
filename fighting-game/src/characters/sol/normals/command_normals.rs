@@ -64,6 +64,7 @@ impl Entity for Sol<Heavy3> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Heavy,
+                                attack_id: "sol 3h".into(),
                             },
                         ),
                         self.position + Vector2::new(6.0 * self.dir(), -1.0),

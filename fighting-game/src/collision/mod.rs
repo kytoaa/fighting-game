@@ -14,12 +14,30 @@ impl CollisionShape {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AttackID(u64);
+impl AttackID {
+    pub fn new<T: std::hash::Hash>(value: T) -> AttackID {
+        use std::hash::Hasher;
+
+        let mut s = std::hash::DefaultHasher::new();
+        value.hash(&mut s);
+        Self(s.finish())
+    }
+}
+impl Into<AttackID> for &str {
+    fn into(self) -> AttackID {
+        AttackID::new(self)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AttackData {
     pub attack: HitData,
     pub priority: usize,
     pub hitbox_id: usize,
     pub hit_level: HitLevel,
+    pub attack_id: AttackID,
 }
 
 #[derive(Debug, Clone, Copy)]

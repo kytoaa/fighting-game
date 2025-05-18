@@ -85,6 +85,7 @@ impl Entity for Sol<GunFlameFeint> {
                         priority: 10,
                         hitbox_id: 1,
                         hit_level: HitLevel::Light,
+                        attack_id: "gunflame feint".into(),
                     },
                 ),
                 self.position + Vector2::new(10.0 * self.dir(), -4.0),

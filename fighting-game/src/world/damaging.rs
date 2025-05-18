@@ -1,5 +1,5 @@
 use super::{EntityID, World};
-use crate::collision::{HitConnectionStatus, HitData, HitDataExtension, Proration};
+use crate::collision::{AttackID, HitConnectionStatus, HitData, HitDataExtension, Proration};
 use crate::datatypes::{BoundingShape, Vector2};
 
 #[derive(Debug)]
@@ -8,6 +8,7 @@ pub(super) struct ComboInfo {
     total_damage: u32,
     proration: Proration,
     target: EntityID,
+    attacks_used: Vec<AttackID>,
 
     /// combo scaling, when 0 no scaling is applied, when > 0 damage is reduced, when < 0 no
     /// scaling is applied, allowing for unscaled combos
@@ -19,6 +20,9 @@ impl ComboInfo {
     pub const fn target(&self) -> &EntityID {
         &self.target
     }
+    pub fn add_attack(&mut self, attack: AttackID) {
+        self.attacks_used.push(attack);
+    }
 }
 
 pub(super) fn hit_player(
@@ -26,6 +30,7 @@ pub(super) fn hit_player(
     player_data: &mut super::players::TrackedPlayerData,
     combo: &mut Option<ComboInfo>,
     hit_data: &HitData,
+    attack_id: AttackID,
     other_player_position: Vector2,
 ) -> HitConnectionStatus {
     let player = hit_player.take().unwrap();
@@ -102,12 +107,35 @@ pub(super) fn hit_player(
                 total_damage: 0,
                 proration: hit_data.proration.clone(),
                 target: hit_player_id,
+                attacks_used: vec![],
                 scaling: 0,
             });
 
+            let uses_before_scaling = hit_data
+                .extensions
+                .iter()
+                .find_map(|e| match e {
+                    HitDataExtension::UsagesBeforeScaling(u) => Some(*u),
+                    _ => None,
+                })
+                .unwrap_or(2);
+
             combo_info.hits += 1;
             combo_info.total_damage += on_hit_hitdata_damage;
-            combo_info.scaling += hit_data.scaling;
+            combo_info.scaling += hit_data.scaling
+                * if combo_info
+                    .attacks_used
+                    .iter()
+                    .filter(|a| **a == attack_id)
+                    .count()
+                    >= uses_before_scaling
+                {
+                    println!("attack used");
+                    2
+                } else {
+                    1
+                };
+            combo_info.add_attack(attack_id);
 
             player_data.scaling += hit_data.scaling;
             player_data.health = player_data.health.saturating_sub(on_hit_hitdata_damage);

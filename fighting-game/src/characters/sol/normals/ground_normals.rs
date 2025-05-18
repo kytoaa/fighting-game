@@ -71,6 +71,7 @@ impl Entity for Sol<CloseMid> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Medium,
+                                attack_id: "sol c.m".into(),
                             },
                         ),
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
@@ -245,6 +246,7 @@ impl Entity for Sol<FarMid> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Medium,
+                                attack_id: "sol f.m".into(),
                             },
                         ),
                         self.position + Vector2::new(10.0 * self.dir(), 10.0),
@@ -409,6 +411,7 @@ impl Entity for Sol<StandLight> {
                             priority: 10,
                             hitbox_id: 1,
                             hit_level: HitLevel::Light,
+                            attack_id: "sol 5l".into(),
                         },
                     ),
                     self.position
@@ -452,6 +455,7 @@ impl Entity for Sol<StandLight> {
                         priority: 10,
                         hitbox_id: 1,
                         hit_level: HitLevel::Light,
+                        attack_id: "sol 5l2".into(),
                     };
 
                     world.spawn_hitbox(
@@ -645,6 +649,7 @@ impl Entity for Sol<StandHeavy> {
                                 priority: 10,
                                 hitbox_id: 1,
                                 hit_level: HitLevel::Heavy,
+                                attack_id: "sol 5h".into(),
                             },
                         ),
                         self.position + Vector2::new(18.0 * self.dir(), 13.0),
