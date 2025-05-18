@@ -47,13 +47,17 @@ impl World {
                 println!("owner same");
                 continue;
             }
+            let other_player_position = self.players[hitbox.0.owner.id()]
+                .as_ref()
+                .unwrap()
+                .position();
 
             let hit_status = super::damaging::hit_player(
                 &mut self.players[hurtbox.0.owner.id()],
                 &mut self.player_data[hurtbox.0.owner.id()],
                 &mut self.combo,
-                hurtbox.0.owner,
                 &hitbox.0.attack_data.attack,
+                other_player_position,
             );
 
             println!("{:?}", hit_status);

@@ -5,10 +5,8 @@ use crate::datatypes::*;
 impl World {
     pub(super) fn move_players(&mut self) {
         let player_in_corner = [
-            self.position_in_wall(self.players[0].as_ref().unwrap().position())
-                .is_some(),
-            self.position_in_wall(self.players[1].as_ref().unwrap().position())
-                .is_some(),
+            Self::position_in_wall(self.players[0].as_ref().unwrap().position()).is_some(),
+            Self::position_in_wall(self.players[1].as_ref().unwrap().position()).is_some(),
         ];
 
         {
@@ -169,14 +167,14 @@ impl World {
 
     /// if player colliding with wall return direction away from the wall, for determining wall
     /// bounces so will return None for low y values
-    pub fn position_should_bounce_off_wall(&self, position: Vector2) -> Option<f32> {
+    pub fn position_should_bounce_off_wall(position: Vector2) -> Option<f32> {
         if position.y < MIN_WALL_BOUNCE_HEIGHT {
             None
         } else {
-            self.position_in_wall(position)
+            Self::position_in_wall(position)
         }
     }
-    pub fn position_in_wall(&self, position: Vector2) -> Option<f32> {
+    pub fn position_in_wall(position: Vector2) -> Option<f32> {
         match position.x {
             x if x >= BORDER_X => Some(-1.0),
             x if x <= -BORDER_X => Some(1.0),

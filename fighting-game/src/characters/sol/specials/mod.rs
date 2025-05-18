@@ -3,7 +3,8 @@ use super::{
     RunStartState, Velocity, WALK_SPEED,
 };
 use crate::collision::{
-    AttackData, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
+    AttackData, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect, HitLevel,
+    KnockdownType, Proration,
 };
 use crate::datatypes::*;
 use crate::input::{

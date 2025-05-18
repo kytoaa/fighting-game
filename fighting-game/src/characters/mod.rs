@@ -55,8 +55,8 @@ pub trait Entity:
     fn should_wall_bounce(&self) -> bool {
         false
     }
-    fn get_hitstun_info(&self) -> Option<&HitstunInfo> {
-        None
+    fn in_hitstun(&self) -> bool {
+        false
     }
     fn moveable(&self) -> bool {
         true

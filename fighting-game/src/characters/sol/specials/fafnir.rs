@@ -46,11 +46,10 @@ impl Entity for Sol<Fafnir> {
                     let attack_data = HitData::grounded(
                         FAFNIR_DAMAGE,
                         HitEffect::launcher(
-                            Vector2::new(100.0 * self.dir(), 90.0),
+                            Vector2::new(100.0 * self.dir(), 60.0),
                             KnockdownType::Soft,
                         )
-                        .wall_bounce_velocity(Vector2::new(60.0, 80.0))
-                        .gravity(7.5)
+                        .gravity(7.0)
                         .build(),
                         18 + active_frames_extra_hitstun,
                         Proration::percent(80),
@@ -58,13 +57,25 @@ impl Entity for Sol<Fafnir> {
                     )
                     .with_air(
                         HitEffect::launcher(
-                            Vector2::new(100.0 * self.dir(), 120.0),
-                            KnockdownType::Hard,
+                            Vector2::new(100.0 * self.dir(), 50.0),
+                            KnockdownType::Soft,
                         )
-                        .wall_bounce_velocity(Vector2::new(60.0, 70.0))
-                        .wall_bounce_gravity(5.0)
+                        .gravity(7.0)
                         .build(),
                     )
+                    .add_extension(HitDataExtension::CleanHit(
+                        BoundingBox::pos_size(
+                            Vector2::new(10.0 * self.dir(), 5.0),
+                            Vector2::new(5.0, 5.0),
+                        ),
+                        HitEffect::launcher(
+                            Vector2::new(100.0 * self.dir(), 50.0),
+                            KnockdownType::Hard,
+                        )
+                        .gravity(7.0)
+                        .wall_bounce(BounceInfo::new(Vector2::new(60.0, 70.0)).gravity(5.0))
+                        .build(),
+                    ))
                     .wall_pushback_mult(0.6)
                     .counterhit_from_air(|a| a)
                     .build();

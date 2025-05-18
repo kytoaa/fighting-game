@@ -11,49 +11,17 @@ pub struct LauncherBuilder {
     knockdown: KnockdownType,
     momentum_scaling: (f32, f32),
     #[no_builder]
-    ground_bounce_velocity: Option<(Vector2, f32)>,
+    ground_bounce: Option<BounceInfo>,
     #[no_builder]
-    wall_bounce_velocity: Option<(Vector2, f32)>,
+    wall_bounce: Option<BounceInfo>,
 }
 impl LauncherBuilder {
-    pub const fn ground_bounce_velocity(mut self, value: Vector2) -> Self {
-        self.ground_bounce_velocity = Some((
-            value,
-            match self.ground_bounce_velocity {
-                Some((_, g)) => g,
-                None => self.gravity,
-            },
-        ));
+    pub const fn ground_bounce(mut self, value: BounceInfo) -> Self {
+        self.ground_bounce = Some(value);
         self
     }
-    pub const fn wall_bounce_velocity(mut self, value: Vector2) -> Self {
-        self.wall_bounce_velocity = Some((
-            value,
-            match self.wall_bounce_velocity {
-                Some((_, g)) => g,
-                None => self.gravity,
-            },
-        ));
-        self
-    }
-    pub const fn wall_bounce_gravity(mut self, value: f32) -> Self {
-        self.wall_bounce_velocity = Some((
-            match self.wall_bounce_velocity {
-                Some((v, _)) => v,
-                _ => Vector2::ZERO,
-            },
-            value,
-        ));
-        self
-    }
-    pub const fn ground_bounce_gravity(mut self, value: f32) -> Self {
-        self.ground_bounce_velocity = Some((
-            match self.ground_bounce_velocity {
-                Some((v, _)) => v,
-                _ => Vector2::ZERO,
-            },
-            value,
-        ));
+    pub const fn wall_bounce(mut self, value: BounceInfo) -> Self {
+        self.wall_bounce = Some(value);
         self
     }
     pub const fn build(self) -> HitEffect {
@@ -62,8 +30,8 @@ impl LauncherBuilder {
             gravity: self.gravity,
             knockdown: self.knockdown,
             momentum_scaling: self.momentum_scaling,
-            ground_bounce_velocity: self.ground_bounce_velocity,
-            wall_bounce_velocity: self.wall_bounce_velocity,
+            ground_bounce: self.ground_bounce,
+            wall_bounce: self.wall_bounce,
         }
     }
 }
@@ -103,10 +71,10 @@ impl HitEffect {
         LauncherBuilder {
             knockback,
             knockdown,
-            gravity: 9.0,
+            gravity: DEFAULT_GRAVITY,
             momentum_scaling: (0.15, 0.15),
-            ground_bounce_velocity: None,
-            wall_bounce_velocity: None,
+            ground_bounce: None,
+            wall_bounce: None,
         }
     }
     pub const fn floating_crumple(
@@ -153,10 +121,11 @@ pub struct HitDataBuilder<G, A, C> {
 
     proration: Proration,
     scaling: i32,
+    scaling_on_block_mult: u32,
     meter_gain: u32,
     meter_gain_modifier: i32,
     minimum_damage: u32,
-    extensions: Vec<HitDataExtensions>,
+    extensions: Vec<HitDataExtension>,
     _pd: PhantomData<(G, A, C)>,
 }
 impl<G, A, C> HitDataBuilder<G, A, C> {
@@ -188,7 +157,11 @@ impl<G, A, C> HitDataBuilder<G, A, C> {
         self.wall_pushback_mult = value;
         self
     }
-    pub fn add_extension(mut self, value: HitDataExtensions) -> Self {
+    pub const fn scaling_on_block_mult(mut self, value: u32) -> Self {
+        self.scaling_on_block_mult = value;
+        self
+    }
+    pub fn add_extension(mut self, value: HitDataExtension) -> Self {
         self.extensions.push(value);
         self
     }
@@ -209,6 +182,7 @@ impl<A, C, U: Changeable> HitDataBuilder<U, A, C> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -233,6 +207,7 @@ impl<G, C, U: Changeable> HitDataBuilder<G, U, C> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -257,6 +232,7 @@ impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -284,6 +260,7 @@ impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -311,6 +288,7 @@ impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -338,6 +316,7 @@ impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -365,6 +344,7 @@ impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -389,6 +369,7 @@ impl<G: Confirmable, A: Confirmable, C: Confirmable> HitDataBuilder<G, A, C> {
 
             proration: self.proration,
             scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
             meter_gain: self.meter_gain,
             meter_gain_modifier: self.meter_gain_modifier,
             minimum_damage: self.minimum_damage,
@@ -420,6 +401,7 @@ impl HitData {
 
             proration,
             scaling,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -449,6 +431,7 @@ impl HitData {
 
             proration,
             scaling,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -479,6 +462,7 @@ impl HitData {
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_1_SCALING,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_1_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -508,6 +492,7 @@ impl HitData {
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_2_SCALING,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_2_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -537,6 +522,7 @@ impl HitData {
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_3_SCALING,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_3_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,
@@ -566,6 +552,7 @@ impl HitData {
 
             proration: Proration::percent(70),
             scaling: Self::DEFAULT_LEVEL_4_SCALING,
+            scaling_on_block_mult: 200,
             meter_gain: Self::DEFAULT_LEVEL_4_METER_GAIN,
             meter_gain_modifier: 0,
             minimum_damage: 1,

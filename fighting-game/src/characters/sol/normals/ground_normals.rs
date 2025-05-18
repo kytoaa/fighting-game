@@ -3,7 +3,7 @@ use super::{
     Entity, RunStartState,
 };
 use crate::collision::{
-    AttackData, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
+    AttackData, BounceInfo, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
 };
 use crate::datatypes::*;
 use crate::input::{Action, Button, InputHandler};
@@ -54,8 +54,8 @@ impl Entity for Sol<CloseMid> {
                                 attack: HitData::grounded(
                                     CLOSE_MID_DAMAGE,
                                     HitEffect::floating_crumple(
-                                        Vector2::new(25.0 * self.dir(), 85.0),
-                                        7.0,
+                                        Vector2::new(25.0 * self.dir(), 45.0),
+                                        4.0,
                                         5,
                                     )
                                     .build(),
@@ -66,7 +66,7 @@ impl Entity for Sol<CloseMid> {
                                 .air_from_grounded(|g| g)
                                 .counterhit_from_grounded(|g| g)
                                 .block_pushback(40.0 * self.dir())
-                                .wall_pushback_mult(4.0)
+                                .wall_pushback_mult(3.0)
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,
@@ -228,11 +228,10 @@ impl Entity for Sol<FarMid> {
                                 )
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(80.0 * self.dir(), 0.0),
+                                        Vector2::new(40.0 * self.dir(), 10.0),
                                         KnockdownType::Soft,
                                     )
-                                    .gravity(6.0)
-                                    .ground_bounce_velocity(Vector2::new(80.0, 50.0))
+                                    .gravity(5.0)
                                     .build(),
                                 )
                                 .with_counterhit(
@@ -441,11 +440,11 @@ impl Entity for Sol<StandLight> {
                             active_frames_extra_hitstun,
                         )
                         .with_air(
-                            HitEffect::floating_crumple(
-                                Vector2::new(30.0 * self.dir(), 45.0),
-                                8.0,
-                                5,
+                            HitEffect::launcher(
+                                Vector2::new(30.0 * self.dir(), 55.0),
+                                KnockdownType::Soft,
                             )
+                            .gravity(8.0)
                             .build(),
                         )
                         .counterhit_from_grounded(|g| g)
@@ -626,13 +625,19 @@ impl Entity for Sol<StandHeavy> {
                                 .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(80.0 * self.dir(), 60.0),
+                                        Vector2::new(90.0 * self.dir(), 20.0),
                                         KnockdownType::Soft,
                                     )
-                                    .gravity(7.5)
-                                    .ground_bounce_velocity(Vector2::new(80.0, 70.0))
-                                    .ground_bounce_gravity(5.0)
-                                    .wall_bounce_velocity(Vector2::new(80.0, 50.0))
+                                    .momentum_scaling((0.25, 0.60))
+                                    .ground_bounce(
+                                        BounceInfo::new(Vector2::new(30.0 * self.dir(), 50.0))
+                                            .gravity(3.0)
+                                            .scaling_x(0.5)
+                                            .use_x_vel(true),
+                                    )
+                                    .wall_bounce(
+                                        BounceInfo::new(Vector2::new(20.0, 50.0)).gravity(4.0),
+                                    )
                                     .build(),
                                 )
                                 .counterhit_from_air(|a| a)

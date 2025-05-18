@@ -1,6 +1,6 @@
 use super::{EntityID, World};
-use crate::collision::{HitConnectionStatus, HitData, HitDataExtensions, Proration};
-use crate::datatypes::BoundingShape;
+use crate::collision::{HitConnectionStatus, HitData, HitDataExtension, Proration};
+use crate::datatypes::{BoundingShape, Vector2};
 
 #[derive(Debug)]
 pub(super) struct ComboInfo {
@@ -25,10 +25,11 @@ pub(super) fn hit_player(
     hit_player: &mut Option<Box<dyn crate::characters::Entity>>,
     player_data: &mut super::players::TrackedPlayerData,
     combo: &mut Option<ComboInfo>,
-    hit_player_id: EntityID,
     hit_data: &HitData,
+    other_player_position: Vector2,
 ) -> HitConnectionStatus {
     let player = hit_player.take().unwrap();
+    let hit_player_id = player.id();
 
     let mut combo_info = combo.take();
     if combo_info
@@ -41,8 +42,8 @@ pub(super) fn hit_player(
 
     for extension in &hit_data.extensions {
         match extension {
-            HitDataExtensions::SetScaling(scaling) => player_data.scaling = *scaling,
-            HitDataExtensions::SetProration(proration) => {
+            HitDataExtension::SetScaling(scaling) => player_data.scaling = *scaling,
+            HitDataExtension::SetProration(proration) => {
                 combo_info = combo_info.map(|mut combo| {
                     combo.proration = *proration;
                     combo
@@ -72,8 +73,13 @@ pub(super) fn hit_player(
         .extensions
         .iter()
         .find_map(|extension| {
-            if let HitDataExtensions::CleanHit(bb, effect) = extension {
-                if bb.intersects(&player.position()) {
+            if let HitDataExtension::CleanHit(bb, effect) = extension {
+                if bb
+                    .clone()
+                    .transformed(other_player_position)
+                    .intersects(&player.position())
+                {
+                    println!("clean hit");
                     Some(effect.clone())
                 } else {
                     None
@@ -117,16 +123,18 @@ pub(super) fn hit_player(
                 .extensions
                 .iter()
                 .find_map(|extension| {
-                    if let HitDataExtensions::SetBlockScaling(scaling) = extension {
+                    if let HitDataExtension::SetBlockScaling(scaling) = extension {
                         Some(*scaling)
                     } else {
                         None
                     }
                 })
                 .unwrap_or(hit_data.scaling)
-                * if grounded { 1 } else { 2 };
+                * if grounded { 1 } else { 2 }
+                * hit_data.scaling_on_block_mult as i32
+                / 100;
 
-            player_data.scaling = max(player_data.scaling - block_scaling, -10000);
+            player_data.add_scaling(block_scaling);
             player_data.add_meter(hit_data.meter_gain / 2);
 
             None
@@ -143,27 +151,7 @@ pub(super) fn hit_player(
     hit_status
 }
 
-pub const fn scale_damage(damage: u32, scaling: i32) -> u32 {
-    const SCALING_TABLE: [u16; 11] = [1000, 950, 750, 560, 420, 300, 210, 140, 140, 60, 40];
-    if scaling < 0 {
-        damage
-    } else {
-        // lerp between table value and value above
-        damage * {
-            let scale_index = scaling / 1000;
-            if scale_index as usize >= SCALING_TABLE.len() - 1 {
-                *SCALING_TABLE.last().unwrap() as u32
-            } else {
-                let lower = SCALING_TABLE[scale_index as usize];
-                let upper = SCALING_TABLE[(scale_index + 1) as usize];
-                let dif = lower - upper;
-                lower as u32 + (dif as u32 * (scaling as u32 - (scale_index as u32 * 1000)) / 1000)
-            }
-        } / 1000
-    }
-}
-
-pub const fn total_damage_scaling(
+pub fn total_damage_scaling(
     damage: u32,
     proration: Proration,
     scaling: i32,
@@ -181,6 +169,27 @@ pub const fn total_damage_scaling(
             / 10,
         min_damage as i32,
     ) as u32
+}
+
+pub fn scale_damage(damage: u32, scaling: i32) -> u32 {
+    const SCALING_TABLE: [u16; 11] = [1000, 950, 750, 560, 420, 300, 210, 140, 140, 60, 40];
+    if scaling < 0 {
+        damage
+    } else {
+        // lerp between table value and value above
+        let scale_factor = {
+            let scale_index = scaling / 2000;
+            if scale_index as usize >= SCALING_TABLE.len() - 1 {
+                *SCALING_TABLE.last().unwrap() as u32
+            } else {
+                let lower = SCALING_TABLE[scale_index as usize];
+                let upper = SCALING_TABLE[(scale_index + 1) as usize];
+                let dif = lower - upper;
+                lower as u32 + (dif as u32 * (scaling as u32 - (scale_index as u32 * 2000)) / 2000)
+            }
+        };
+        damage * scale_factor / 1000
+    }
 }
 
 const fn max(a: i32, b: i32) -> i32 {

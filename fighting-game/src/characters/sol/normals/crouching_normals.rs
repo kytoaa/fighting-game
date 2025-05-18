@@ -324,6 +324,7 @@ impl Entity for Sol<CrouchHeavy> {
                 )
                 .with_air(
                     HitEffect::launcher(Vector2::new(20.0 * self.dir(), 90.0), KnockdownType::Soft)
+                        .gravity(7.0)
                         .build(),
                 )
                 .counterhit_from_grounded(|mut g| {

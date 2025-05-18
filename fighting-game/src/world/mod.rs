@@ -12,7 +12,10 @@ use players::TrackedPlayerData;
 
 const DELTA: f32 = 1.0 / 60.0;
 const BORDER_X: f32 = 100.0;
-const MIN_WALL_BOUNCE_HEIGHT: f32 = 4.0;
+const MIN_WALL_BOUNCE_HEIGHT: f32 = 0.0;
+
+const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
+const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
 
 pub struct World {
     players: [Option<Box<dyn crate::characters::Entity>>; 2],
@@ -65,10 +68,7 @@ impl World {
             ),
         ),
     ) -> Self {
-        let ((a, a_info), (b, b_info)) = (
-            (players.0)(EntityID(0, EntityType::Unique)),
-            (players.1)(EntityID(1, EntityType::Unique)),
-        );
+        let ((a, a_info), (b, b_info)) = ((players.0)(PLAYER_1_ID), (players.1)(PLAYER_2_ID));
         Self {
             players: [Some(a), Some(b)],
             player_data: [
@@ -106,12 +106,15 @@ impl World {
             let player = player.update(self, &input_provider);
 
             if let Some(combo) = &self.combo {
-                if combo.target().id() == i && player.actionable() {
+                if combo.target().id() == i && !player.in_hitstun() {
                     self.combo = None;
+                    println!("combo reset");
                 }
             }
             _ = self.players[i].insert(player);
         }
+
+        self.update_player_meters();
 
         self.move_players();
     }

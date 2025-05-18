@@ -3,8 +3,8 @@ use super::{
     HasCollider, HasID, HitstunInfo, OnHit, Position, Velocity,
 };
 use crate::collision::{
-    AttackData, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox, Hurtbox,
-    KnockdownType, OnHitHitData,
+    AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox,
+    Hurtbox, KnockdownType, OnHitHitData,
 };
 use crate::datatypes::*;
 use crate::input::{
@@ -216,12 +216,12 @@ where
 impl<S> Sol<S> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
         (
-            match &info.hit_effect {
+            match info.hit_effect {
                 HitEffect::Pushback { force, frames } => {
-                    self.velocity.x = *force;
+                    self.velocity.x = force;
                     Box::new(self.transition(
                         BasicHitstun {
-                            length: *frames,
+                            length: frames,
                             wall_pushback_mult: info.wall_pushback_mult,
                         },
                         true,
@@ -232,8 +232,8 @@ impl<S> Sol<S> {
                     gravity,
                     knockdown,
                     momentum_scaling,
-                    ground_bounce_velocity,
-                    wall_bounce_velocity,
+                    ground_bounce,
+                    wall_bounce,
                 } => {
                     self.velocity = Vector2::new(
                         self.velocity.x * momentum_scaling.0 + knockback.x,
@@ -242,10 +242,10 @@ impl<S> Sol<S> {
                     self.grounded = false;
                     Box::new(self.transition(
                         Tumble {
-                            gravity: *gravity,
-                            knockdown: *knockdown,
-                            ground_bounce_velocity: *ground_bounce_velocity,
-                            wall_bounce_velocity: *wall_bounce_velocity,
+                            gravity,
+                            knockdown,
+                            ground_bounce,
+                            wall_bounce,
                             wall_pushback_mult: info.wall_pushback_mult,
                         },
                         true,
@@ -256,11 +256,11 @@ impl<S> Sol<S> {
                     gravity,
                     landing_frames,
                 } => {
-                    self.velocity = *knockback;
+                    self.velocity = knockback;
                     Box::new(self.transition(
                         FloatingCrumple {
-                            gravity: *gravity,
-                            landing_frames: *landing_frames,
+                            gravity,
+                            landing_frames,
                             wall_pushback_mult: info.wall_pushback_mult,
                         },
                         true,
@@ -1019,7 +1019,7 @@ impl Entity for Sol<BasicHitstun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
 
-        if world.position_in_wall(self.position).is_some() {
+        if World::position_in_wall(self.position).is_some() {
             let p = self.state.wall_pushback_mult;
             world.player_hit_wall(self.as_mut(), p);
         }
@@ -1037,6 +1037,9 @@ impl Entity for Sol<BasicHitstun> {
             self
         }
     }
+    fn in_hitstun(&self) -> bool {
+        true
+    }
 }
 impl SolDamageableState for BasicHitstun {}
 
@@ -1044,40 +1047,76 @@ impl SolDamageableState for BasicHitstun {}
 struct Tumble {
     gravity: f32,
     knockdown: KnockdownType,
-    ground_bounce_velocity: Option<(Vector2, f32)>,
-    wall_bounce_velocity: Option<(Vector2, f32)>,
+    ground_bounce: Option<BounceInfo>,
+    wall_bounce: Option<BounceInfo>,
     wall_pushback_mult: f32,
 }
 impl Entity for Sol<Tumble> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Entity> {
         if !self.grounded {
             self.velocity += Vector2::DOWN * self.state.gravity;
         }
         self.frame += 1;
 
-        if let (Some(dir), Some((velocity, gravity))) = (
-            world.position_should_bounce_off_wall(self.position),
-            self.state.wall_bounce_velocity,
+        // if wall bounce
+        if let (
+            Some(dir),
+            Some(BounceInfo {
+                velocity,
+                gravity,
+                scaling,
+                ..
+            }),
+        ) = (
+            World::position_should_bounce_off_wall(self.position),
+            self.state.wall_bounce.take(),
         ) {
             println!("wall bounce");
-            self.velocity = velocity.x(velocity.x * dir);
+            let p = self.state.wall_pushback_mult;
+            let vel = self.velocity;
+            world.player_hit_wall(self.as_mut(), p);
+
+            self.velocity = Vector2::new(
+                -vel.x * scaling.0 + velocity.x * dir,
+                vel.y * scaling.1 + velocity.y,
+            );
             self.state.gravity = gravity;
-        } else if world.position_in_wall(self.position).is_some() {
+            self.state.wall_bounce = None;
+        } else if World::position_in_wall(self.position).is_some() {
+            // else if in wall
             let p = self.state.wall_pushback_mult;
             world.player_hit_wall(self.as_mut(), p);
 
-            self.state.wall_bounce_velocity = None;
+            self.state.wall_bounce = None;
         }
 
         if self.grounded {
-            if let Some((velocity, gravity)) = self.state.ground_bounce_velocity {
+            if let Some(BounceInfo {
+                velocity,
+                gravity,
+                scaling,
+                use_x_vel,
+                ..
+            }) = self.state.ground_bounce
+            {
                 println!("ground bounce");
-                self.velocity = velocity.x(velocity.x * self.velocity.x.signum());
+                self.velocity = Vector2::new(
+                    self.velocity.x * scaling.0
+                        + velocity.x
+                            * if use_x_vel {
+                                1.0
+                            } else {
+                                self.velocity.x.signum()
+                            },
+                    self.velocity.y * scaling.1 + velocity.y,
+                );
                 self.state.gravity = gravity;
-                if world.position_in_wall(self.position).is_some() {
+
+                if World::position_in_wall(self.position).is_some() {
                     self.velocity.x = 0.0;
                 }
-                self.state.ground_bounce_velocity = None;
+
+                self.state.ground_bounce = None;
 
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
@@ -1108,6 +1147,9 @@ impl Entity for Sol<Tumble> {
     fn should_wall_bounce(&self) -> bool {
         true
     }
+    fn in_hitstun(&self) -> bool {
+        true
+    }
 }
 impl SolDamageableState for Tumble {}
 
@@ -1122,7 +1164,7 @@ impl Entity for Sol<FloatingCrumple> {
             self.velocity += Vector2::DOWN * self.state.gravity;
         }
 
-        if world.position_in_wall(self.position).is_some() {
+        if World::position_in_wall(self.position).is_some() {
             let p = self.state.wall_pushback_mult;
             world.player_hit_wall(self.as_mut(), p);
         }
@@ -1143,8 +1185,8 @@ impl Entity for Sol<FloatingCrumple> {
         }
         self
     }
-    fn actionable(&self) -> bool {
-        false
+    fn in_hitstun(&self) -> bool {
+        true
     }
 }
 impl SolDamageableState for FloatingCrumple {}
@@ -1159,7 +1201,7 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
 
-        if world.position_in_wall(self.position).is_some() {
+        if World::position_in_wall(self.position).is_some() {
             world.player_hit_wall(self.as_mut(), 1.0);
         }
 

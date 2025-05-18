@@ -2,6 +2,8 @@ use super::*;
 
 mod constructors;
 
+pub const DEFAULT_GRAVITY: f32 = 9.0;
+
 #[derive(Debug, Clone, Copy)]
 pub enum AttackType {
     High,
@@ -28,6 +30,46 @@ impl Proration {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct BounceInfo {
+    pub gravity: f32,
+    pub velocity: Vector2,
+    pub scaling: (f32, f32),
+    pub use_x_vel: bool,
+    _p: (),
+}
+impl BounceInfo {
+    pub const fn new(velocity: Vector2) -> Self {
+        Self {
+            velocity,
+            gravity: DEFAULT_GRAVITY,
+            scaling: (0.0, 0.0),
+            use_x_vel: false,
+            _p: (),
+        }
+    }
+    pub const fn gravity(mut self, value: f32) -> Self {
+        self.gravity = value;
+        self
+    }
+    pub const fn scaling_x(mut self, value: f32) -> Self {
+        self.scaling.0 = value;
+        self
+    }
+    pub const fn scaling_y(mut self, value: f32) -> Self {
+        self.scaling.1 = value;
+        self
+    }
+    pub const fn scaling(mut self, value: (f32, f32)) -> Self {
+        self.scaling = value;
+        self
+    }
+    pub const fn use_x_vel(mut self, value: bool) -> Self {
+        self.use_x_vel = value;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum HitEffect {
     Launcher {
         knockback: Vector2,
@@ -36,8 +78,8 @@ pub enum HitEffect {
         momentum_scaling: (f32, f32),
 
         /// momentum off the wall, facing away from it
-        ground_bounce_velocity: Option<(Vector2, f32)>,
-        wall_bounce_velocity: Option<(Vector2, f32)>,
+        ground_bounce: Option<BounceInfo>,
+        wall_bounce: Option<BounceInfo>,
     },
     FloatingCrumple {
         knockback: Vector2,
@@ -77,6 +119,8 @@ pub struct HitData {
 
     /// increases scaling on hit, decreases on block, negative scaling reduces scaling of next combo
     pub(crate) scaling: i32,
+    /// scaling to apply on block, percentage from 0-100% or greater, default of 200
+    pub(crate) scaling_on_block_mult: u32,
 
     /// amount of meter gained on hit, on block is half
     pub(crate) meter_gain: u32,
@@ -85,11 +129,11 @@ pub struct HitData {
 
     pub(crate) minimum_damage: u32,
 
-    pub(crate) extensions: Box<[HitDataExtensions]>,
+    pub(crate) extensions: Box<[HitDataExtension]>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum HitDataExtensions {
+pub enum HitDataExtension {
     SetScaling(i32),
     SetProration(Proration),
     SetChipDamage(u32),

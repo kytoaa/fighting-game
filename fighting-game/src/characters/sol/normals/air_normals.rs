@@ -1,6 +1,7 @@
 use super::{Entity, Grounded};
 use crate::collision::{
-    AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
+    AttackData, AttackType, BounceInfo, CollisionShape, HitData, HitEffect, HitLevel,
+    KnockdownType, Proration,
 };
 use crate::datatypes::{BoundingBox, Vector2};
 use crate::input::{Action, Button, InputHandler};
@@ -318,7 +319,7 @@ impl Entity for Sol<AirHeavy> {
                                         Vector2::new(70.0 * self.dir(), 120.0),
                                         KnockdownType::Soft,
                                     )
-                                    .wall_bounce_velocity(Vector2::new(50.0, 65.0))
+                                    .wall_bounce(BounceInfo::new(Vector2::new(50.0, 65.0)))
                                     .build(),
                                     18 + active_frames_extra_hitstun,
                                     Proration::percent(80),
