@@ -280,7 +280,7 @@ impl SolDamageableState for AirMid {}
 const AIR_HEAVY_STARTUP: usize = 9;
 const AIR_HEAVY_ACTIVE: usize = 3;
 const AIR_HEAVY_RECOVERY: usize = 15;
-const AIR_HEAVY_DAMAGE: u32 = 20;
+const AIR_HEAVY_DAMAGE: u32 = 32;
 
 pub struct AirHeavy;
 impl Entity for Sol<AirHeavy> {
@@ -321,7 +321,7 @@ impl Entity for Sol<AirHeavy> {
                                         Vector2::new(70.0 * self.dir(), 120.0),
                                         KnockdownType::Soft,
                                     )
-                                    .wall_bounce(BounceInfo::new(Vector2::new(50.0, 65.0)))
+                                    .wall_bounce(BounceInfo::new(Vector2::new(50.0, 40.0)))
                                     .build(),
                                     18 + active_frames_extra_hitstun,
                                     Proration::percent(80),

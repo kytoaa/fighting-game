@@ -3,7 +3,7 @@ use super::*;
 const BANDIT_REVOLVER_GROUNDED_1_STARTUP: usize = 12;
 const BANDIT_REVOLVER_GROUNDED_1_ACTIVE: usize = 6;
 const BANDIT_REVOLVER_GROUNDED_1_RECOVERY: usize = 16;
-const BANDIT_REVOLVER_GROUNDED_1_LANDING_LAG: usize = 4;
+const BANDIT_REVOLVER_GROUNDED_1_LANDING_LAG: usize = 7;
 const BANDIT_REVOLVER_GROUNDED_1_DAMAGE: u32 = 11;
 
 pub struct BanditRevolverGrounded;
@@ -112,6 +112,15 @@ impl Entity for Sol<BanditRevolverGrounded> {
     fn moveable(&self) -> bool {
         false
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(match self.frame {
+            0..5 => ("sol/fall/fall1".into(), BASE_SPRITE_OFFSET),
+            _ => (
+                "sol/specials/bandit_revolver/bandit_revolver1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+            ),
+        })
+    }
 }
 impl SolDamageableState for BanditRevolverGrounded {}
 
@@ -140,6 +149,12 @@ impl<const FRAMES: usize> Entity for Sol<BanditRevolverGroundedRecovery<FRAMES>>
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some((
+            "sol/run/run_stop".into(),
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+        ))
     }
 }
 impl<const FRAMES: usize> SolDamageableState for BanditRevolverGroundedRecovery<FRAMES> {}
@@ -227,5 +242,60 @@ impl Entity for Sol<BanditRevolverGroundedSecondHit> {
     fn moveable(&self) -> bool {
         false
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some((
+            "sol/specials/bandit_revolver/bandit_revolver2".into(),
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+        ))
+    }
 }
 impl SolDamageableState for BanditRevolverGroundedSecondHit {}
+
+const BANDIT_REVOLVER_AIR_STARTUP: usize = BANDIT_REVOLVER_GROUNDED_1_STARTUP;
+const BANDIT_REVOLVER_AIR_ACTIVE_1: usize = 3;
+const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 6;
+const BANDIT_REVOLVER_AIR_ACTIVE_2: usize = 2;
+const BANDIT_REVOLVER_AIR_RECOVERY: usize = 15;
+
+pub struct BanditRevolverAir;
+impl Entity for Sol<BanditRevolverAir> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const STARTUP_2: usize = BANDIT_REVOLVER_AIR_STARTUP + BANDIT_REVOLVER_AIR_ACTIVE_1;
+        const HIT_2_FRAME: usize = STARTUP_2 + BANDIT_REVOLVER_AIR_STARTUP_2;
+        const RECOVERY_FRAME: usize = HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2;
+        const END_FRAME: usize = RECOVERY_FRAME + BANDIT_REVOLVER_AIR_RECOVERY;
+
+        const VELOCITY: Vector2 = Vector2::new(70.0, 55.0);
+
+        if self.frame == 0 {
+            self.has_hit = false;
+        }
+
+        self.frame += 1;
+
+        match self.frame {
+            0..BANDIT_REVOLVER_AIR_STARTUP => {
+                self.velocity = VELOCITY;
+                self
+            }
+            BANDIT_REVOLVER_AIR_STARTUP..STARTUP_2 => {
+                //
+                self
+            }
+            STARTUP_2..HIT_2_FRAME => {
+                //
+                self
+            }
+            HIT_2_FRAME..RECOVERY_FRAME => {
+                self.gravity();
+                self
+            }
+            RECOVERY_FRAME..END_FRAME => {
+                self.gravity();
+                self
+            }
+            _ => self.air_actionable_state(input),
+        }
+    }
+}
+impl SolDamageableState for BanditRevolverAir {}

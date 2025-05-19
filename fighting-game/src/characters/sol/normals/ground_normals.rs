@@ -405,7 +405,7 @@ impl Entity for Sol<StandLight> {
                         AttackData {
                             attack: HitData::level_1(
                                 STAND_LIGHT_FIRST_HIT_DAMAGE,
-                                Vector2::new(20.0 * self.dir(), 40.0),
+                                Vector2::new(20.0 * self.dir(), 50.0),
                                 0,
                             )
                             .counterhit_from_grounded(|a| a)
@@ -416,9 +416,7 @@ impl Entity for Sol<StandLight> {
                             attack_id: "sol 5l".into(),
                         },
                     ),
-                    self.position
-                        + Vector2::new(8.0 * self.dir(), 8.0)
-                        + Vector2::RIGHT * 6.0 * self.dir(),
+                    self.position + Vector2::new(14.0 * self.dir(), 6.0),
                 );
 
                 world.spawn_hurtbox(
@@ -426,9 +424,7 @@ impl Entity for Sol<StandLight> {
                         Vector2::ZERO,
                         Vector2::new(12.0, 14.0),
                     ))),
-                    self.position
-                        + Vector2::new(8.0 * self.dir(), 8.0)
-                        + Vector2::RIGHT * 6.0 * self.dir(),
+                    self.position + Vector2::new(14.0 * self.dir(), 6.0),
                 );
 
                 self
@@ -446,10 +442,10 @@ impl Entity for Sol<StandLight> {
                         )
                         .with_air(
                             HitEffect::launcher(
-                                Vector2::new(30.0 * self.dir(), 55.0),
+                                Vector2::new(30.0 * self.dir(), 85.0),
                                 KnockdownType::Soft,
                             )
-                            .gravity(8.0)
+                            .gravity(6.5)
                             .build(),
                         )
                         .counterhit_from_grounded(|g| g)

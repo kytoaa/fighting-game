@@ -540,6 +540,12 @@ where
         ) {
             return Ok(Box::new(self.transition(VolcanicViper, true)));
         }
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(self.direction),
+            &Action::Pressed(Button::Mid, None),
+        ) {
+            return Ok(Box::new(self.transition(BanditRevolverAir, true)));
+        }
 
         Err(self)
     }
@@ -958,6 +964,13 @@ where
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
         self.frame += 1;
         self.gravity();
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
+            },
+            self.position,
+        );
         self.air_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
@@ -1069,7 +1082,7 @@ impl Entity for Sol<Tumble> {
             }),
         ) = (
             World::position_should_bounce_off_wall(self.position),
-            self.state.wall_bounce.take(),
+            self.state.wall_bounce.clone(),
         ) {
             println!("wall bounce");
             let p = self.state.wall_pushback_mult;
