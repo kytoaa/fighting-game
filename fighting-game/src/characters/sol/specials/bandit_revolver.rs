@@ -265,8 +265,6 @@ impl Entity for Sol<BanditRevolverAir> {
         const RECOVERY_FRAME: usize = HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2;
         const END_FRAME: usize = RECOVERY_FRAME + BANDIT_REVOLVER_AIR_RECOVERY;
 
-        const VELOCITY: Vector2 = Vector2::new(70.0, 55.0);
-
         if self.frame == 0 {
             self.has_hit = false;
         }
@@ -275,7 +273,7 @@ impl Entity for Sol<BanditRevolverAir> {
 
         match self.frame {
             0..BANDIT_REVOLVER_AIR_STARTUP => {
-                self.velocity = VELOCITY;
+                self.velocity = Vector2::new(70.0 * self.dir(), 55.0);
                 self
             }
             BANDIT_REVOLVER_AIR_STARTUP..STARTUP_2 => {

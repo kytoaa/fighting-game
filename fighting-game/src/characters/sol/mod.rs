@@ -1249,7 +1249,7 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
         Some(if CROUCHING {
             ("sol/crouch_idle".into(), BASE_SPRITE_OFFSET)
         } else {
-            ("sol/idle".into(), BASE_SPRITE_OFFSET)
+            ("sol/standing_block".into(), BASE_SPRITE_OFFSET)
         })
     }
 }
