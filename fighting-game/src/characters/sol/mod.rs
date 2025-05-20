@@ -293,7 +293,8 @@ impl Damageable for Sol<WalkState<true>> {
 }
 impl Damageable for Sol<Crouch<true>> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        self.velocity.x = info.block_pushback;
+        self.velocity.x =
+            info.block_pushback * (1.0 + ((info.wall_pushback_mult - 1.0) / 2.0).clamp(0.0, 2.0));
 
         if let crate::collision::AttackType::High = info.attack_type {
             return Sol::hit(self, info);
@@ -311,7 +312,7 @@ impl Damageable for Sol<Crouch<true>> {
 }
 impl Damageable for Sol<Air<true>> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        self.velocity.x = info.block_pushback;
+        self.velocity.x = info.block_pushback * 2.0;
 
         if let crate::collision::AttackType::Low = info.attack_type {
             return Sol::hit(self, info);
@@ -324,7 +325,7 @@ impl Damageable for Sol<Air<true>> {
 }
 impl Damageable for Sol<AirBlockStun> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
-        self.velocity.x = info.block_pushback;
+        self.velocity.x = info.block_pushback * 2.0;
 
         if let crate::collision::AttackType::Low = info.attack_type {
             return Sol::hit(self, info);
@@ -601,7 +602,7 @@ where
         }
         self = try_transition!(air_movement_cancel_options; self, input);
 
-        if dir == Vector2::new(-self.dir(), 0.0) {
+        if dir.x == -self.dir() {
             Box::new(self.transition(Air::<true>, false))
         } else {
             Box::new(self.transition(Air::<false>, false))
@@ -946,7 +947,11 @@ impl Entity for Sol<JumpSquat> {
                 self.velocity.x = WALK_SPEED * self.state.direction;
             }
             self.velocity.y = Vector2::UP.y * JUMP_FORCE;
-            Box::new(self.transition(Air::<false>, true))
+            if self.state.direction == -self.dir() {
+                Box::new(self.transition(Air::<true>, true))
+            } else {
+                Box::new(self.transition(Air::<false>, true))
+            }
         } else {
             self
         }
@@ -1241,13 +1246,18 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
         if self.frame >= self.state.length {
             self.grounded_actionable_state(input)
         } else {
-            self
+            let length = self.state.length;
+            if input.input_dir().is_down() {
+                Box::new(self.transition(BlockStun::<true> { length }, false))
+            } else {
+                Box::new(self.transition(BlockStun::<false> { length }, false))
+            }
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         // TODO: replace with sprites when theyre done
         Some(if CROUCHING {
-            ("sol/crouch_idle".into(), BASE_SPRITE_OFFSET)
+            ("sol/crouch_block".into(), BASE_SPRITE_OFFSET)
         } else {
             ("sol/standing_block".into(), BASE_SPRITE_OFFSET)
         })
@@ -1259,9 +1269,19 @@ struct AirBlockStun {
 }
 impl Entity for Sol<AirBlockStun> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
-        self.frame += 1;
-        if self.frame >= self.state.length {
-            Box::new(self.transition(Stand, true))
+        self.gravity();
+
+        world.spawn_hurtbox(
+            crate::collision::Hurtbox {
+                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
+                owner: self.player_id,
+            },
+            self.position,
+        );
+
+        if self.grounded {
+            let length = self.state.length;
+            Box::new(self.transition(BlockStun::<false> { length }, true))
         } else {
             self
         }
