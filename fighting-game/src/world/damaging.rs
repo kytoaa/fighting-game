@@ -109,6 +109,9 @@ pub(super) fn hit_player(
 
     let combo_info = match hit_status {
         crate::collision::HitConnectionStatus::Hit => {
+            if counterhit {
+                println!("counterhit");
+            }
             let mut combo_info = combo_info.unwrap_or_else(|| ComboInfo {
                 hits: 0,
                 total_damage: 0,
@@ -137,7 +140,6 @@ pub(super) fn hit_player(
                     .count()
                     >= uses_before_scaling
                 {
-                    println!("attack used");
                     2
                 } else {
                     1

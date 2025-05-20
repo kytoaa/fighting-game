@@ -22,7 +22,9 @@ pub struct App {
     show_hitboxes: bool,
     show_fps: bool,
     debug_paused: bool,
-    recorded_enemy_state: fighting_game::input::InputState,
+    recording: bool,
+    recorded_states: Vec<fighting_game::input::InputState>,
+    recording_iterator: Box<dyn Iterator<Item = fighting_game::input::InputState>>,
 }
 
 pub struct RenderData {
@@ -97,8 +99,15 @@ impl winit::application::ApplicationHandler for App {
                     winit::event::ElementState::Pressed,
                 ) = (event.physical_key, event.state)
                 {
-                    let [input_state, _] = self.get_input_states();
-                    self.recorded_enemy_state = input_state;
+                    if !self.recording {
+                        self.recorded_states.clear();
+                        self.recording = true;
+                    } else {
+                        self.recording = false;
+                        self.recording_iterator = Box::new(
+                            std::iter::repeat(self.recorded_states.clone().into_iter()).flatten(),
+                        );
+                    }
                 }
             }
             winit::event::WindowEvent::CloseRequested => {
@@ -240,13 +249,15 @@ impl App {
                 show_hitboxes: false,
                 show_fps: false,
                 debug_paused: false,
-                recorded_enemy_state: fighting_game::input::InputState::default(),
+                recording: false,
+                recorded_states: vec![],
+                recording_iterator: Box::new(vec![].into_iter()),
             })
             .unwrap();
     }
 
     fn get_input_states(&mut self) -> [fighting_game::input::InputState; 2] {
-        use fighting_game::input::{Button, ButtonState, InputState};
+        use fighting_game::input::{ButtonState, InputState};
         use winit::event::ElementState;
         use winit::keyboard::{KeyCode, PhysicalKey};
 
@@ -301,20 +312,25 @@ impl App {
         )
         .into();
 
-        let other = self.recorded_enemy_state.clone(); //InputState::default();
-
-        [
-            InputState {
-                dir,
-                button_states: fighting_game::input::ButtonStates {
-                    light,
-                    mid,
-                    heavy,
-                    utility,
-                },
+        let player_state = InputState {
+            dir,
+            button_states: fighting_game::input::ButtonStates {
+                light,
+                mid,
+                heavy,
+                utility,
             },
-            other,
-        ]
+        };
+
+        if self.recording {
+            self.recorded_states.push(player_state.clone());
+
+            return [Default::default(), player_state];
+        }
+
+        let other = self.recording_iterator.next().unwrap_or_default(); //InputState::default();
+
+        [player_state, other]
     }
 }
 
