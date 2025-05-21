@@ -1,6 +1,6 @@
 use super::{
     crouching_normals::{CrouchHeavy, CrouchLight, CrouchMid},
-    Player, RunStartState,
+    HasID, Player, RunStartState,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect, HitLevel,

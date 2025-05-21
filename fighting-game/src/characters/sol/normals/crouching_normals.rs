@@ -1,6 +1,6 @@
 use super::{
     ground_normals::{CloseMid, FarMid, StandHeavy},
-    Player, RunStartState,
+    HasID, Player, RunStartState,
 };
 use crate::collision::{
     AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,

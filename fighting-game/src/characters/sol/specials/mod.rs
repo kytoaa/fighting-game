@@ -1,6 +1,6 @@
-use super::{
-    Damageable, Direction, Player, Grounded, HasCollider, JumpSquat, OnHit, Position,
-    RunStartState, Velocity, WALK_SPEED,
+use crate::characters::{
+    Damageable, Direction, EntityUpdateResult, Grounded, HasCollider, HasID, NonPlayerEntity,
+    OnHit, Player, Position, Velocity,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect, HitLevel,
@@ -11,9 +11,12 @@ use crate::input::{
     directions::{InputDir, Motion},
     Action, Button, InputHandler,
 };
-use crate::world::World;
+use crate::world::{EntityID, World};
 
-use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
+use super::{
+    JumpSquat, RunStartState, Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX,
+    WALK_SPEED,
+};
 
 mod bandit_revolver;
 mod fafnir;

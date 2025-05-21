@@ -1,62 +1,5 @@
 use super::*;
 
-const GUNFLAME_STARTUP: usize = 11;
-const GUNFLAME_DECEL: f32 = 0.9;
-
-/// bool is feint
-pub struct GunFlameStartup<const FEINT: bool = false>;
-impl GunFlameStartup {
-    pub const fn feint() -> GunFlameStartup<true> {
-        GunFlameStartup
-    }
-    pub const fn real() -> GunFlameStartup<false> {
-        GunFlameStartup
-    }
-}
-impl<const FEINT: bool> Player for Sol<GunFlameStartup<FEINT>> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
-        self.has_hit = false;
-        self.frame += 1;
-        if self.velocity.x * self.dir() < 0.0 {
-            self.velocity.x = 0.0;
-        } else {
-            self.velocity.x *= GUNFLAME_DECEL;
-        }
-        if self.frame > GUNFLAME_STARTUP {
-            if FEINT {
-                Box::new(self.transition(GunFlameFeint, true))
-            } else {
-                Box::new(self.transition(GunFlame, true))
-            }
-        } else {
-            self
-        }
-    }
-    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        let mut path: String = "sol/gunflame/gunflame".into();
-        path.push(match self.frame {
-            0..4 => '1',
-            ..8 => '2',
-            _ => '3',
-        });
-
-        Some((path.into(), BASE_SPRITE_OFFSET))
-    }
-    fn actionable(&self) -> bool {
-        false
-    }
-}
-impl<const FEINT: bool> SolDamageableState for GunFlameStartup<FEINT> {}
-
-struct GunFlame;
-impl Player for Sol<GunFlame> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
-        // TODO: spawn projectile
-        todo!()
-    }
-}
-impl SolDamageableState for GunFlame {}
-
 const GUNFLAME_FEINT_HOLD_LENGTH: usize = 8;
 pub struct GunFlameFeint;
 impl Player for Sol<GunFlameFeint> {
@@ -98,7 +41,7 @@ impl Player for Sol<GunFlameFeint> {
         }
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/gunflame/gunflame3".into(), BASE_SPRITE_OFFSET))
+        Some(("sol/specials/gunflame/gunflame3".into(), BASE_SPRITE_OFFSET))
     }
     fn actionable(&self) -> bool {
         false

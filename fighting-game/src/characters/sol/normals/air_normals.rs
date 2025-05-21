@@ -1,4 +1,4 @@
-use super::{Player, Grounded};
+use super::{Grounded, HasID, Player};
 use crate::collision::{
     AttackData, AttackType, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect,
     HitLevel, KnockdownType, Proration,

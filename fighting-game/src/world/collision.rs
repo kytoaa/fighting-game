@@ -43,14 +43,24 @@ impl World {
             let hurtbox = &mut self.hurtboxes[hurtbox_index];
 
             println!("collision");
-            if hitbox.0.owner == hurtbox.0.owner {
+            if hitbox.0.owner == hurtbox.0.owner || hitbox.0.owner.owned_by(&hurtbox.0.owner) {
                 println!("owner same");
                 continue;
             }
-            let other_player_position = self.players[hitbox.0.owner.id()]
-                .as_ref()
-                .unwrap()
-                .position();
+
+            let other_player_position = if hitbox.0.owner.is_player() {
+                self.players[hitbox.0.owner.id()]
+                    .as_ref()
+                    .unwrap()
+                    .position()
+            } else {
+                self.non_player_entities
+                    .as_ref()
+                    .unwrap()
+                    .get(&hitbox.0.owner.id())
+                    .map(|e| e.position())
+                    .unwrap_or(crate::datatypes::Vector2::ZERO)
+            };
 
             let hit_status = super::damaging::hit_player(
                 &mut self.players[hurtbox.0.owner.id()],
@@ -70,6 +80,13 @@ impl World {
                     .as_mut()
                     .unwrap()
                     .on_hit(hit_status);
+            } else {
+                self.non_player_entities
+                    .as_mut()
+                    .unwrap()
+                    .get_mut(&hitbox.0.owner.id())
+                    .iter_mut()
+                    .for_each(|e| e.on_hit(hit_status));
             }
 
             let hitstop_frames = match hit_status {

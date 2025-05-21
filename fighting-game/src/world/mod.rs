@@ -23,7 +23,8 @@ pub struct World {
 
     combo: Option<ComboInfo>,
 
-    non_player_entities: Option<Vec<Box<dyn crate::characters::NonPlayerEntity>>>,
+    non_player_entities:
+        Option<std::collections::HashMap<usize, Box<dyn crate::characters::NonPlayerEntity>>>,
 
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
@@ -50,6 +51,20 @@ impl EntityID {
     }
     pub const fn is_player(&self) -> bool {
         self.id() < 2
+    }
+    pub const fn owned_by(&self, other: &EntityID) -> bool {
+        match (self.1, other.1) {
+            (EntityType::Owned(_), EntityType::Owned(_)) => false,
+            (EntityType::Owned(p), EntityType::Unique) => p == other.0,
+            (EntityType::Unique, EntityType::Owned(p)) => p == other.0,
+            (EntityType::Unique, EntityType::Unique) => false,
+        }
+    }
+    pub const fn get_owner(&self) -> usize {
+        match self.1 {
+            EntityType::Unique => self.0,
+            EntityType::Owned(p) => p,
+        }
     }
 }
 
@@ -79,7 +94,7 @@ impl World {
             ],
             combo: None,
 
-            non_player_entities: Some(vec![]),
+            non_player_entities: Some(Default::default()),
 
             hurtboxes: vec![],
             hitboxes: vec![],
@@ -109,7 +124,7 @@ impl World {
             .take()
             .unwrap()
             .into_iter()
-            .filter_map(|mut entity| {
+            .filter_map(|(hashmap_id, mut entity)| {
                 let id = entity.id();
                 let input_handler = match id.1 {
                     EntityType::Owned(player) if player < 2 => Some(&input_providers[player]),
@@ -119,9 +134,9 @@ impl World {
                 let result = entity.update(self, input_handler);
 
                 match result {
-                    crate::characters::EntityUpdateResult::Continue => Some(entity),
+                    crate::characters::EntityUpdateResult::Continue => Some((hashmap_id, entity)),
                     crate::characters::EntityUpdateResult::Remove => None,
-                    crate::characters::EntityUpdateResult::ReplaceWith(e) => Some(e),
+                    crate::characters::EntityUpdateResult::ReplaceWith(e) => Some((e.id().id(), e)),
                 }
             })
             .collect();
@@ -153,13 +168,14 @@ impl World {
     pub fn spawn_hitbox(&mut self, hitbox: Hitbox, position: Vector2) {
         self.hitboxes.push(Spawn(hitbox.at_position(position), 1));
     }
+    pub fn spawn_non_player_entity(&mut self, entity: Box<dyn crate::characters::NonPlayerEntity>) {
+        self.non_player_entities
+            .as_mut()
+            .unwrap()
+            .insert(entity.id().id(), entity);
+    }
     const fn is_grounded(&self, shape: &CollisionShape) -> bool {
         shape.get_bounding_box().min.y <= 0.01
-    }
-    const fn create_id(&mut self) -> EntityID {
-        let n = self.id_counter;
-        self.id_counter += 1;
-        EntityID(n, EntityType::Unique)
     }
 
     pub fn get_players(&self) -> Box<[&dyn crate::characters::Player; 2]> {
@@ -183,7 +199,7 @@ impl World {
         self.hitstop_frames_left > 0
     }
 
-    pub fn get_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
+    pub fn create_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
         let id = self.id_counter;
         self.id_counter += 1;
         EntityID(id, entity_type)

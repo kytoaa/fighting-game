@@ -123,19 +123,6 @@ impl<S> Sol<S> {
             .x
             .move_towards(0.0, if self.has_hit { BASE_DRAG } else { drag });
     }
-    const fn create_hitbox(&self, shape: CollisionShape, attack_data: AttackData) -> Hitbox {
-        Hitbox {
-            shape,
-            owner: self.player_id,
-            attack_data,
-        }
-    }
-    const fn create_hurtbox(&self, shape: CollisionShape) -> Hurtbox {
-        Hurtbox {
-            shape,
-            owner: self.player_id,
-        }
-    }
 }
 
 impl<S> HasID for Sol<S> {

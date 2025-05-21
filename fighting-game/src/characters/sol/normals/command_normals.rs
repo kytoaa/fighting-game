@@ -1,4 +1,4 @@
-use super::Player;
+use super::{HasID, Player};
 use crate::collision::{
     AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
 };

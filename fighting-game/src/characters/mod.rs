@@ -30,7 +30,7 @@ pub enum EntityUpdateResult {
     ReplaceWith(Box<dyn NonPlayerEntity>),
 }
 
-pub trait NonPlayerEntity: HasID + OnHit + Damageable + Position + AsAny {
+pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny {
     fn update(&mut self, world: &mut World, input: Option<&InputHandler>) -> EntityUpdateResult;
 }
 
@@ -108,6 +108,24 @@ pub trait HasCancelState {
 }
 pub trait HasID {
     fn id(&self) -> EntityID;
+
+    fn create_hitbox(
+        &self,
+        shape: crate::collision::CollisionShape,
+        attack_data: AttackData,
+    ) -> crate::collision::Hitbox {
+        crate::collision::Hitbox {
+            shape,
+            owner: self.id(),
+            attack_data,
+        }
+    }
+    fn create_hurtbox(&self, shape: crate::collision::CollisionShape) -> crate::collision::Hurtbox {
+        crate::collision::Hurtbox {
+            shape,
+            owner: self.id(),
+        }
+    }
 }
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}
