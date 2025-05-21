@@ -8,6 +8,7 @@ const FAFNIR_DAMAGE: u32 = 35;
 pub struct Fafnir;
 impl Entity for Sol<Fafnir> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+        const START_FRAME: usize = 4;
         const STOP_FRAME: usize = FAFNIR_STARTUP - 7;
         const RECOVERY_FRAME: usize = FAFNIR_STARTUP + FAFNIR_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + FAFNIR_RECOVERY;
@@ -30,8 +31,8 @@ impl Entity for Sol<Fafnir> {
         );
 
         match self.frame as usize {
-            0..4 => self,
-            4..STOP_FRAME => {
+            0..START_FRAME => self,
+            START_FRAME..STOP_FRAME => {
                 self.velocity = Vector2::new(MAX_X_VEL * self.dir(), 0.0);
                 self
             }
@@ -125,6 +126,21 @@ impl Entity for Sol<Fafnir> {
         } else {
             true
         }
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const START_FRAME: usize = 4;
+        const RECOVERY_FRAME: usize = FAFNIR_STARTUP + FAFNIR_ACTIVE + FAFNIR_RECOVERY / 2;
+
+        Some(match self.frame {
+            0..START_FRAME => ("sol/specials/fafnir/fafnir1".into(), BASE_SPRITE_OFFSET),
+            START_FRAME..FAFNIR_STARTUP => {
+                ("sol/specials/fafnir/fafnir2".into(), BASE_SPRITE_OFFSET)
+            }
+            FAFNIR_STARTUP..RECOVERY_FRAME => {
+                ("sol/specials/fafnir/fafnir3".into(), BASE_SPRITE_OFFSET)
+            }
+            RECOVERY_FRAME.. => ("sol/specials/fafnir/fafnir4".into(), BASE_SPRITE_OFFSET),
+        })
     }
 }
 impl SolDamageableState for Fafnir {}

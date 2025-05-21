@@ -665,7 +665,7 @@ impl Entity for Sol<StandHeavy> {
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
-                if self.frame < RECOVERY_FRAME + 5 && self.has_hit {
+                if self.has_hit {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
                 }
                 self
