@@ -1,4 +1,4 @@
-use super::Entity;
+use super::Player;
 use crate::collision::{
     AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
 };
@@ -14,8 +14,8 @@ const HEAVY_3_RECOVERY: usize = 18;
 const HEAVY_3_DAMAGE: u32 = 14;
 
 pub struct Heavy3;
-impl Entity for Sol<Heavy3> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Heavy3> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = HEAVY_3_STARTUP + HEAVY_3_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + HEAVY_3_RECOVERY;
         const DECEL: f32 = 6.0;
@@ -121,8 +121,8 @@ const HEAVY_6_RECOVERY: usize = 20;
 const HEAVY_6_DAMAGE: u32 = 30;
 
 pub struct Heavy6;
-impl Entity for Sol<Heavy6> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Heavy6> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = HEAVY_6_STARTUP + HEAVY_6_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + HEAVY_6_RECOVERY;
         const DECEL: f32 = 12.0;

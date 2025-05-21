@@ -1,4 +1,4 @@
-use super::{Entity, Grounded};
+use super::{Player, Grounded};
 use crate::collision::{
     AttackData, AttackType, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect,
     HitLevel, KnockdownType, Proration,
@@ -17,8 +17,8 @@ const AIR_LIGHT_RECOVERY: usize = 23;
 const AIR_LIGHT_DAMAGE: u32 = 12;
 
 pub struct AirLight;
-impl Entity for Sol<AirLight> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<AirLight> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = AIR_LIGHT_STARTUP + AIR_LIGHT_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + AIR_LIGHT_RECOVERY;
 
@@ -156,8 +156,8 @@ const AIR_MID_ACTIVE_2: usize = 8;
 const AIR_MID_DAMAGE: u32 = 8;
 
 pub struct AirMid;
-impl Entity for Sol<AirMid> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<AirMid> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const AIR_MID_ACTIVE_2_FRAME: usize = AIR_MID_STARTUP + AIR_MID_ACTIVE_1;
         const END_FRAME: usize = AIR_MID_ACTIVE_2_FRAME + AIR_MID_ACTIVE_2;
 
@@ -283,8 +283,8 @@ const AIR_HEAVY_RECOVERY: usize = 15;
 const AIR_HEAVY_DAMAGE: u32 = 32;
 
 pub struct AirHeavy;
-impl Entity for Sol<AirHeavy> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<AirHeavy> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = AIR_HEAVY_STARTUP + AIR_HEAVY_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + AIR_HEAVY_RECOVERY;
 

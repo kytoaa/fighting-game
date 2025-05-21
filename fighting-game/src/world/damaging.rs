@@ -1,4 +1,4 @@
-use super::{EntityID, World};
+use super::EntityID;
 use crate::collision::{AttackID, HitConnectionStatus, HitData, HitDataExtension, Proration};
 use crate::datatypes::{BoundingShape, Vector2};
 
@@ -33,7 +33,7 @@ impl ComboInfo {
 }
 
 pub(super) fn hit_player(
-    hit_player: &mut Option<Box<dyn crate::characters::Entity>>,
+    hit_player: &mut Option<Box<dyn crate::characters::Player>>,
     player_data: &mut super::players::TrackedPlayerData,
     combo: &mut Option<ComboInfo>,
     hit_data: &HitData,

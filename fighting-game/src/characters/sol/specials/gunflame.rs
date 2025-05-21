@@ -13,8 +13,8 @@ impl GunFlameStartup {
         GunFlameStartup
     }
 }
-impl<const FEINT: bool> Entity for Sol<GunFlameStartup<FEINT>> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl<const FEINT: bool> Player for Sol<GunFlameStartup<FEINT>> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.has_hit = false;
         self.frame += 1;
         if self.velocity.x * self.dir() < 0.0 {
@@ -49,8 +49,8 @@ impl<const FEINT: bool> Entity for Sol<GunFlameStartup<FEINT>> {
 impl<const FEINT: bool> SolDamageableState for GunFlameStartup<FEINT> {}
 
 struct GunFlame;
-impl Entity for Sol<GunFlame> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<GunFlame> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         // TODO: spawn projectile
         todo!()
     }
@@ -59,8 +59,8 @@ impl SolDamageableState for GunFlame {}
 
 const GUNFLAME_FEINT_HOLD_LENGTH: usize = 8;
 pub struct GunFlameFeint;
-impl Entity for Sol<GunFlameFeint> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<GunFlameFeint> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
 
         if self.frame == 3 {

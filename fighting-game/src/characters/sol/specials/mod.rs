@@ -1,5 +1,5 @@
 use super::{
-    Damageable, Direction, Entity, Grounded, HasCollider, JumpSquat, OnHit, Position,
+    Damageable, Direction, Player, Grounded, HasCollider, JumpSquat, OnHit, Position,
     RunStartState, Velocity, WALK_SPEED,
 };
 use crate::collision::{

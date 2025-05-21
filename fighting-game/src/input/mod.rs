@@ -1,5 +1,5 @@
 use crate::datatypes::Vector2;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 pub mod directions;
 
@@ -170,11 +170,6 @@ pub enum Button {
     Utility,
 }
 
-#[derive(PartialEq, Debug)]
-struct ButtonPress {
-    button: Button,
-    state: ButtonState,
-}
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ButtonState {
     Up,

@@ -1,5 +1,5 @@
 use super::*;
-use characters::Entity;
+use characters::Player;
 use datatypes::Vector2;
 use input::InputHandler;
 use std::sync::Arc;
@@ -20,7 +20,7 @@ fn get_character(
     character: Character,
     position: Vector2,
     id: world::EntityID,
-) -> (Box<dyn Entity>, characters::CharacterInitInfo) {
+) -> (Box<dyn Player>, characters::CharacterInitInfo) {
     match character {
         Character::Sol => (
             Box::new(characters::sol::initial_state(id, position)),

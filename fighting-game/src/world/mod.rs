@@ -1,5 +1,5 @@
-use super::collision::{CollisionShape, HitLevel, Hitbox, Hurtbox};
-use super::datatypes::{BoundingShape, Vector2};
+use super::collision::{CollisionShape, Hitbox, Hurtbox};
+use super::datatypes::Vector2;
 use super::input::InputHandler;
 
 mod collision;
@@ -18,10 +18,12 @@ const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
 const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
 
 pub struct World {
-    players: [Option<Box<dyn crate::characters::Entity>>; 2],
+    players: [Option<Box<dyn crate::characters::Player>>; 2],
     player_data: [TrackedPlayerData; 2],
 
     combo: Option<ComboInfo>,
+
+    non_player_entities: Option<Vec<Box<dyn crate::characters::NonPlayerEntity>>>,
 
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
@@ -57,13 +59,13 @@ impl World {
             impl FnOnce(
                 EntityID,
             ) -> (
-                Box<dyn crate::characters::Entity>,
+                Box<dyn crate::characters::Player>,
                 crate::characters::CharacterInitInfo,
             ),
             impl FnOnce(
                 EntityID,
             ) -> (
-                Box<dyn crate::characters::Entity>,
+                Box<dyn crate::characters::Player>,
                 crate::characters::CharacterInitInfo,
             ),
         ),
@@ -76,6 +78,8 @@ impl World {
                 TrackedPlayerData::new(b_info.max_health),
             ],
             combo: None,
+
+            non_player_entities: Some(vec![]),
 
             hurtboxes: vec![],
             hitboxes: vec![],
@@ -99,6 +103,30 @@ impl World {
             self.hitstop_frames_left -= 1;
             return;
         }
+
+        let non_player_entities = self
+            .non_player_entities
+            .take()
+            .unwrap()
+            .into_iter()
+            .filter_map(|mut entity| {
+                let id = entity.id();
+                let input_handler = match id.1 {
+                    EntityType::Owned(player) if player < 2 => Some(&input_providers[player]),
+                    EntityType::Owned(p) => panic!("entity {} is owned by {}", id.0, p),
+                    EntityType::Unique => None,
+                };
+                let result = entity.update(self, input_handler);
+
+                match result {
+                    crate::characters::EntityUpdateResult::Continue => Some(entity),
+                    crate::characters::EntityUpdateResult::Remove => None,
+                    crate::characters::EntityUpdateResult::ReplaceWith(e) => Some(e),
+                }
+            })
+            .collect();
+
+        _ = self.non_player_entities.insert(non_player_entities);
 
         for i in 0..2 {
             let player = self.players[i].take().unwrap();
@@ -134,7 +162,7 @@ impl World {
         EntityID(n, EntityType::Unique)
     }
 
-    pub fn get_players(&self) -> Box<[&dyn crate::characters::Entity; 2]> {
+    pub fn get_players(&self) -> Box<[&dyn crate::characters::Player; 2]> {
         Box::new([
             self.players[0].as_ref().unwrap().as_ref(),
             self.players[1].as_ref().unwrap().as_ref(),
@@ -153,5 +181,11 @@ impl World {
 
     pub const fn in_hitstop(&self) -> bool {
         self.hitstop_frames_left > 0
+    }
+
+    pub fn get_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
+        let id = self.id_counter;
+        self.id_counter += 1;
+        EntityID(id, entity_type)
     }
 }

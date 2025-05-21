@@ -7,8 +7,8 @@ const BANDIT_REVOLVER_GROUNDED_1_LANDING_LAG: usize = 7;
 const BANDIT_REVOLVER_GROUNDED_1_DAMAGE: u32 = 11;
 
 pub struct BanditRevolverGrounded;
-impl Entity for Sol<BanditRevolverGrounded> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<BanditRevolverGrounded> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const LAUNCH_FRAME: usize = 6;
         const RECOVERY_FRAME: usize =
             BANDIT_REVOLVER_GROUNDED_1_STARTUP + BANDIT_REVOLVER_GROUNDED_1_ACTIVE;
@@ -125,8 +125,8 @@ impl Entity for Sol<BanditRevolverGrounded> {
 impl SolDamageableState for BanditRevolverGrounded {}
 
 struct BanditRevolverGroundedRecovery<const FRAMES: usize>;
-impl<const FRAMES: usize> Entity for Sol<BanditRevolverGroundedRecovery<FRAMES>> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl<const FRAMES: usize> Player for Sol<BanditRevolverGroundedRecovery<FRAMES>> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const DECEL: f32 = 5.0;
 
         self.has_hit = false;
@@ -166,8 +166,8 @@ const BANDIT_REVOLVER_GROUNDED_2_LANDING_LAG: usize = 15;
 const BANDIT_REVOLVER_GROUNDED_2_DAMAGE: u32 = 14;
 
 struct BanditRevolverGroundedSecondHit;
-impl Entity for Sol<BanditRevolverGroundedSecondHit> {
-    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<BanditRevolverGroundedSecondHit> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize =
             BANDIT_REVOLVER_GROUNDED_2_STARTUP + BANDIT_REVOLVER_GROUNDED_2_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + BANDIT_REVOLVER_GROUNDED_2_RECOVERY;
@@ -258,8 +258,8 @@ const BANDIT_REVOLVER_AIR_ACTIVE_2: usize = 2;
 const BANDIT_REVOLVER_AIR_RECOVERY: usize = 15;
 
 pub struct BanditRevolverAir;
-impl Entity for Sol<BanditRevolverAir> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<BanditRevolverAir> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const STARTUP_2: usize = BANDIT_REVOLVER_AIR_STARTUP + BANDIT_REVOLVER_AIR_ACTIVE_1;
         const HIT_2_FRAME: usize = STARTUP_2 + BANDIT_REVOLVER_AIR_STARTUP_2;
         const RECOVERY_FRAME: usize = HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2;

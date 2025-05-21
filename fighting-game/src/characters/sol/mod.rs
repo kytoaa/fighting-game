@@ -1,6 +1,6 @@
 use super::{
-    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Entity, Grounded,
-    HasCollider, HasID, HitstunInfo, OnHit, Position, Velocity,
+    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCollider,
+    HasID, OnHit, Player, Position, Velocity,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox,
@@ -35,7 +35,7 @@ const CROUCHING_HURTBOX: BoundingBox = BoundingBox::pos_size(
     Vector2::new(12.0, 16.0),
 );
 
-pub const fn initial_state(player: EntityID, position: Vector2) -> impl Entity {
+pub const fn initial_state(player: EntityID, position: Vector2) -> impl Player {
     Sol {
         player_id: player,
         position,
@@ -183,7 +183,7 @@ impl<S> Grounded for Sol<S> {
 }
 impl<S> Direction for Sol<S>
 where
-    Sol<S>: Entity,
+    Sol<S>: Player,
 {
     fn get_direction(&self) -> bool {
         self.direction
@@ -196,7 +196,7 @@ where
 }
 impl<S> DistanceFromOtherPlayer for Sol<S>
 where
-    Sol<S>: Entity,
+    Sol<S>: Player,
 {
     fn set_distance(&mut self, distance: f32) {
         self.distance_from_other_player = distance;
@@ -209,12 +209,12 @@ impl<S> Damageable for Sol<S>
 where
     S: SolDamageableState,
 {
-    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         Sol::hit(self, info)
     }
 }
 impl<S> Sol<S> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (
             match info.hit_effect {
                 HitEffect::Pushback { force, frames } => {
@@ -274,7 +274,7 @@ impl<S> Sol<S> {
 }
 
 impl Damageable for Sol<WalkState<true>> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::Low = info.attack_type {
@@ -292,7 +292,7 @@ impl Damageable for Sol<WalkState<true>> {
     }
 }
 impl Damageable for Sol<Crouch<true>> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.velocity.x =
             info.block_pushback * (1.0 + ((info.wall_pushback_mult - 1.0) / 2.0).clamp(0.0, 2.0));
 
@@ -311,7 +311,7 @@ impl Damageable for Sol<Crouch<true>> {
     }
 }
 impl Damageable for Sol<Air<true>> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.velocity.x = info.block_pushback * 2.0;
 
         if let crate::collision::AttackType::Low = info.attack_type {
@@ -324,7 +324,7 @@ impl Damageable for Sol<Air<true>> {
     }
 }
 impl Damageable for Sol<AirBlockStun> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.velocity.x = info.block_pushback * 2.0;
 
         if let crate::collision::AttackType::Low = info.attack_type {
@@ -337,7 +337,7 @@ impl Damageable for Sol<AirBlockStun> {
     }
 }
 impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
-    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.velocity.x = info.block_pushback;
 
         match CROUCHING {
@@ -364,7 +364,7 @@ impl<const CROUCHING: bool> Damageable for Sol<BlockStun<CROUCHING>> {
     }
 }
 impl Damageable for Sol<Backdash> {
-    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }
@@ -381,9 +381,9 @@ impl<S> OnHit for Sol<S> {
 const GRAVITY: f32 = 9.0;
 impl<S> Sol<S>
 where
-    Sol<S>: Entity + 'static,
+    Sol<S>: Player + 'static,
 {
-    fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn grounded_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
         match self.grounded_cancel_options(input) {
             Ok(state) => state,
             Err(s) => s.walk_block_state(input),
@@ -392,7 +392,7 @@ where
     fn grounded_cancel_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         match self.grounded_attack_options(input) {
             Ok(state) => Ok(state),
             Err(s) => s.grounded_movement_cancel_options(input),
@@ -401,7 +401,7 @@ where
     fn grounded_movement_cancel_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if input.has_action(&Action::DoublePress(self.forward_dir()))
             && input.move_dir().x == self.dir()
         {
@@ -425,7 +425,7 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
         dash_cancel_state: RunStartState<FRAMES>,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if input.has_action(&Action::DoublePress(self.forward_dir()))
             && input.move_dir().x == self.dir()
         {
@@ -448,7 +448,7 @@ where
     fn grounded_attack_options(
         mut self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         match self.cancel_options_from_grounded_normal(input) {
             Ok(state) => return Ok(state),
             Err(s) => self = s,
@@ -497,7 +497,7 @@ where
         Err(self)
     }
 
-    fn walk_block_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn walk_block_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
         match input.move_dir().into() {
             (0.0, 0.0) => Box::new(self.transition(Stand, true)),
             (d, -1.0) => {
@@ -519,13 +519,13 @@ where
             _ => unreachable!(),
         }
     }
-    fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
         try_transition!(air_attack_options; self, input).air_movement_state(input)
     }
     fn air_attack_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         match self.air_special_cancel_options(input) {
             s @ Ok(_) => s,
             Err(s) => s.air_normal_options(input),
@@ -534,7 +534,7 @@ where
     fn air_special_cancel_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if input.has_motion_input(
             &Motion::dp().direction(self.direction),
             &Action::Pressed(Button::Heavy, None),
@@ -553,7 +553,7 @@ where
     fn air_normal_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if input.has_action(&Action::Pressed(Button::Light, None)) {
             return Ok(Box::new(self.transition(AirLight, true)));
         }
@@ -568,7 +568,7 @@ where
     fn air_movement_cancel_options(
         mut self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if !self.has_air_action {
             return Err(self);
         }
@@ -592,7 +592,7 @@ where
         }
         Err(self)
     }
-    fn air_movement_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Entity> {
+    fn air_movement_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
         let dir = input.move_dir();
 
         if self.grounded {
@@ -621,7 +621,7 @@ where
     fn grounded_command_normal_cancel(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         if input.has_action(&Action::Pressed(
             Button::Heavy,
             Some(InputDir::Dir3.dir(self.direction)),
@@ -635,7 +635,7 @@ where
     fn cancel_options_from_grounded_normal(
         mut self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         self = match self.grounded_special_cancel_options(input) {
             Ok(state) => return Ok(state),
             Err(s) => s,
@@ -645,7 +645,7 @@ where
     fn grounded_special_cancel_options(
         self: Box<Sol<S>>,
         input: &InputHandler,
-    ) -> Result<Box<dyn Entity>, Box<Sol<S>>> {
+    ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         // NOTE: fafnir
         if input.has_motion_input(
             &Motion::half_circle().direction(self.direction),
@@ -691,11 +691,11 @@ where
 const WALK_ANIM_LENGTH: usize = 4;
 const FRAMES_PER_WALK_ANIM_FRAME: usize = 10;
 struct WalkState<const BLOCKING: bool>;
-impl<const BLOCKING: bool> Entity for Sol<WalkState<BLOCKING>>
+impl<const BLOCKING: bool> Player for Sol<WalkState<BLOCKING>>
 where
     Sol<WalkState<BLOCKING>>: Damageable,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
         if self.frame >= WALK_ANIM_LENGTH * FRAMES_PER_WALK_ANIM_FRAME {
             self.frame = 0;
@@ -733,11 +733,11 @@ impl SolDamageableState for WalkState<false> {}
 const RUN_ANIM_LENGTH: usize = 6;
 const FRAMES_PER_RUN_ANIM_FRAME: usize = 5;
 struct RunState;
-impl Entity for Sol<RunState>
+impl Player for Sol<RunState>
 where
     Sol<RunState>: Damageable,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
         if self.frame >= RUN_ANIM_LENGTH * FRAMES_PER_RUN_ANIM_FRAME {
             self.frame = 0;
@@ -779,11 +779,11 @@ impl RunStartState {
         RunStartState
     }
 }
-impl<const FRAMES: usize> Entity for Sol<RunStartState<FRAMES>>
+impl<const FRAMES: usize> Player for Sol<RunStartState<FRAMES>>
 where
     Sol<RunStartState<FRAMES>>: Damageable,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         // NOTE: stops instantly cancelling dash into something, adds a little commitment and stops
         // dash cancel cancels
         self.frame += 1;
@@ -821,8 +821,8 @@ const BACKDASH_FRAMES: usize = 6;
 const BACKDASH_VULNERABLE: usize = 9;
 
 struct Backdash;
-impl Entity for Sol<Backdash> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Backdash> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.velocity = Vector2::new(-self.dir() * BACKDASH_VELOCITY, 0.0);
         self.frame += 1;
         if self.frame > BACKDASH_FRAMES {
@@ -836,8 +836,8 @@ impl Entity for Sol<Backdash> {
     }
 }
 struct BackdashVulnerable;
-impl Entity for Sol<BackdashVulnerable> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<BackdashVulnerable> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
 
         world.spawn_hurtbox(
@@ -867,8 +867,8 @@ impl SolDamageableState for BackdashVulnerable {}
 const DECEL_RATE: f32 = 12.0;
 
 struct Stand;
-impl Entity for Sol<Stand> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Stand> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL_RATE);
 
         world.spawn_hurtbox(
@@ -892,11 +892,11 @@ impl Entity for Sol<Stand> {
 impl SolDamageableState for Stand {}
 
 struct Crouch<const BLOCKING: bool>;
-impl<const BLOCKING: bool> Entity for Sol<Crouch<BLOCKING>>
+impl<const BLOCKING: bool> Player for Sol<Crouch<BLOCKING>>
 where
     Sol<Crouch<BLOCKING>>: Damageable,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const DECEL: f32 = 8.0;
         self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
 
@@ -930,8 +930,8 @@ struct JumpSquat {
     direction: f32,
 }
 impl SolDamageableState for JumpSquat {}
-impl Entity for Sol<JumpSquat> {
-    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<JumpSquat> {
+    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
 
         world.spawn_hurtbox(
@@ -962,11 +962,11 @@ impl Entity for Sol<JumpSquat> {
 }
 
 struct Air<const BLOCKING: bool>;
-impl<const B: bool> Entity for Sol<Air<B>>
+impl<const B: bool> Player for Sol<Air<B>>
 where
     Sol<Air<B>>: Damageable,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
         self.gravity();
         world.spawn_hurtbox(
@@ -998,8 +998,8 @@ const AIRDASH_ACTIONABLE_FRAME: usize = 4;
 
 #[derive(Debug)]
 struct Airdash;
-impl Entity for Sol<Airdash> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Airdash> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.velocity = Vector2::new(AIRDASH_SPEED * self.dir(), 0.0);
         self.frame += 1;
         if self.frame > AIRDASH_LENGTH {
@@ -1033,8 +1033,8 @@ struct BasicHitstun {
     length: usize,
     wall_pushback_mult: f32,
 }
-impl Entity for Sol<BasicHitstun> {
-    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<BasicHitstun> {
+    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
 
         if World::position_in_wall(self.position).is_some() {
@@ -1069,8 +1069,8 @@ struct Tumble {
     wall_bounce: Option<BounceInfo>,
     wall_pushback_mult: f32,
 }
-impl Entity for Sol<Tumble> {
-    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Tumble> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
         if !self.grounded {
             self.velocity += Vector2::DOWN * self.state.gravity;
         }
@@ -1176,8 +1176,8 @@ struct FloatingCrumple {
     landing_frames: usize,
     wall_pushback_mult: f32,
 }
-impl Entity for Sol<FloatingCrumple> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<FloatingCrumple> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         if !self.grounded {
             self.velocity += Vector2::DOWN * self.state.gravity;
         }
@@ -1215,8 +1215,8 @@ const BLOCKSTUN_DRAG: f32 = 2.0;
 struct BlockStun<const CROUCHING: bool> {
     length: usize,
 }
-impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl<const CROUCHING: bool> Player for Sol<BlockStun<CROUCHING>> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
 
         if World::position_in_wall(self.position).is_some() {
@@ -1267,8 +1267,8 @@ impl<const CROUCHING: bool> Entity for Sol<BlockStun<CROUCHING>> {
 struct AirBlockStun {
     length: usize,
 }
-impl Entity for Sol<AirBlockStun> {
-    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<AirBlockStun> {
+    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Player> {
         self.gravity();
 
         world.spawn_hurtbox(
@@ -1293,8 +1293,8 @@ const SOFT_KNOCKDOWN_FRAMES: usize = 25;
 
 #[derive(Debug)]
 struct SoftKnockdown;
-impl Entity for Sol<SoftKnockdown> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<SoftKnockdown> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
         if self.frame >= SOFT_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
@@ -1304,15 +1304,15 @@ impl Entity for Sol<SoftKnockdown> {
     }
 }
 impl Damageable for Sol<SoftKnockdown> {
-    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }
 
 #[derive(Debug)]
 struct HardKnockdown;
-impl Entity for Sol<HardKnockdown> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<HardKnockdown> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
         if self.frame >= HARD_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
@@ -1322,7 +1322,7 @@ impl Entity for Sol<HardKnockdown> {
     }
 }
 impl Damageable for Sol<HardKnockdown> {
-    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
 }

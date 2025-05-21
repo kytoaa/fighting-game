@@ -10,8 +10,8 @@ const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1: u32 = 20;
 const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2: u32 = 38;
 
 pub struct VolcanicViper;
-impl Entity for Sol<VolcanicViper> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<VolcanicViper> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const ACTIVE_FRAME_2: usize = VOLCANIC_VIPER_STARTUP + VOLCANIC_VIPER_ACTIVE_1;
         const RECOVERY_FRAME: usize = ACTIVE_FRAME_2 + VOLCANIC_VIPER_ACTIVE_2;
         const END_FRAME: usize = RECOVERY_FRAME + VOLCANIC_VIPER_RECOVERY;

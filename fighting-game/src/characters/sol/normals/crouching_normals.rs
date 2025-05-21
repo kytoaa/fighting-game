@@ -1,6 +1,6 @@
 use super::{
     ground_normals::{CloseMid, FarMid, StandHeavy},
-    Entity, RunStartState,
+    Player, RunStartState,
 };
 use crate::collision::{
     AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
@@ -17,8 +17,8 @@ const CROUCH_LIGHT_RECOVERY: usize = 11;
 const CROUCH_LIGHT_DAMAGE: u32 = 13;
 
 pub struct CrouchLight;
-impl Entity for Sol<CrouchLight> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<CrouchLight> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = CROUCH_LIGHT_STARTUP + CROUCH_LIGHT_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + CROUCH_LIGHT_RECOVERY;
         const DECEL: f32 = 6.0;
@@ -162,8 +162,8 @@ const CROUCH_MID_RECOVERY: usize = 12;
 const CROUCH_MID_DAMAGE: u32 = 17;
 
 pub struct CrouchMid;
-impl Entity for Sol<CrouchMid> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<CrouchMid> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = CROUCH_MID_STARTUP + CROUCH_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + CROUCH_MID_RECOVERY;
         const DECEL: f32 = 3.0;
@@ -295,8 +295,8 @@ const CROUCH_HEAVY_RECOVERY: usize = 25;
 const CROUCH_HEAVY_DAMAGE: u32 = 23;
 
 pub struct CrouchHeavy;
-impl Entity for Sol<CrouchHeavy> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<CrouchHeavy> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const SECOND_ACTIVE: usize = CROUCH_HEAVY_STARTUP + CROUCH_HEAVY_EARLY_ACTIVE;
         const RECOVERY_FRAME: usize = SECOND_ACTIVE + CROUCH_HEAVY_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + CROUCH_HEAVY_RECOVERY;

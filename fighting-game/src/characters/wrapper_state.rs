@@ -4,15 +4,15 @@ pub struct WrapperState<const FRAMES: usize, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    entity: Box<dyn Entity>,
+    entity: Box<dyn Player>,
     frame: usize,
     anim: F,
 }
-impl<const FRAMES: usize, F> Entity for WrapperState<FRAMES, F>
+impl<const FRAMES: usize, F> Player for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.entity = self.entity.update(world, input);
         if self.frame >= FRAMES {
             self.entity
@@ -41,7 +41,7 @@ impl<const FRAMES: usize, F> Damageable for WrapperState<FRAMES, F>
 where
     F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
 {
-    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus) {
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         self.entity.hit(info)
     }
 }

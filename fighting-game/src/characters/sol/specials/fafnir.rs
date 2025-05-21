@@ -6,8 +6,8 @@ const FAFNIR_RECOVERY: usize = 18;
 const FAFNIR_DAMAGE: u32 = 35;
 
 pub struct Fafnir;
-impl Entity for Sol<Fafnir> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<Fafnir> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const START_FRAME: usize = 4;
         const STOP_FRAME: usize = FAFNIR_STARTUP - 7;
         const RECOVERY_FRAME: usize = FAFNIR_STARTUP + FAFNIR_ACTIVE;

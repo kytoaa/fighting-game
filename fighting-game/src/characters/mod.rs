@@ -20,15 +20,21 @@ mod wrapper_state;
 
 pub(crate) use wrapper_state::WrapperState;
 
-pub(crate) struct CharacterInitInfo {
-    pub max_health: u32,
+pub struct CharacterInitInfo {
+    pub(crate) max_health: u32,
 }
 
-pub struct HitstunInfo {
-    hit: OnHitHitData,
+pub enum EntityUpdateResult {
+    Continue,
+    Remove,
+    ReplaceWith(Box<dyn NonPlayerEntity>),
 }
 
-pub trait Entity:
+pub trait NonPlayerEntity: HasID + OnHit + Damageable + Position + AsAny {
+    fn update(&mut self, world: &mut World, input: Option<&InputHandler>) -> EntityUpdateResult;
+}
+
+pub trait Player:
     HasID
     + Damageable
     + OnHit
@@ -41,7 +47,7 @@ pub trait Entity:
     + DistanceFromOtherPlayer
     + AsAny
 {
-    fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity>;
+    fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some(("sol/idle".into(), Vector2::UP * 8.0))
         //None
@@ -63,7 +69,7 @@ pub trait Entity:
     }
 }
 pub trait Damageable {
-    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Entity>, HitConnectionStatus);
+    fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus);
 }
 pub trait OnHit {
     fn on_hit(&mut self, hit_type: HitConnectionStatus);
@@ -98,7 +104,7 @@ pub trait DistanceFromOtherPlayer {
     fn set_distance(&mut self, distance: f32);
 }
 pub trait HasCancelState {
-    fn cancel_state() -> Box<dyn Entity>;
+    fn cancel_state(&self) -> Box<dyn Player>;
 }
 pub trait HasID {
     fn id(&self) -> EntityID;

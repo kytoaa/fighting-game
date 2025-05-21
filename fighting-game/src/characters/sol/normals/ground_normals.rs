@@ -1,6 +1,6 @@
 use super::{
     crouching_normals::{CrouchHeavy, CrouchLight, CrouchMid},
-    Entity, RunStartState,
+    Player, RunStartState,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitData, HitDataExtension, HitEffect, HitLevel,
@@ -21,8 +21,8 @@ pub struct CloseMid;
 impl CloseMid {
     pub const MAX_DISTANCE: f32 = 16.0;
 }
-impl Entity for Sol<CloseMid> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<CloseMid> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = CLOSE_MID_STARTUP + CLOSE_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + CLOSE_MID_RECOVERY;
         const DECEL: f32 = 8.0;
@@ -181,8 +181,8 @@ const FAR_MID_RECOVERY: usize = 13;
 const FAR_MID_DAMAGE: u32 = 14;
 
 pub struct FarMid;
-impl Entity for Sol<FarMid> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<FarMid> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const ADVANCE_START: usize = 5;
         const RECOVERY_FRAME: usize = FAR_MID_STARTUP + FAR_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + FAR_MID_RECOVERY;
@@ -343,8 +343,8 @@ const STAND_LIGHT_FIRST_HIT_DAMAGE: u32 = 8;
 const STAND_LIGHT_SECOND_HIT_DAMAGE: u32 = 14;
 
 pub struct StandLight;
-impl Entity for Sol<StandLight> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<StandLight> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const SECOND_ACTIVE_FRAME: usize = STAND_LIGHT_STARTUP + STAND_LIGHT_FIRST_ACTIVE;
         const RECOVERY_FRAME: usize = SECOND_ACTIVE_FRAME + STAND_LIGHT_SECOND_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + STAND_LIGHT_RECOVERY;
@@ -581,8 +581,8 @@ const STAND_HEAVY_RECOVERY: usize = 20;
 const STAND_HEAVY_DAMAGE: u32 = 25;
 
 pub struct StandHeavy;
-impl Entity for Sol<StandHeavy> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Entity> {
+impl Player for Sol<StandHeavy> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const RECOVERY_FRAME: usize = STAND_HEAVY_STARTUP + STAND_HEAVY_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + STAND_HEAVY_RECOVERY;
         const DECEL: f32 = 4.0;
