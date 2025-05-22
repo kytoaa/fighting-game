@@ -21,32 +21,45 @@ impl World {
                  (hitbox_index, hurtbox_index)| {
                     let hitbox = &self.hitboxes[*hitbox_index];
                     let hurtbox = &self.hurtboxes[*hurtbox_index];
-                    // if owner has hit something
-                    if let Some(collision) = acc.get(&hurtbox.0.owner.id()) {
-                        // the hitbox in the hashmap
-                        let other = &self.hitboxes[collision.0];
-                        if other.0.attack_data.priority > hitbox.0.attack_data.priority {
-                            // if in hashmap has higher priority, return hashmap
-                            return acc;
+                    // filter out self hits
+                    if !(hitbox.0.owner == hurtbox.0.owner
+                        || hitbox.0.owner.owned_by(&hurtbox.0.owner))
+                    {
+                        // if owner has hit something
+                        if let Some(collision) = acc.get(&hurtbox.0.owner.id()) {
+                            // the hitbox in the hashmap
+                            let other = &self.hitboxes[collision.0];
+                            if other.0.attack_data.priority > hitbox.0.attack_data.priority {
+                                // if in hashmap has higher priority, return hashmap
+                                return acc;
+                            }
                         }
+                        // otherwise insert other collision
+                        acc.insert(hurtbox.0.owner.id(), (*hitbox_index, *hurtbox_index));
                     }
-                    // otherwise insert other collision
-                    acc.insert(hurtbox.0.owner.id(), (*hitbox_index, *hurtbox_index));
                     acc
                 },
             )
             .into_values()
             .collect();
 
+        let both_hit = collisions
+            .iter()
+            .map(|(_, hurtbox_index)| &self.hurtboxes[*hurtbox_index].0.owner)
+            .filter(|hurtbox| hurtbox.is_player())
+            .fold([false, false], |mut acc, hurtbox| {
+                acc[hurtbox.id()] = true;
+                acc
+            })
+            == [true, true];
+
         for (hitbox_index, hurtbox_index) in collisions {
+            if both_hit {
+                self.combo = None;
+            }
+
             let hitbox = &mut self.hitboxes[hitbox_index];
             let hurtbox = &mut self.hurtboxes[hurtbox_index];
-
-            println!("collision");
-            if hitbox.0.owner == hurtbox.0.owner || hitbox.0.owner.owned_by(&hurtbox.0.owner) {
-                println!("owner same");
-                continue;
-            }
 
             let other_player_position = if hitbox.0.owner.is_player() {
                 self.players[hitbox.0.owner.id()]
@@ -105,6 +118,10 @@ impl World {
             );
 
             self.trigger_hitstop(hitstop_frames);
+        }
+
+        if both_hit {
+            self.combo = None;
         }
 
         self.hitboxes = self

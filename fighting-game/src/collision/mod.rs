@@ -4,7 +4,9 @@ use crate::world::EntityID;
 mod hit_data;
 pub use hit_data::*;
 
+#[derive(Debug)]
 pub struct CollisionShape(BoundingBox);
+
 impl CollisionShape {
     pub const fn get_bounding_box(&self) -> &BoundingBox {
         &self.0
@@ -69,10 +71,12 @@ pub enum HitConnectionStatus {
     Invuln,
 }
 
+#[derive(Debug)]
 pub struct Hurtbox {
     pub shape: CollisionShape,
     pub owner: EntityID,
 }
+#[derive(Debug)]
 pub struct Hitbox {
     pub shape: CollisionShape,
     pub attack_data: AttackData,

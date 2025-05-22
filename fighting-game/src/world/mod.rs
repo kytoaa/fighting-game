@@ -36,6 +36,7 @@ pub struct World {
     frame: usize,
 }
 
+#[derive(Debug)]
 struct Spawn<T>(T, usize);
 
 #[derive(PartialEq, Clone, Copy, Debug)]

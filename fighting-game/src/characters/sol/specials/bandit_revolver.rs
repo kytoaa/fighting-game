@@ -23,6 +23,13 @@ impl Player for Sol<BanditRevolverGrounded> {
 
         self.frame += 1;
 
+        world.spawn_hurtbox(
+            self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                20.0, 16.0,
+            )))),
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+        );
+
         // NOTE: cancel into hit 2
         {
             const CANCEL_WINDOW_START: usize = BANDIT_REVOLVER_GROUNDED_1_STARTUP + 1;
@@ -181,6 +188,13 @@ impl Player for Sol<BanditRevolverGroundedSecondHit> {
 
         self.frame += 1;
 
+        world.spawn_hurtbox(
+            self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                20.0, 16.0,
+            )))),
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+        );
+
         match self.frame as usize {
             0..BANDIT_REVOLVER_GROUNDED_2_STARTUP => self,
             BANDIT_REVOLVER_GROUNDED_2_STARTUP..RECOVERY_FRAME => {
@@ -253,9 +267,12 @@ impl SolDamageableState for BanditRevolverGroundedSecondHit {}
 
 const BANDIT_REVOLVER_AIR_STARTUP: usize = BANDIT_REVOLVER_GROUNDED_1_STARTUP;
 const BANDIT_REVOLVER_AIR_ACTIVE_1: usize = 3;
-const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 6;
+const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 10;
 const BANDIT_REVOLVER_AIR_ACTIVE_2: usize = 2;
-const BANDIT_REVOLVER_AIR_RECOVERY: usize = 15;
+const BANDIT_REVOLVER_AIR_RECOVERY: usize = 10;
+const BANDIT_REVOLVER_AIR_DAMAGE_1: u32 = BANDIT_REVOLVER_GROUNDED_1_DAMAGE;
+const BANDIT_REVOLVER_AIR_DAMAGE_2: u32 = BANDIT_REVOLVER_GROUNDED_2_DAMAGE;
+const BANDIT_REVOLVER_AIR_LANDING_LAG: usize = 10;
 
 pub struct BanditRevolverAir;
 impl Player for Sol<BanditRevolverAir> {
@@ -265,11 +282,18 @@ impl Player for Sol<BanditRevolverAir> {
         const RECOVERY_FRAME: usize = HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2;
         const END_FRAME: usize = RECOVERY_FRAME + BANDIT_REVOLVER_AIR_RECOVERY;
 
-        if self.frame == 0 {
+        if self.frame == 0 || self.frame == HIT_2_FRAME {
             self.has_hit = false;
         }
 
         self.frame += 1;
+
+        world.spawn_hurtbox(
+            self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                20.0, 16.0,
+            )))),
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+        );
 
         match self.frame {
             0..BANDIT_REVOLVER_AIR_STARTUP => {
@@ -277,23 +301,137 @@ impl Player for Sol<BanditRevolverAir> {
                 self
             }
             BANDIT_REVOLVER_AIR_STARTUP..STARTUP_2 => {
-                //
+                if !self.has_hit {
+                    let active_frames_extra_hitstun = BANDIT_REVOLVER_AIR_ACTIVE_1
+                        - (self.frame as usize - BANDIT_REVOLVER_AIR_STARTUP);
+                    world.spawn_hitbox(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(14.0, 14.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    BANDIT_REVOLVER_AIR_DAMAGE_1,
+                                    HitEffect::launcher(
+                                        Vector2::new(50.0 * self.dir(), 80.0),
+                                        KnockdownType::Soft,
+                                    )
+                                    .momentum_scaling((0.0, 0.0))
+                                    .build(),
+                                    12 + active_frames_extra_hitstun,
+                                    Proration::percent(80),
+                                    HitData::DEFAULT_LEVEL_1_SCALING,
+                                )
+                                .with_air(
+                                    HitEffect::launcher(
+                                        Vector2::new(50.0 * self.dir(), 80.0),
+                                        KnockdownType::Soft,
+                                    )
+                                    .momentum_scaling((0.0, 0.0))
+                                    .gravity(6.0)
+                                    .build(),
+                                )
+                                .counterhit_from_air(|a| a)
+                                .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                                .build(),
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Light,
+                                attack_id: "bandit revolver".into(),
+                            },
+                        ),
+                        self.position + Vector2::new(10.0 * self.dir(), 6.0),
+                    );
+                }
                 self
             }
             STARTUP_2..HIT_2_FRAME => {
-                //
+                self.gravity();
                 self
             }
             HIT_2_FRAME..RECOVERY_FRAME => {
                 self.gravity();
+
+                if !self.has_hit {
+                    let active_frames_extra_hitstun =
+                        BANDIT_REVOLVER_AIR_ACTIVE_2 - (self.frame as usize - (HIT_2_FRAME));
+                    world.spawn_hitbox(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 14.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    BANDIT_REVOLVER_AIR_DAMAGE_2,
+                                    HitEffect::pushback(
+                                        20.0 * self.dir(),
+                                        16 + active_frames_extra_hitstun,
+                                    )
+                                    .build(),
+                                    16 + active_frames_extra_hitstun,
+                                    Proration::percent(80),
+                                    HitData::DEFAULT_LEVEL_1_SCALING,
+                                )
+                                .with_air(
+                                    HitEffect::launcher(
+                                        Vector2::new(70.0 * self.dir(), -10.0),
+                                        KnockdownType::Hard,
+                                    )
+                                    .momentum_scaling((0.0, 0.0))
+                                    .build(),
+                                )
+                                .counterhit_from_grounded(|g| g)
+                                .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                                .build(),
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Light,
+                                attack_id: "bandit revolver 2".into(),
+                            },
+                        ),
+                        self.position + Vector2::new(14.0 * self.dir(), 6.0),
+                    );
+                }
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
                 self.gravity();
                 self
             }
-            _ => self.air_actionable_state(input),
+            _ => {
+                if self.is_grounded() {
+                    Box::new(self.transition(
+                        BanditRevolverGroundedRecovery::<BANDIT_REVOLVER_AIR_LANDING_LAG>,
+                        true,
+                    ))
+                } else {
+                    self
+                }
+            }
         }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+    fn moveable(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const HIT_2_FRAME: usize = BANDIT_REVOLVER_AIR_STARTUP
+            + BANDIT_REVOLVER_AIR_ACTIVE_1
+            + BANDIT_REVOLVER_AIR_STARTUP_2;
+        const END_FRAME: usize =
+            HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2 + BANDIT_REVOLVER_AIR_RECOVERY;
+
+        Some(match self.frame {
+            0..HIT_2_FRAME => (
+                "sol/specials/bandit_revolver/bandit_revolver1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+            ),
+            HIT_2_FRAME.. => (
+                "sol/specials/bandit_revolver/bandit_revolver2".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+            ),
+        })
     }
 }
 impl SolDamageableState for BanditRevolverAir {}

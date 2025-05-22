@@ -408,7 +408,7 @@ impl Player for Sol<StandLight> {
                                 Vector2::new(20.0 * self.dir(), 50.0),
                                 0,
                             )
-                            .counterhit_from_grounded(|a| a)
+                            .counterhit_from_air(|a| a)
                             .build(),
                             priority: 10,
                             hitbox_id: 1,
@@ -448,7 +448,7 @@ impl Player for Sol<StandLight> {
                             .gravity(6.5)
                             .build(),
                         )
-                        .counterhit_from_grounded(|g| g)
+                        .counterhit_from_air(|g| g)
                         .build(),
                         priority: 10,
                         hitbox_id: 1,
