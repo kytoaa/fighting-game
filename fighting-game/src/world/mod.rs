@@ -1,6 +1,6 @@
 use super::collision::{CollisionShape, Hitbox, Hurtbox};
 use super::datatypes::Vector2;
-use super::input::InputHandler;
+use super::input::{Action, Button, InputHandler};
 
 mod collision;
 mod damaging;
@@ -16,6 +16,7 @@ const MIN_WALL_BOUNCE_HEIGHT: f32 = 0.0;
 
 const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
 const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
+const CANCEL_ACTION: Action = Action::MultiplePress(Button::Mid, Button::Heavy);
 
 pub struct World {
     players: [Option<Box<dyn crate::characters::Player>>; 2],
@@ -32,12 +33,17 @@ pub struct World {
     id_counter: usize,
 
     hitstop_frames_left: usize,
+    superfreeze_frames_left: usize,
 
     frame: usize,
 }
 
 #[derive(Debug)]
 struct Spawn<T>(T, usize);
+
+pub(super) struct UpdateInfo {
+    pub(super) reset_input: bool,
+}
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct EntityID(usize, EntityType);
@@ -103,6 +109,7 @@ impl World {
             id_counter: 2,
 
             hitstop_frames_left: 0,
+            superfreeze_frames_left: 0,
 
             frame: 0,
         }
@@ -117,6 +124,10 @@ impl World {
 
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
+            return;
+        }
+        if self.superfreeze_frames_left > 0 {
+            self.superfreeze_frames_left -= 1;
             return;
         }
 
@@ -147,7 +158,22 @@ impl World {
         for i in 0..2 {
             let player = self.players[i].take().unwrap();
             let input_provider = &input_providers[i];
-            let player = player.update(self, &input_provider);
+
+            let player = if input_provider.has_action(&CANCEL_ACTION) && player.can_cancel() {
+                if self.try_spend_meter(player.id(), TrackedPlayerData::CANCEL_COST) {
+                    println!("CANCEL");
+                    println!("{} meter remaining", self.player_data[i].meter);
+                    self.trigger_superfreeze(30);
+
+                    player.cancel_state()
+                } else {
+                    println!("NOT ENOUGH METER");
+                    println!("{} meter remaining", self.player_data[i].meter);
+                    player.update(self, &input_provider)
+                }
+            } else {
+                player.update(self, &input_provider)
+            };
 
             if let Some(combo) = &self.combo {
                 if combo.target().id() == i && !player.in_hitstun() {
@@ -195,14 +221,31 @@ impl World {
     pub fn trigger_hitstop(&mut self, frames: usize) {
         self.hitstop_frames_left = frames.max(self.hitstop_frames_left);
     }
+    pub fn trigger_superfreeze(&mut self, frames: usize) {
+        self.superfreeze_frames_left = frames.max(self.superfreeze_frames_left);
+    }
 
     pub const fn in_hitstop(&self) -> bool {
         self.hitstop_frames_left > 0
+    }
+    pub const fn in_superfreeze(&self) -> bool {
+        self.superfreeze_frames_left > 0
     }
 
     pub fn create_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
         let id = self.id_counter;
         self.id_counter += 1;
         EntityID(id, entity_type)
+    }
+    pub fn try_spend_meter(&mut self, player: EntityID, meter_cost: u32) -> bool {
+        if !player.is_player() {
+            panic!();
+        }
+        if self.player_data[player.id()].meter < meter_cost {
+            false
+        } else {
+            self.player_data[player.id()].meter -= meter_cost;
+            true
+        }
     }
 }

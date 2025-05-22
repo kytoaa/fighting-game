@@ -60,16 +60,39 @@ impl InputHandler {
         motion_index == motion.directions.len()
     }
     pub fn has_action(&self, action: &Action) -> bool {
-        self.buffered_actions.as_ref().unwrap().iter().any(|a| {
-            if let Action::Pressed(button, None) = action {
-                match a.action {
-                    Action::Pressed(b, _) if b == *button => true,
+        if let Action::MultiplePress(a, b) = action {
+            self.buffered_actions
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|action| match action.action {
+                    Action::Pressed(button, _) => button == *a,
                     _ => false,
-                }
-            } else {
-                &a.action == action
-            }
-        })
+                })
+                .is_some()
+                && self
+                    .buffered_actions
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .find(|action| match action.action {
+                        Action::Pressed(button, _) => button == *b,
+                        _ => false,
+                    })
+                    .is_some()
+        } else {
+            self.buffered_actions
+                .as_ref()
+                .unwrap()
+                .iter()
+                .any(|a| match action {
+                    Action::Pressed(button, None) => match a.action {
+                        Action::Pressed(b, _) if b == *button => true,
+                        _ => false,
+                    },
+                    _ => a.action == *action,
+                })
+        }
     }
     pub fn has_motion_input(&self, motion: &Motion, action: &Action) -> bool {
         self.has_motion(motion) && self.has_action(action)
@@ -182,6 +205,7 @@ pub enum Action {
     Released(Button),
     DoublePress(InputDir),
     JumpPress(InputDir),
+    MultiplePress(Button, Button),
 }
 
 #[derive(PartialEq, Debug)]

@@ -119,3 +119,11 @@ where
         self.entity.set_distance(distance)
     }
 }
+impl<const FRAMES: usize, F> HasCancelState for WrapperState<FRAMES, F>
+where
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
+{
+    fn cancel_state(self: Box<Self>) -> Box<dyn Player> {
+        self.entity.cancel_state()
+    }
+}

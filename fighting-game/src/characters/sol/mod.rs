@@ -1,6 +1,6 @@
 use super::{
-    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCollider,
-    HasID, OnHit, Player, Position, Velocity,
+    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCancelState,
+    HasCollider, HasID, OnHit, Player, Position, Velocity,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox,
@@ -200,6 +200,20 @@ where
         Sol::hit(self, info)
     }
 }
+
+impl<S> HasCancelState for Sol<S>
+where
+    Sol<S>: Player,
+{
+    fn cancel_state(self: Box<Sol<S>>) -> Box<dyn Player> {
+        if self.grounded {
+            Box::new(self.transition(Stand, true))
+        } else {
+            Box::new(self.transition(Air::<false>, true))
+        }
+    }
+}
+
 impl<S> Sol<S> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (
@@ -1241,6 +1255,9 @@ impl<const CROUCHING: bool> Player for Sol<BlockStun<CROUCHING>> {
             }
         }
     }
+    fn can_cancel(&self) -> bool {
+        false
+    }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         // TODO: replace with sprites when theyre done
         Some(if CROUCHING {
@@ -1272,6 +1289,9 @@ impl Player for Sol<AirBlockStun> {
         } else {
             self
         }
+    }
+    fn can_cancel(&self) -> bool {
+        false
     }
 }
 

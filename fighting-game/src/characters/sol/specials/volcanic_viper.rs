@@ -212,6 +212,9 @@ impl Player for Sol<VolcanicViper> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn can_cancel(&self) -> bool {
+        self.has_hit
+    }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         const START_FRAME: usize = VOLCANIC_VIPER_STARTUP - 2;
         const ACTIVE_FRAME_2: usize = VOLCANIC_VIPER_STARTUP + VOLCANIC_VIPER_ACTIVE_1;

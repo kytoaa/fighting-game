@@ -45,6 +45,7 @@ pub trait Player:
     + Grounded
     + Direction
     + DistanceFromOtherPlayer
+    + HasCancelState
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
@@ -63,6 +64,9 @@ pub trait Player:
     }
     fn in_hitstun(&self) -> bool {
         false
+    }
+    fn can_cancel(&self) -> bool {
+        !self.in_hitstun()
     }
     fn moveable(&self) -> bool {
         true
@@ -104,7 +108,7 @@ pub trait DistanceFromOtherPlayer {
     fn set_distance(&mut self, distance: f32);
 }
 pub trait HasCancelState {
-    fn cancel_state(&self) -> Box<dyn Player>;
+    fn cancel_state(self: Box<Self>) -> Box<dyn Player>;
 }
 pub trait HasID {
     fn id(&self) -> EntityID;

@@ -34,7 +34,7 @@ impl ComboInfo {
 
 pub(super) fn hit_player(
     hit_player: &mut Option<Box<dyn crate::characters::Player>>,
-    player_data: &mut super::players::TrackedPlayerData,
+    player_data: &mut [super::players::TrackedPlayerData; 2],
     combo: &mut Option<ComboInfo>,
     hit_data: &HitData,
     attack_id: AttackID,
@@ -54,7 +54,9 @@ pub(super) fn hit_player(
 
     for extension in &hit_data.extensions {
         match extension {
-            HitDataExtension::SetScaling(scaling) => player_data.scaling = *scaling,
+            HitDataExtension::SetScaling(scaling) => {
+                player_data[hit_player_id.id()].scaling = *scaling
+            }
             HitDataExtension::SetProration(proration) => {
                 combo_info = combo_info.map(|mut combo| {
                     combo.proration = *proration;
@@ -74,9 +76,9 @@ pub(super) fn hit_player(
                 .as_ref()
                 .map(|c| c.proration.clone())
                 .unwrap_or(Proration::percent(100)),
-            player_data.scaling,
-            player_data.damage_boost,
-            player_data.defense_boost,
+            player_data[hit_player_id.id()].scaling,
+            player_data[hit_player_id.id()].damage_boost,
+            player_data[hit_player_id.id()].defense_boost,
             hit_data.minimum_damage,
             player.counterhit(),
         )
@@ -146,12 +148,16 @@ pub(super) fn hit_player(
                 };
             combo_info.add_attack(attack_id);
 
-            player_data.scaling += hit_data.scaling;
-            player_data.health = player_data.health.saturating_sub(on_hit_hitdata_damage);
-            player_data.burst_meter += super::players::burst_gain(hit_data.damage, combo_info.hits);
-            player_data.meter_gain =
-                (player_data.meter_gain as i32 + hit_data.meter_gain_modifier) as u32;
-            player_data.add_meter(hit_data.meter_gain);
+            player_data[hit_player_id.id()].scaling += hit_data.scaling;
+            player_data[hit_player_id.id()].health = player_data[hit_player_id.id()]
+                .health
+                .saturating_sub(on_hit_hitdata_damage);
+            player_data[hit_player_id.id()].burst_meter +=
+                super::players::burst_gain(hit_data.damage, combo_info.hits);
+            player_data[(hit_player_id.id() + 1) % 2].meter_gain =
+                (player_data[hit_player_id.id()].meter_gain as i32 + hit_data.meter_gain_modifier)
+                    as u32;
+            player_data[(hit_player_id.id() + 1) % 2].add_meter(hit_data.meter_gain);
 
             Some(combo_info)
         }
@@ -171,8 +177,8 @@ pub(super) fn hit_player(
                 * hit_data.scaling_on_block_mult as i32
                 / 100;
 
-            player_data.add_scaling(-block_scaling);
-            player_data.add_meter(hit_data.meter_gain / 2);
+            player_data[(hit_player_id.id() + 1) % 2].add_scaling(-block_scaling);
+            player_data[(hit_player_id.id() + 1) % 2].add_meter(hit_data.meter_gain / 2);
 
             None
         }

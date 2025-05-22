@@ -23,6 +23,8 @@ pub(super) struct TrackedPlayerData {
     pub(super) frames_since_scaling_set: usize,
 }
 impl TrackedPlayerData {
+    pub const CANCEL_COST: u32 = 3333;
+
     pub const fn new(max_health: u32) -> Self {
         Self {
             health: max_health,
@@ -36,7 +38,8 @@ impl TrackedPlayerData {
         }
     }
     pub fn add_meter(&mut self, meter: u32) {
-        self.meter += meter * self.meter_gain / 1000
+        self.meter += meter * self.meter_gain / 1000;
+        self.meter = self.meter.clamp(0, 10000);
     }
     pub fn add_scaling(&mut self, scaling: i32) {
         self.scaling += scaling;
@@ -63,6 +66,8 @@ impl World {
                 player_data.scaling = player_data.scaling.move_towards(0, 3000 / 60);
             }
             player_data.frames_since_scaling_set += 1;
+
+            player_data.add_meter(1);
         }
     }
 }

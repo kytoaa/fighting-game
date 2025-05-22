@@ -31,7 +31,7 @@ impl Player for Sol<Heavy3> {
             self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
                 26.0, 10.0,
             )))),
-            self.position + Vector2::new(4.0 * self.dir(), -1.0),
+            self.position + Vector2::new(4.0 * self.dir(), -3.0),
         );
 
         match self.frame as usize {
@@ -67,7 +67,7 @@ impl Player for Sol<Heavy3> {
                                 attack_id: "sol 3h".into(),
                             },
                         ),
-                        self.position + Vector2::new(6.0 * self.dir(), -1.0),
+                        self.position + Vector2::new(6.0 * self.dir(), -3.0),
                     );
                 } else {
                     self = try_transition!(grounded_special_cancel_options; self, input);
