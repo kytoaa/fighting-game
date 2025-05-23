@@ -74,10 +74,10 @@ impl BoundingBox {
             },
         )
     }
-    pub fn transformed(self, distance: Vector2) -> Self {
+    pub const fn transformed(self, distance: Vector2) -> Self {
         Self {
-            min: self.min + distance,
-            max: self.max + distance,
+            min: self.min.add(distance),
+            max: self.max.add(distance),
         }
     }
     pub fn transform_by(&mut self, distance: Vector2) {

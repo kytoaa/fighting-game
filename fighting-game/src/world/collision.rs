@@ -61,27 +61,12 @@ impl World {
             let hitbox = &mut self.hitboxes[hitbox_index];
             let hurtbox = &mut self.hurtboxes[hurtbox_index];
 
-            let other_player_position = if hitbox.0.owner.is_player() {
-                self.players[hitbox.0.owner.id()]
-                    .as_ref()
-                    .unwrap()
-                    .position()
-            } else {
-                self.non_player_entities
-                    .as_ref()
-                    .unwrap()
-                    .get(&hitbox.0.owner.id())
-                    .map(|e| e.position())
-                    .unwrap_or(crate::datatypes::Vector2::ZERO)
-            };
-
             let hit_status = super::damaging::hit_player(
                 &mut self.players[hurtbox.0.owner.id()],
                 &mut self.player_data,
                 &mut self.combo,
                 &hitbox.0.attack_data.attack,
                 hitbox.0.attack_data.attack_id,
-                other_player_position,
             );
 
             println!("{:?}", hit_status);

@@ -68,7 +68,8 @@ impl Player for Sol<Fafnir> {
                         BoundingBox::pos_size(
                             Vector2::new(10.0 * self.dir(), 5.0),
                             Vector2::new(5.0, 5.0),
-                        ),
+                        )
+                        .transformed(self.position),
                         HitEffect::launcher(
                             Vector2::new(100.0 * self.dir(), 50.0),
                             KnockdownType::Hard,

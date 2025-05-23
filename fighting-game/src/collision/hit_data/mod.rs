@@ -139,7 +139,7 @@ pub enum HitDataExtension {
     SetChipDamage(u32),
     SetBlockScaling(i32),
     UsagesBeforeScaling(usize),
-    /// if player is within the BoundingBox (relative to the player) trigger the cleanhit
+    /// if player is within the BoundingBox trigger the cleanhit
     CleanHit(BoundingBox, HitEffect),
 }
 

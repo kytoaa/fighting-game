@@ -163,7 +163,7 @@ impl World {
                 if self.try_spend_meter(player.id(), TrackedPlayerData::CANCEL_COST) {
                     println!("CANCEL");
                     println!("{} meter remaining", self.player_data[i].meter);
-                    self.trigger_superfreeze(30);
+                    self.trigger_superfreeze(20);
 
                     player.cancel_state()
                 } else {

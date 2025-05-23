@@ -20,7 +20,7 @@ impl NonPlayerEntity for GunFlameProjectile {
         world: &mut World,
         _: Option<&InputHandler>,
     ) -> crate::characters::EntityUpdateResult {
-        const OFFSET_PER_PILLAR: f32 = 10.0;
+        const OFFSET_PER_PILLAR: f32 = 15.0;
 
         let pillar_number = self.frame / ACTIVE_FRAMES_PER_PILLAR;
 

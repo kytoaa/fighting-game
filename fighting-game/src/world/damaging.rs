@@ -38,7 +38,6 @@ pub(super) fn hit_player(
     combo: &mut Option<ComboInfo>,
     hit_data: &HitData,
     attack_id: AttackID,
-    other_player_position: Vector2,
 ) -> HitConnectionStatus {
     let player = hit_player.take().unwrap();
     let hit_player_id = player.id();
@@ -88,11 +87,7 @@ pub(super) fn hit_player(
         .iter()
         .find_map(|extension| {
             if let HitDataExtension::CleanHit(bb, effect) = extension {
-                if bb
-                    .clone()
-                    .transformed(other_player_position)
-                    .intersects(&player.position())
-                {
+                if bb.intersects(&player.position()) {
                     println!("clean hit");
                     Some(effect.clone())
                 } else {
