@@ -69,7 +69,8 @@ impl Player for Sol<AirLight> {
                                     )
                                     .build(),
                                 )
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                                 .attack_type(AttackType::High)
                                 .build(),
@@ -216,7 +217,8 @@ impl Player for Sol<AirMid> {
                             .build(),
                         )
                         .attack_type(AttackType::High)
-                        .counterhit_from_air(|a| a)
+                        .counterhit_ground_from_ground_default()
+                        .counterhit_air_from_air_default()
                         .build(),
                         priority: 10,
                         hitbox_id: 1,
@@ -335,7 +337,8 @@ impl Player for Sol<AirHeavy> {
                                         unreachable!()
                                     }
                                 })
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_3_METER_GAIN)
                                 .add_extension(HitDataExtension::UsagesBeforeScaling(4))
                                 .build(),

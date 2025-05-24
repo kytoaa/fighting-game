@@ -20,7 +20,7 @@ impl GunFlameStartup {
     }
 }
 impl<const FEINT: bool> Player for Sol<GunFlameStartup<FEINT>> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
         self.has_hit = false;
         self.frame += 1;
 

@@ -54,7 +54,8 @@ impl NonPlayerEntity for GunFlameProjectile {
                             .momentum_scaling((0.0, 0.0))
                             .build(),
                         )
-                        .counterhit_from_grounded(|g| g)
+                        .counterhit_ground_from_ground_default()
+                        .counterhit_air_from_air_default()
                         .meter_gain(HitData::DEFAULT_LEVEL_3_METER_GAIN)
                         .wall_pushback_mult(0.0)
                         .build(),

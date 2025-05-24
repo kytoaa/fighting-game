@@ -95,7 +95,8 @@ impl HitEffect {
 
 pub struct Grounded(());
 pub struct Air(());
-pub struct Counterhit(());
+pub struct CounterhitGround(());
+pub struct CounterhitAir(());
 pub struct Undefined(());
 pub struct Default(());
 trait Changeable {}
@@ -104,13 +105,15 @@ impl Changeable for Default {}
 trait Confirmable {}
 impl Confirmable for Grounded {}
 impl Confirmable for Air {}
-impl Confirmable for Counterhit {}
+impl Confirmable for CounterhitGround {}
+impl Confirmable for CounterhitAir {}
 impl Confirmable for Default {}
 
-pub struct HitDataBuilder<G, A, C> {
+pub struct HitDataBuilder<G, A, CG, CA> {
     grounded: Option<HitEffect>,
     air: Option<HitEffect>,
-    counterhit: Option<HitEffect>,
+    counterhit_ground: Option<HitEffect>,
+    counterhit_air: Option<HitEffect>,
 
     damage: u32,
     attack_type: AttackType,
@@ -126,9 +129,9 @@ pub struct HitDataBuilder<G, A, C> {
     meter_gain_modifier: i32,
     minimum_damage: u32,
     extensions: Vec<HitDataExtension>,
-    _pd: PhantomData<(G, A, C)>,
+    _pd: PhantomData<(G, A, CG, CA)>,
 }
-impl<G, A, C> HitDataBuilder<G, A, C> {
+impl<G, A, CG, CA> HitDataBuilder<G, A, CG, CA> {
     pub const fn attack_type(mut self, value: AttackType) -> Self {
         self.attack_type = value;
         self
@@ -166,12 +169,13 @@ impl<G, A, C> HitDataBuilder<G, A, C> {
         self
     }
 }
-impl<A, C, U: Changeable> HitDataBuilder<U, A, C> {
-    pub fn with_grounded(self, effect: HitEffect) -> HitDataBuilder<Grounded, A, C> {
-        HitDataBuilder::<Grounded, A, C> {
+impl<A, CG, CA, G: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn with_grounded(self, effect: HitEffect) -> HitDataBuilder<Grounded, A, CG, CA> {
+        HitDataBuilder::<Grounded, A, CG, CA> {
             grounded: Some(effect),
             air: self.air,
-            counterhit: self.counterhit,
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -191,12 +195,13 @@ impl<A, C, U: Changeable> HitDataBuilder<U, A, C> {
         }
     }
 }
-impl<G, C, U: Changeable> HitDataBuilder<G, U, C> {
-    pub fn with_air(self, effect: HitEffect) -> HitDataBuilder<G, Air, C> {
-        HitDataBuilder::<G, Air, C> {
+impl<G, CG, CA, A: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn with_air(self, effect: HitEffect) -> HitDataBuilder<G, Air, CG, CA> {
+        HitDataBuilder::<G, Air, CG, CA> {
             grounded: self.grounded,
             air: Some(effect),
-            counterhit: self.counterhit,
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -216,12 +221,16 @@ impl<G, C, U: Changeable> HitDataBuilder<G, U, C> {
         }
     }
 }
-impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
-    pub fn with_counterhit(self, effect: HitEffect) -> HitDataBuilder<G, A, Counterhit> {
-        HitDataBuilder::<G, A, Counterhit> {
+impl<G, A, CA, CG: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn with_counterhit_ground(
+        self,
+        effect: HitEffect,
+    ) -> HitDataBuilder<G, A, CounterhitGround, CA> {
+        HitDataBuilder::<G, A, CounterhitGround, CA> {
             grounded: self.grounded,
             air: self.air,
-            counterhit: Some(effect),
+            counterhit_ground: Some(effect),
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -241,15 +250,97 @@ impl<G, A, U: Changeable> HitDataBuilder<G, A, U> {
         }
     }
 }
-impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
-    pub fn counterhit_from_grounded(
+impl<G, A, CG, CA: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn with_counterhit_air(self, effect: HitEffect) -> HitDataBuilder<G, A, CG, CounterhitAir> {
+        HitDataBuilder::<G, A, CG, CounterhitAir> {
+            grounded: self.grounded,
+            air: self.air,
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: Some(effect),
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+}
+impl<G, A, CG: Changeable, CA: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn with_counterhit_ground_and_air(
+        self,
+        effect: HitEffect,
+    ) -> HitDataBuilder<G, A, CounterhitGround, CounterhitAir> {
+        HitDataBuilder::<G, A, CounterhitGround, CounterhitAir> {
+            grounded: self.grounded,
+            air: self.air,
+            counterhit_ground: Some(effect.clone()),
+            counterhit_air: Some(effect),
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+}
+impl<G: Confirmable, A, CG: Changeable, CA> HitDataBuilder<G, A, CG, CA> {
+    pub fn counterhit_ground_from_grounded(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
-    ) -> HitDataBuilder<Grounded, A, Counterhit> {
-        HitDataBuilder::<Grounded, A, Counterhit> {
+    ) -> HitDataBuilder<G, A, CounterhitGround, CA> {
+        HitDataBuilder::<G, A, CounterhitGround, CA> {
             grounded: self.grounded.clone(),
             air: self.air,
-            counterhit: Some((f)(self.grounded.unwrap())),
+            counterhit_ground: Some((f)(self.grounded.unwrap())),
+            counterhit_air: self.counterhit_air,
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+    pub fn counterhit_ground_from_ground_default(
+        self,
+    ) -> HitDataBuilder<G, A, CounterhitGround, CA> {
+        HitDataBuilder::<G, A, CounterhitGround, CA> {
+            grounded: self.grounded.clone(),
+            air: self.air,
+            counterhit_ground: Some(self.grounded.unwrap().as_counterhit()),
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -269,15 +360,40 @@ impl<G: Confirmable, A, U: Changeable> HitDataBuilder<G, A, U> {
         }
     }
 }
-impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
-    pub fn counterhit_from_air(
+impl<G, A: Confirmable, CG: Changeable, CA> HitDataBuilder<G, A, CG, CA> {
+    pub fn counterhit_ground_from_air(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
-    ) -> HitDataBuilder<G, Air, Counterhit> {
-        HitDataBuilder::<G, Air, Counterhit> {
+    ) -> HitDataBuilder<G, A, CounterhitGround, CA> {
+        HitDataBuilder::<G, A, CounterhitGround, CA> {
             grounded: self.grounded,
             air: self.air.clone(),
-            counterhit: Some((f)(self.air.unwrap())),
+            counterhit_ground: Some((f)(self.air.unwrap())),
+            counterhit_air: self.counterhit_air,
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+    pub fn counterhit_ground_from_air_default(self) -> HitDataBuilder<G, A, CounterhitGround, CA> {
+        HitDataBuilder::<G, A, CounterhitGround, CA> {
+            grounded: self.grounded,
+            air: self.air.clone(),
+            counterhit_ground: Some(self.air.unwrap().as_counterhit()),
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -297,15 +413,69 @@ impl<G, A: Confirmable, U: Changeable> HitDataBuilder<G, A, U> {
         }
     }
 }
-impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
+impl<G, A: Confirmable, CG, CA: Changeable> HitDataBuilder<G, A, CG, CA> {
+    pub fn counterhit_air_from_air(
+        self,
+        f: impl Fn(HitEffect) -> HitEffect,
+    ) -> HitDataBuilder<G, A, CG, CounterhitAir> {
+        HitDataBuilder::<G, A, CG, CounterhitAir> {
+            grounded: self.grounded,
+            air: self.air.clone(),
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: Some((f)(self.air.unwrap())),
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+    pub fn counterhit_air_from_air_default(self) -> HitDataBuilder<G, A, CG, CounterhitAir> {
+        HitDataBuilder::<G, A, CG, CounterhitAir> {
+            grounded: self.grounded,
+            air: self.air.clone(),
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: Some(self.air.unwrap().as_counterhit()),
+
+            damage: self.damage,
+            attack_type: self.attack_type,
+            block_pushback: self.block_pushback,
+            blockstun: self.blockstun,
+
+            wall_pushback_mult: self.wall_pushback_mult,
+
+            proration: self.proration,
+            scaling: self.scaling,
+            scaling_on_block_mult: self.scaling_on_block_mult,
+            meter_gain: self.meter_gain,
+            meter_gain_modifier: self.meter_gain_modifier,
+            minimum_damage: self.minimum_damage,
+            extensions: self.extensions,
+            _pd: PhantomData,
+        }
+    }
+}
+impl<G: Confirmable, A: Changeable, CG, CA> HitDataBuilder<G, A, CG, CA> {
     pub fn air_from_grounded(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
-    ) -> HitDataBuilder<Grounded, Air, C> {
-        HitDataBuilder::<Grounded, Air, C> {
+    ) -> HitDataBuilder<G, Air, CG, CA> {
+        HitDataBuilder::<G, Air, CG, CA> {
             grounded: self.grounded.clone(),
             air: Some((f)(self.grounded.unwrap())),
-            counterhit: self.counterhit,
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -325,15 +495,16 @@ impl<G: Confirmable, C, U: Changeable> HitDataBuilder<G, U, C> {
         }
     }
 }
-impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
+impl<G: Changeable, A: Confirmable, CG, CA> HitDataBuilder<G, A, CG, CA> {
     pub fn grounded_from_air(
         self,
         f: impl Fn(HitEffect) -> HitEffect,
-    ) -> HitDataBuilder<Grounded, Air, C> {
-        HitDataBuilder::<Grounded, Air, C> {
+    ) -> HitDataBuilder<Grounded, A, CG, CA> {
+        HitDataBuilder::<Grounded, A, CG, CA> {
             grounded: Some((f)(self.air.clone().unwrap())),
             air: self.air,
-            counterhit: self.counterhit,
+            counterhit_ground: self.counterhit_ground,
+            counterhit_air: self.counterhit_air,
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -353,12 +524,15 @@ impl<A: Confirmable, C, U: Changeable> HitDataBuilder<U, A, C> {
         }
     }
 }
-impl<G: Confirmable, A: Confirmable, C: Confirmable> HitDataBuilder<G, A, C> {
+impl<G: Confirmable, A: Confirmable, CG: Confirmable, CA: Confirmable>
+    HitDataBuilder<G, A, CG, CA>
+{
     pub fn build(self) -> HitData {
         HitData {
             grounded: self.grounded.unwrap(),
             air: self.air.unwrap(),
-            counterhit: self.counterhit.unwrap(),
+            counterhit_ground: self.counterhit_ground.unwrap(),
+            counterhit_air: self.counterhit_air.unwrap(),
 
             damage: self.damage,
             attack_type: self.attack_type,
@@ -385,12 +559,13 @@ impl HitData {
         blockstun: usize,
         proration: Proration,
         scaling: i32,
-    ) -> HitDataBuilder<Grounded, Undefined, Undefined> {
+    ) -> HitDataBuilder<Grounded, Undefined, Undefined, Undefined> {
         let dir = effect.x_force().signum();
         HitDataBuilder {
             grounded: Some(effect),
             air: None,
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,
@@ -415,12 +590,13 @@ impl HitData {
         blockstun: usize,
         proration: Proration,
         scaling: i32,
-    ) -> HitDataBuilder<Undefined, Air, Undefined> {
+    ) -> HitDataBuilder<Undefined, Air, Undefined, Undefined> {
         let dir = effect.x_force().signum();
         HitDataBuilder {
             grounded: None,
             air: Some(effect),
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,
@@ -446,12 +622,13 @@ impl HitData {
         damage: u32,
         launch_force: Vector2,
         extra_hitstun: usize,
-    ) -> HitDataBuilder<Default, Default, Undefined> {
+    ) -> HitDataBuilder<Default, Default, Undefined, Undefined> {
         let dir = launch_force.x.signum();
         HitDataBuilder {
             grounded: Some(HitEffect::pushback(50.0 * dir, 14 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,
@@ -476,12 +653,13 @@ impl HitData {
         damage: u32,
         launch_force: Vector2,
         extra_hitstun: usize,
-    ) -> HitDataBuilder<Default, Default, Undefined> {
+    ) -> HitDataBuilder<Default, Default, Undefined, Undefined> {
         let dir = launch_force.x.signum();
         HitDataBuilder {
             grounded: Some(HitEffect::pushback(55.0 * dir, 16 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,
@@ -506,12 +684,13 @@ impl HitData {
         damage: u32,
         launch_force: Vector2,
         extra_hitstun: usize,
-    ) -> HitDataBuilder<Default, Default, Undefined> {
+    ) -> HitDataBuilder<Default, Default, Undefined, Undefined> {
         let dir = launch_force.x.signum();
         HitDataBuilder {
             grounded: Some(HitEffect::pushback(60.0 * dir, 19 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,
@@ -536,12 +715,13 @@ impl HitData {
         damage: u32,
         launch_force: Vector2,
         extra_hitstun: usize,
-    ) -> HitDataBuilder<Default, Default, Undefined> {
+    ) -> HitDataBuilder<Default, Default, Undefined, Undefined> {
         let dir = launch_force.x.signum();
         HitDataBuilder {
             grounded: Some(HitEffect::pushback(65.0 * dir, 21 + extra_hitstun).build()),
             air: Some(HitEffect::launcher(launch_force, KnockdownType::Soft).build()),
-            counterhit: None,
+            counterhit_ground: None,
+            counterhit_air: None,
 
             damage,
             attack_type: AttackType::Mid,

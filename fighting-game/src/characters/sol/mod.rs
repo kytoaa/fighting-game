@@ -2,10 +2,7 @@ use super::{
     CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCancelState,
     HasCollider, HasID, OnHit, Player, Position, Velocity,
 };
-use crate::collision::{
-    AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitEffect, HitLevel, Hitbox,
-    Hurtbox, KnockdownType, OnHitHitData,
-};
+use crate::collision::{BounceInfo, HitConnectionStatus, HitEffect, KnockdownType, OnHitHitData};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},

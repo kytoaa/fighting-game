@@ -79,7 +79,8 @@ impl Player for Sol<Fafnir> {
                         .build(),
                     ))
                     .wall_pushback_mult(0.6)
-                    .counterhit_from_air(|a| a)
+                    .counterhit_ground_from_ground_default()
+                    .counterhit_air_from_air_default()
                     .build();
 
                     world.spawn_hitbox(

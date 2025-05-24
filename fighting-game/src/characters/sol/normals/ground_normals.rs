@@ -65,7 +65,8 @@ impl Player for Sol<CloseMid> {
                                     HitData::DEFAULT_LEVEL_4_SCALING,
                                 )
                                 .air_from_grounded(|g| g)
-                                .counterhit_from_grounded(|g| g)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .block_pushback(40.0 * self.dir())
                                 .wall_pushback_mult(3.0)
                                 .add_extension(HitDataExtension::UsagesBeforeScaling(4))
@@ -237,13 +238,8 @@ impl Player for Sol<FarMid> {
                                     .gravity(5.0)
                                     .build(),
                                 )
-                                .with_counterhit(
-                                    HitEffect::pushback(
-                                        30.0 * self.dir(),
-                                        20 + active_frames_extra_hitstun,
-                                    )
-                                    .build(),
-                                )
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,
@@ -408,7 +404,8 @@ impl Player for Sol<StandLight> {
                                 Vector2::new(20.0 * self.dir(), 50.0),
                                 0,
                             )
-                            .counterhit_from_air(|a| a)
+                            .counterhit_ground_from_ground_default()
+                            .counterhit_air_from_air_default()
                             .build(),
                             priority: 10,
                             hitbox_id: 1,
@@ -448,7 +445,8 @@ impl Player for Sol<StandLight> {
                             .gravity(6.5)
                             .build(),
                         )
-                        .counterhit_from_air(|g| g)
+                        .counterhit_ground_from_ground_default()
+                        .counterhit_air_from_air_default()
                         .build(),
                         priority: 10,
                         hitbox_id: 1,
@@ -642,7 +640,8 @@ impl Player for Sol<StandHeavy> {
                                     )
                                     .build(),
                                 )
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,

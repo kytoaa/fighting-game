@@ -50,7 +50,8 @@ impl Player for Sol<VolcanicViper> {
                         HitData::DEFAULT_LEVEL_1_SCALING,
                     )
                     .air_from_grounded(|g| g)
-                    .counterhit_from_grounded(|g| g)
+                    .counterhit_ground_from_ground_default()
+                    .counterhit_air_from_air_default()
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                     .build();
 
@@ -79,7 +80,8 @@ impl Player for Sol<VolcanicViper> {
                         HitData::DEFAULT_LEVEL_1_SCALING,
                     )
                     .air_from_grounded(|g| g)
-                    .counterhit_from_grounded(|g| g)
+                    .counterhit_ground_from_ground_default()
+                    .counterhit_air_from_air_default()
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                     .add_extension(HitDataExtension::SetScaling(
                         HitData::DEFAULT_LEVEL_1_SCALING,
@@ -128,7 +130,8 @@ impl Player for Sol<VolcanicViper> {
                         HitData::DEFAULT_LEVEL_1_SCALING,
                     )
                     .air_from_grounded(|g| g)
-                    .counterhit_from_grounded(|g| g)
+                    .counterhit_ground_from_ground_default()
+                    .counterhit_air_from_air_default()
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                     .build();
 
@@ -158,7 +161,8 @@ impl Player for Sol<VolcanicViper> {
                         HitData::DEFAULT_LEVEL_1_SCALING,
                     )
                     .air_from_grounded(|g| g)
-                    .counterhit_from_grounded(|g| g)
+                    .counterhit_ground_from_ground_default()
+                    .counterhit_air_from_air_default()
                     .meter_gain(HitData::DEFAULT_LEVEL_4_METER_GAIN)
                     .add_extension(HitDataExtension::SetScaling(
                         HitData::DEFAULT_LEVEL_1_SCALING,

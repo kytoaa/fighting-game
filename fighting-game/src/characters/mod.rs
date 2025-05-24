@@ -18,6 +18,7 @@ macro_rules! try_transition {
 pub mod sol;
 mod wrapper_state;
 
+#[allow(unused_imports)]
 pub(crate) use wrapper_state::WrapperState;
 
 pub struct CharacterInitInfo {

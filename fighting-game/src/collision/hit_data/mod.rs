@@ -3,6 +3,8 @@ use super::*;
 mod constructors;
 
 pub const DEFAULT_GRAVITY: f32 = 9.0;
+pub const DEFAULT_COUNTERHIT_PUSHBACK_ADDED_FRAMES: usize = 10;
+pub const DEFAULT_COUNTERHIT_FLOATING_CRUMPLE_ADDED_FRAMES: usize = 10;
 
 #[derive(Debug, Clone, Copy)]
 pub enum AttackType {
@@ -99,13 +101,46 @@ impl HitEffect {
             Self::Pushback { force, .. } => *force,
         }
     }
+    const fn as_counterhit(self) -> Self {
+        match self {
+            Self::Launcher {
+                knockback,
+                gravity,
+                knockdown,
+                momentum_scaling,
+                ground_bounce,
+                wall_bounce,
+            } => Self::Launcher {
+                knockback,
+                gravity,
+                knockdown,
+                momentum_scaling,
+                ground_bounce,
+                wall_bounce,
+            },
+            Self::FloatingCrumple {
+                knockback,
+                gravity,
+                landing_frames,
+            } => Self::FloatingCrumple {
+                knockback,
+                gravity,
+                landing_frames: landing_frames + DEFAULT_COUNTERHIT_FLOATING_CRUMPLE_ADDED_FRAMES,
+            },
+            Self::Pushback { force, frames } => Self::Pushback {
+                force,
+                frames: frames + DEFAULT_COUNTERHIT_PUSHBACK_ADDED_FRAMES,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct HitData {
     grounded: HitEffect,
     air: HitEffect,
-    counterhit: HitEffect,
+    counterhit_ground: HitEffect,
+    counterhit_air: HitEffect,
 
     pub(crate) damage: u32,
     pub(crate) attack_type: AttackType,
@@ -165,7 +200,8 @@ impl HitData {
     ) -> OnHitHitData {
         OnHitHitData {
             hit_effect: match (grounded, counterhit) {
-                (_, true) => self.counterhit.clone(),
+                (true, true) => self.counterhit_ground.clone(),
+                (false, true) => self.counterhit_air.clone(),
                 (false, false) => self.air.clone(),
                 (true, false) => self.grounded.clone(),
             },

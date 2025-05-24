@@ -27,7 +27,8 @@ impl Player for Sol<GunFlameFeint> {
                             HitData::DEFAULT_LEVEL_2_SCALING,
                         )
                         .air_from_grounded(|g| g)
-                        .counterhit_from_grounded(|g| g)
+                        .counterhit_ground_from_ground_default()
+                        .counterhit_air_from_air_default()
                         .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                         .build(),
                         priority: 10,

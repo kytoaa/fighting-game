@@ -3,7 +3,7 @@ use crate::collision::{
     AttackData, AttackType, CollisionShape, HitData, HitEffect, HitLevel, KnockdownType, Proration,
 };
 use crate::datatypes::*;
-use crate::input::{directions::InputDir, Action, Button, InputHandler};
+use crate::input::InputHandler;
 use crate::world::World;
 
 use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
@@ -48,7 +48,7 @@ impl Player for Sol<Heavy3> {
                                 attack: HitData::grounded(
                                     HEAVY_3_DAMAGE,
                                     HitEffect::launcher(
-                                        Vector2::new(30.0 * self.dir(), 60.0),
+                                        Vector2::new(30.0 * self.dir(), 90.0),
                                         KnockdownType::Hard,
                                     )
                                     .build(),
@@ -57,7 +57,8 @@ impl Player for Sol<Heavy3> {
                                     HitData::DEFAULT_LEVEL_3_SCALING,
                                 )
                                 .air_from_grounded(|g| g)
-                                .counterhit_from_grounded(|g| g)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_3_METER_GAIN)
                                 .attack_type(AttackType::Low)
                                 .build(),
@@ -115,42 +116,47 @@ impl Player for Sol<Heavy3> {
 }
 impl SolDamageableState for Heavy3 {}
 
-const HEAVY_6_STARTUP: usize = 23;
-const HEAVY_6_ACTIVE: usize = 3;
-const HEAVY_6_RECOVERY: usize = 20;
-const HEAVY_6_DAMAGE: u32 = 30;
+#[allow(dead_code, unused_variables)]
+mod heavy_6 {
+    use super::*;
 
-pub struct Heavy6;
-impl Player for Sol<Heavy6> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
-        const RECOVERY_FRAME: usize = HEAVY_6_STARTUP + HEAVY_6_ACTIVE;
-        const END_FRAME: usize = RECOVERY_FRAME + HEAVY_6_RECOVERY;
-        const DECEL: f32 = 12.0;
+    const HEAVY_6_STARTUP: usize = 23;
+    const HEAVY_6_ACTIVE: usize = 3;
+    const HEAVY_6_RECOVERY: usize = 20;
+    const HEAVY_6_DAMAGE: u32 = 30;
 
-        if self.frame == 0 {
-            self.has_hit = false;
+    pub struct Heavy6;
+    impl Player for Sol<Heavy6> {
+        fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+            const RECOVERY_FRAME: usize = HEAVY_6_STARTUP + HEAVY_6_ACTIVE;
+            const END_FRAME: usize = RECOVERY_FRAME + HEAVY_6_RECOVERY;
+            const DECEL: f32 = 12.0;
+
+            if self.frame == 0 {
+                self.has_hit = false;
+            }
+
+            self.frame += 1;
+
+            self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+
+            world.spawn_hurtbox(
+                self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
+                self.position + Vector2::RIGHT * 6.0 * self.dir(),
+            );
+
+            match self.frame as usize {
+                0..HEAVY_6_STARTUP => self,
+                HEAVY_6_STARTUP..RECOVERY_FRAME => todo!(),
+                _ => todo!(),
+            }
         }
-
-        self.frame += 1;
-
-        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
-
-        world.spawn_hurtbox(
-            self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
-            self.position + Vector2::RIGHT * 6.0 * self.dir(),
-        );
-
-        match self.frame as usize {
-            0..HEAVY_6_STARTUP => self,
-            HEAVY_6_STARTUP..RECOVERY_FRAME => todo!(),
-            _ => todo!(),
+        fn actionable(&self) -> bool {
+            false
+        }
+        fn counterhit(&self) -> bool {
+            true
         }
     }
-    fn actionable(&self) -> bool {
-        false
-    }
-    fn counterhit(&self) -> bool {
-        true
-    }
+    impl SolDamageableState for Heavy6 {}
 }
-impl SolDamageableState for Heavy6 {}

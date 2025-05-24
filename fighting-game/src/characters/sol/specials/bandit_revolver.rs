@@ -80,7 +80,8 @@ impl Player for Sol<BanditRevolverGrounded> {
                                     .gravity(6.0)
                                     .build(),
                                 )
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                                 .build(),
                                 priority: 10,
@@ -217,7 +218,8 @@ impl Player for Sol<BanditRevolverGroundedSecondHit> {
                                     HitData::DEFAULT_LEVEL_1_SCALING,
                                 )
                                 .air_from_grounded(|g| g)
-                                .counterhit_from_grounded(|g| g)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                                 .build(),
                                 priority: 10,
@@ -276,7 +278,7 @@ const BANDIT_REVOLVER_AIR_LANDING_LAG: usize = 10;
 
 pub struct BanditRevolverAir;
 impl Player for Sol<BanditRevolverAir> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
         const STARTUP_2: usize = BANDIT_REVOLVER_AIR_STARTUP + BANDIT_REVOLVER_AIR_ACTIVE_1;
         const HIT_2_FRAME: usize = STARTUP_2 + BANDIT_REVOLVER_AIR_STARTUP_2;
         const RECOVERY_FRAME: usize = HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2;
@@ -329,7 +331,8 @@ impl Player for Sol<BanditRevolverAir> {
                                     .gravity(6.0)
                                     .build(),
                                 )
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_air_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                                 .build(),
                                 priority: 10,
@@ -376,7 +379,8 @@ impl Player for Sol<BanditRevolverAir> {
                                     .momentum_scaling((0.0, 0.0))
                                     .build(),
                                 )
-                                .counterhit_from_grounded(|g| g)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
                                 .build(),
                                 priority: 10,
@@ -419,8 +423,6 @@ impl Player for Sol<BanditRevolverAir> {
         const HIT_2_FRAME: usize = BANDIT_REVOLVER_AIR_STARTUP
             + BANDIT_REVOLVER_AIR_ACTIVE_1
             + BANDIT_REVOLVER_AIR_STARTUP_2;
-        const END_FRAME: usize =
-            HIT_2_FRAME + BANDIT_REVOLVER_AIR_ACTIVE_2 + BANDIT_REVOLVER_AIR_RECOVERY;
 
         Some(match self.frame {
             0..HIT_2_FRAME => (

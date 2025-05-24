@@ -59,7 +59,8 @@ impl Player for Sol<CrouchLight> {
                                     )
                                     .build(),
                                 )
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,
@@ -67,14 +68,14 @@ impl Player for Sol<CrouchLight> {
                                 attack_id: "sol 2l".into(),
                             },
                         ),
-                        self.position + Vector2::new(6.0 * self.dir(), -3.0),
+                        self.position + Vector2::new(6.0 * self.dir(), -5.0),
                     );
 
                     world.spawn_hurtbox(
                         self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(
                             Vector2::new(22.0, 8.0),
                         ))),
-                        self.position + Vector2::new(6.0 * self.dir(), -2.0),
+                        self.position + Vector2::new(6.0 * self.dir(), -4.0),
                     )
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
@@ -198,7 +199,8 @@ impl Player for Sol<CrouchMid> {
                                 )
                                 .proration(Proration::percent(90))
                                 .with_grounded(HitEffect::pushback(40.0 * self.dir(), 16).build())
-                                .counterhit_from_air(|a| a)
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
                                 .build(),
                                 priority: 10,
                                 hitbox_id: 1,
@@ -206,14 +208,14 @@ impl Player for Sol<CrouchMid> {
                                 attack_id: "sol 2m".into(),
                             },
                         ),
-                        self.position + Vector2::new(16.0 * self.dir(), 4.0),
+                        self.position + Vector2::new(16.0 * self.dir(), 1.0),
                     );
 
                     world.spawn_hurtbox(
                         self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(
                             Vector2::new(12.0, 12.0),
                         ))),
-                        self.position + Vector2::new(6.0 * self.dir(), 4.0),
+                        self.position + Vector2::new(6.0 * self.dir(), 1.0),
                     )
                 } else {
                     self = try_transition!(cancel_options_from_grounded_normal; self, input);
@@ -329,18 +331,10 @@ impl Player for Sol<CrouchHeavy> {
                         .gravity(7.0)
                         .build(),
                 )
-                .counterhit_from_grounded(|mut g| {
-                    if let HitEffect::FloatingCrumple {
-                        knockback, gravity, ..
-                    } = &mut g
-                    {
-                        knockback.y += 15.0;
-                        *gravity = 5.0;
-                        g
-                    } else {
-                        unreachable!()
-                    }
-                })
+                .with_counterhit_ground_and_air(
+                    HitEffect::floating_crumple(Vector2::new(30.0 * self.dir(), 85.0), 5.0, 8)
+                        .build(),
+                )
                 .build(),
             )
         } else {
