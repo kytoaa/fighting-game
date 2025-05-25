@@ -134,21 +134,29 @@ impl winit::application::ApplicationHandler for App {
                     sprite_data = match &self.state {
                         GameState::Game(game) => sprite_data
                             .into_iter()
-                            .chain(game.world().get_hurtboxes().filter_map(|hitbox| {
+                            .chain(game.world().get_hurtboxes().map(|hitbox| {
                                 let b = hitbox.shape.get_bounding_box();
-                                Some(renderer::Material::Rect {
+                                renderer::Material::Rect {
                                     pos: b.position(),
                                     size: b.size(),
                                     color: renderer::RectColor::Green,
-                                })
+                                }
                             }))
-                            .chain(game.world().get_hitboxes().filter_map(|hitbox| {
+                            .chain(game.world().get_hitboxes().map(|hitbox| {
                                 let b = hitbox.shape.get_bounding_box();
-                                Some(renderer::Material::Rect {
+                                renderer::Material::Rect {
                                     pos: b.position(),
                                     size: b.size(),
                                     color: renderer::RectColor::Red,
-                                })
+                                }
+                            }))
+                            .chain(game.world().get_throwboxes().map(|throwbox| {
+                                let b = throwbox.shape.get_bounding_box();
+                                renderer::Material::Rect {
+                                    pos: b.position(),
+                                    size: b.size(),
+                                    color: renderer::RectColor::Red,
+                                }
                             }))
                             .chain(game.world().get_players().iter().map(|player| {
                                 let collider = player.get_collider_world_space();

@@ -1,6 +1,6 @@
 use super::EntityID;
 use crate::collision::{AttackID, HitConnectionStatus, HitData, HitDataExtension, Proration};
-use crate::datatypes::{BoundingShape, Vector2};
+use crate::datatypes::BoundingShape;
 
 #[derive(Debug)]
 pub(super) struct ComboInfo {

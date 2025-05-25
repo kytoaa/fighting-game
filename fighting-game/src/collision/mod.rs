@@ -83,6 +83,12 @@ pub struct Hitbox {
     pub owner: EntityID,
 }
 
+pub struct ThrowBox {
+    pub shape: CollisionShape,
+    pub owner: EntityID,
+    pub throw_success: Box<dyn FnOnce() -> Box<dyn crate::characters::Player>>,
+}
+
 impl CollisionShape {
     pub fn overlaps(&self, other: &CollisionShape) -> bool {
         self.0.intersects(&other.0)
@@ -108,6 +114,12 @@ impl Hurtbox {
     pub const fn new(owner: EntityID, shape: CollisionShape) -> Self {
         Self { owner, shape }
     }
+    pub fn at_position(mut self, position: Vector2) -> Self {
+        self.shape = self.shape.at_position(position);
+        self
+    }
+}
+impl ThrowBox {
     pub fn at_position(mut self, position: Vector2) -> Self {
         self.shape = self.shape.at_position(position);
         self

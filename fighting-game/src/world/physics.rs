@@ -174,13 +174,13 @@ impl World {
         if position.y < MIN_WALL_BOUNCE_HEIGHT {
             None
         } else {
-            Self::position_in_wall(position)
+            Self::position_in_wall(position).map(f32::signum)
         }
     }
     pub fn position_in_wall(position: Vector2) -> Option<f32> {
         match position.x {
-            x if x >= BORDER_X => Some(-1.0),
-            x if x <= -BORDER_X => Some(1.0),
+            x if x >= BORDER_X => Some((BORDER_X - x).min(-1.0)),
+            x if x <= -BORDER_X => Some((BORDER_X + x).max(1.0)),
             _ => None,
         }
     }

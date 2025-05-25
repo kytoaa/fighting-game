@@ -1,4 +1,4 @@
-use super::World;
+use super::{EntityID, World};
 use crate::collision::HitLevel;
 
 impl World {
@@ -136,5 +136,37 @@ impl World {
                 }
             })
             .collect();
+    }
+    pub(super) fn update_throw_boxes(&mut self) -> bool {
+        if self.throwboxes.len() != 1 {
+            self.throwboxes = vec![];
+            return false;
+        }
+
+        let throw_box = self.throwboxes.remove(0);
+
+        let throw_target = self.hurtboxes.iter().find(|hb| {
+            hb.0.owner.is_player()
+                && throw_box.owner != hb.0.owner
+                && throw_box.shape.overlaps(&hb.0.shape)
+        });
+
+        if let Some(hurtbox) = throw_target {
+            println!("thrown");
+            if self.players[hurtbox.0.owner.id()]
+                .as_ref()
+                .unwrap()
+                .is_grounded()
+            {
+                _ = self.players[throw_box.owner.id()].insert((throw_box.throw_success)());
+
+                let other_player = self.players[hurtbox.0.owner.id()].take().unwrap();
+                _ = self.players[hurtbox.0.owner.id()].insert(other_player.thrown());
+            }
+
+            self.throwboxes = vec![];
+            return true;
+        }
+        return false;
     }
 }

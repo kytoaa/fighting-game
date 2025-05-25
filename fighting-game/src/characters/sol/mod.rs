@@ -1,8 +1,11 @@
 use super::{
     CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCancelState,
-    HasCollider, HasID, OnHit, Player, Position, Velocity,
+    HasCollider, HasID, HasThrownState, OnHit, Player, Position, Velocity,
 };
-use crate::collision::{BounceInfo, HitConnectionStatus, HitEffect, KnockdownType, OnHitHitData};
+use crate::collision::{
+    AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitData, HitEffect, KnockdownType,
+    OnHitHitData, Proration,
+};
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
@@ -208,6 +211,14 @@ where
         } else {
             Box::new(self.transition(Air::<false>, true))
         }
+    }
+}
+impl<S> HasThrownState for Sol<S>
+where
+    Sol<S>: Player,
+{
+    fn thrown(self: Box<Self>) -> Box<dyn Player> {
+        Box::new(self.transition(ThrownState, true))
     }
 }
 
@@ -492,6 +503,31 @@ where
             return Ok(Box::new(self.transition(StandHeavy, true)));
         }
 
+        // NOTE: ground throw forward
+        if input.has_action(&Action::Pressed(
+            Button::Utility,
+            Some(InputDir::Dir6.dir(self.direction)),
+        )) {
+            return Ok(Box::new(self.transition(
+                GroundThrow::<true> {
+                    success: std::cell::Cell::new(true).into(),
+                },
+                true,
+            )));
+        }
+        // NOTE: ground throw backward
+        if input.has_action(&Action::Pressed(
+            Button::Utility,
+            Some(InputDir::Dir4.dir(self.direction)),
+        )) {
+            return Ok(Box::new(self.transition(
+                GroundThrow::<false> {
+                    success: std::cell::Cell::new(true).into(),
+                },
+                true,
+            )));
+        }
+
         Err(self)
     }
 
@@ -700,10 +736,7 @@ where
         }
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
             self.position,
         );
 
@@ -742,10 +775,7 @@ where
         }
 
         world.spawn_hurtbox(
-            crate::collision::Hurtbox {
-                shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
-                owner: self.player_id,
-            },
+            self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
             self.position,
         );
 
@@ -1330,3 +1360,174 @@ impl Damageable for Sol<HardKnockdown> {
         (self, HitConnectionStatus::Invuln)
     }
 }
+
+struct GroundThrow<const FACING_RIGHT: bool> {
+    success: std::rc::Rc<std::cell::Cell<bool>>,
+}
+impl<const FORWARD: bool> Player for Sol<GroundThrow<FORWARD>> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        self.velocity = Vector2::ZERO;
+
+        world.spawn_hurtbox(
+            self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
+            self.position,
+        );
+
+        self.frame += 1;
+
+        if self.frame == 4 {
+            world.spawn_throwbox(
+                crate::collision::ThrowBox {
+                    shape: crate::collision::CollisionShape::new(BoundingBox::with_size(
+                        Vector2::new(10.0, 20.0),
+                    )),
+                    owner: self.player_id,
+                    throw_success: {
+                        let success = self.state.success.clone();
+                        let success_state = Box::new(Sol {
+                            player_id: self.player_id,
+                            position: self.position,
+                            velocity: Vector2::ZERO,
+                            collider: self.collider.clone(),
+                            direction: self.direction,
+                            has_hit: false,
+                            grounded: true,
+                            has_air_action: true,
+                            distance_from_other_player: self.distance_from_other_player,
+                            frame: 0,
+                            state: GroundThrowSuccess::<FORWARD>,
+                        });
+                        Box::new(move || {
+                            success.set(true);
+                            println!("successful throw");
+                            success_state
+                        })
+                    },
+                },
+                self.position + Vector2::new(5.0 * self.dir(), 6.0),
+            );
+        }
+
+        if self.frame < 35 {
+            self
+        } else {
+            self.grounded_actionable_state(input)
+        }
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+}
+impl<const FORWARD: bool> SolDamageableState for GroundThrow<FORWARD> {}
+
+const GROUND_THROW_DAMAGE: u32 = 25;
+
+struct GroundThrowSuccess<const FORWARD: bool>;
+impl<const FORWARD: bool> Player for Sol<GroundThrowSuccess<FORWARD>> {
+    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        if self.frame == 0 {
+            self.direction = if FORWARD {
+                self.direction
+            } else {
+                !self.direction
+            };
+        }
+
+        if self.frame < 18 {
+            world.set_entity_position(
+                self.player_id.other_player(),
+                self.position + Vector2::new(10.0 * self.dir(), 7.0),
+            );
+            if let Some(overlap) =
+                World::position_in_wall(world.get_entity_position(self.player_id.other_player()))
+            {
+                self.position.x += overlap;
+
+                world.set_entity_position(
+                    self.player_id.other_player(),
+                    self.position + Vector2::new(10.0 * self.dir(), 7.0),
+                );
+            }
+        }
+        self.velocity = Vector2::ZERO;
+
+        self.frame += 1;
+
+        match self.frame {
+            0..28 => self,
+            28 => {
+                world.spawn_hitbox(
+                    self.create_hitbox(
+                        CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 20.0))),
+                        AttackData {
+                            attack: HitData::grounded(
+                                GROUND_THROW_DAMAGE,
+                                HitEffect::launcher(
+                                    Vector2::new(50.0 * self.dir(), 50.0),
+                                    KnockdownType::Hard,
+                                )
+                                .build(),
+                                0,
+                                Proration::percent(100),
+                                90,
+                            )
+                            .air_from_grounded(|g| g)
+                            .counterhit_ground_from_ground_default()
+                            .counterhit_air_from_air_default()
+                            .build(),
+                            hitbox_id: 1,
+                            attack_id: "sol ground throw".into(),
+                            priority: 10,
+                            hit_level: crate::collision::HitLevel::Light,
+                        },
+                    ),
+                    self.position + Vector2::new(8.0 * self.dir(), 5.0),
+                );
+                self
+            }
+            18..50 => self,
+            _ => self.grounded_actionable_state(input),
+        }
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/throw".into(), BASE_SPRITE_OFFSET))
+    }
+}
+impl<const FACING_RIGHT: bool> SolDamageableState for GroundThrowSuccess<FACING_RIGHT> {}
+
+#[derive(Debug)]
+struct ThrownState;
+impl Player for Sol<ThrownState> {
+    fn update(self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
+        world.spawn_hurtbox(
+            self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
+            self.position,
+        );
+        self
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn in_hitstun(&self) -> bool {
+        true
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+}
+impl SolDamageableState for ThrownState {}

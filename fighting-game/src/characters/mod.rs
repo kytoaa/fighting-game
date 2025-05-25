@@ -47,6 +47,7 @@ pub trait Player:
     + Direction
     + DistanceFromOtherPlayer
     + HasCancelState
+    + HasThrownState
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
@@ -110,6 +111,9 @@ pub trait DistanceFromOtherPlayer {
 }
 pub trait HasCancelState {
     fn cancel_state(self: Box<Self>) -> Box<dyn Player>;
+}
+pub trait HasThrownState {
+    fn thrown(self: Box<Self>) -> Box<dyn Player>;
 }
 pub trait HasID {
     fn id(&self) -> EntityID;

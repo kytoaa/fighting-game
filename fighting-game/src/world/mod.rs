@@ -1,4 +1,4 @@
-use super::collision::{CollisionShape, Hitbox, Hurtbox};
+use super::collision::{CollisionShape, Hitbox, Hurtbox, ThrowBox};
 use super::datatypes::Vector2;
 use super::input::{Action, Button, InputHandler};
 
@@ -14,8 +14,10 @@ const DELTA: f32 = 1.0 / 60.0;
 const BORDER_X: f32 = 100.0;
 const MIN_WALL_BOUNCE_HEIGHT: f32 = 0.0;
 
-const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
-const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
+impl EntityID {
+    const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
+    const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
+}
 const CANCEL_ACTION: Action = Action::MultiplePress(Button::Mid, Button::Heavy);
 
 pub struct World {
@@ -29,6 +31,7 @@ pub struct World {
 
     hurtboxes: Vec<Spawn<Hurtbox>>,
     hitboxes: Vec<Spawn<Hitbox>>,
+    throwboxes: Vec<ThrowBox>,
 
     id_counter: usize,
 
@@ -40,10 +43,6 @@ pub struct World {
 
 #[derive(Debug)]
 struct Spawn<T>(T, usize);
-
-pub(super) struct UpdateInfo {
-    pub(super) reset_input: bool,
-}
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct EntityID(usize, EntityType);
@@ -73,6 +72,15 @@ impl EntityID {
             EntityType::Owned(p) => p,
         }
     }
+    pub const fn other_player(&self) -> Self {
+        match self {
+            EntityID(0, EntityType::Unique) => EntityID(1, EntityType::Unique),
+            EntityID(1, EntityType::Unique) => EntityID(0, EntityType::Unique),
+            EntityID(_, EntityType::Owned(0)) => EntityID(1, EntityType::Unique),
+            EntityID(_, EntityType::Owned(1)) => EntityID(0, EntityType::Unique),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl World {
@@ -92,7 +100,10 @@ impl World {
             ),
         ),
     ) -> Self {
-        let ((a, a_info), (b, b_info)) = ((players.0)(PLAYER_1_ID), (players.1)(PLAYER_2_ID));
+        let ((a, a_info), (b, b_info)) = (
+            (players.0)(EntityID::PLAYER_1_ID),
+            (players.1)(EntityID::PLAYER_2_ID),
+        );
         Self {
             players: [Some(a), Some(b)],
             player_data: [
@@ -105,6 +116,7 @@ impl World {
 
             hurtboxes: vec![],
             hitboxes: vec![],
+            throwboxes: vec![],
 
             id_counter: 2,
 
@@ -118,7 +130,11 @@ impl World {
 
 impl World {
     pub fn update(&mut self, input_providers: &[InputHandler]) {
-        self.update_hitbox_hurtboxes();
+        let throw = self.update_throw_boxes();
+
+        if !throw {
+            self.update_hitbox_hurtboxes();
+        }
 
         self.frame += 1;
 
@@ -195,6 +211,9 @@ impl World {
     pub fn spawn_hitbox(&mut self, hitbox: Hitbox, position: Vector2) {
         self.hitboxes.push(Spawn(hitbox.at_position(position), 1));
     }
+    pub fn spawn_throwbox(&mut self, throwbox: ThrowBox, position: Vector2) {
+        self.throwboxes.push(throwbox.at_position(position));
+    }
     pub fn spawn_non_player_entity(&mut self, entity: Box<dyn crate::characters::NonPlayerEntity>) {
         self.non_player_entities
             .as_mut()
@@ -216,6 +235,9 @@ impl World {
     }
     pub fn get_hitboxes(&self) -> impl Iterator<Item = &Hitbox> {
         self.hitboxes.iter().map(|s| &s.0)
+    }
+    pub fn get_throwboxes(&self) -> impl Iterator<Item = &ThrowBox> {
+        self.throwboxes.iter().map(|s| s)
     }
 
     pub fn trigger_hitstop(&mut self, frames: usize) {
@@ -246,6 +268,33 @@ impl World {
         } else {
             self.player_data[player.id()].meter -= meter_cost;
             true
+        }
+    }
+    pub fn set_entity_position(&mut self, entity: EntityID, position: Vector2) {
+        if entity.is_player() {
+            self.players[entity.id()]
+                .as_mut()
+                .unwrap()
+                .set_position(position)
+        } else {
+            self.non_player_entities
+                .as_mut()
+                .unwrap()
+                .get_mut(&entity.id())
+                .unwrap()
+                .set_position(position)
+        }
+    }
+    pub fn get_entity_position(&self, entity: EntityID) -> Vector2 {
+        if entity.is_player() {
+            self.players[entity.id()].as_ref().unwrap().position()
+        } else {
+            self.non_player_entities
+                .as_ref()
+                .unwrap()
+                .get(&entity.id())
+                .unwrap()
+                .position()
         }
     }
 }

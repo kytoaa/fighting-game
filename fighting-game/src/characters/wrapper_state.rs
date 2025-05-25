@@ -127,3 +127,11 @@ where
         self.entity.cancel_state()
     }
 }
+impl<const FRAMES: usize, F> HasThrownState for WrapperState<FRAMES, F>
+where
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
+{
+    fn thrown(self: Box<Self>) -> Box<dyn Player> {
+        self.entity.thrown()
+    }
+}
