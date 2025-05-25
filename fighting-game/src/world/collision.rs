@@ -157,6 +157,10 @@ impl World {
                 .as_ref()
                 .unwrap()
                 .is_grounded()
+                && !self.players[hurtbox.0.owner.id()]
+                    .as_ref()
+                    .unwrap()
+                    .in_hitstun()
             {
                 _ = self.players[throw_box.owner.id()].insert((throw_box.throw_success)());
 
