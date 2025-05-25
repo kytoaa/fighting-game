@@ -70,6 +70,9 @@ pub trait Player:
     fn can_cancel(&self) -> bool {
         !self.in_hitstun()
     }
+    fn throwable(&self) -> bool {
+        true
+    }
     fn moveable(&self) -> bool {
         true
     }

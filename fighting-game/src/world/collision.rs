@@ -156,15 +156,10 @@ impl World {
 
         if let Some(hurtbox) = throw_target {
             println!("thrown");
-            if self.players[hurtbox.0.owner.id()]
-                .as_ref()
-                .unwrap()
-                .is_grounded()
-                && !self.players[hurtbox.0.owner.id()]
-                    .as_ref()
-                    .unwrap()
-                    .in_hitstun()
-            {
+            if {
+                let p = self.players[hurtbox.0.owner.id()].as_ref().unwrap();
+                p.is_grounded() && !p.in_hitstun() && p.throwable()
+            } {
                 _ = self.players[throw_box.owner.id()].insert((throw_box.throw_success)());
 
                 let other_player = self.players[hurtbox.0.owner.id()].take().unwrap();

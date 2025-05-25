@@ -984,6 +984,9 @@ impl Player for Sol<JumpSquat> {
             self
         }
     }
+    fn throwable(&self) -> bool {
+        false
+    }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some(("sol/fall/fall1".into(), BASE_SPRITE_OFFSET))
     }
