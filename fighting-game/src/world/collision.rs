@@ -109,6 +109,9 @@ impl World {
             self.combo = None;
         }
 
+        self.decrement_hitbox_hurtbox_frame_timers();
+    }
+    pub(super) fn decrement_hitbox_hurtbox_frame_timers(&mut self) {
         self.hitboxes = self
             .hitboxes
             .drain(..)

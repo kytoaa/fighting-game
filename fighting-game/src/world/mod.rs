@@ -134,6 +134,8 @@ impl World {
 
         if !throw {
             self.update_hitbox_hurtboxes();
+        } else {
+            self.decrement_hitbox_hurtbox_frame_timers();
         }
 
         self.frame += 1;
@@ -295,6 +297,21 @@ impl World {
                 .get(&entity.id())
                 .unwrap()
                 .position()
+        }
+    }
+    pub fn set_entity_velocity(&mut self, entity: EntityID, velocity: Vector2) {
+        if entity.is_player() {
+            self.players[entity.id()]
+                .as_mut()
+                .unwrap()
+                .set_velocity(velocity)
+        }
+    }
+    pub fn get_entity_velocity(&self, entity: EntityID) -> Vector2 {
+        if entity.is_player() {
+            self.players[entity.id()].as_ref().unwrap().velocity()
+        } else {
+            Vector2::ZERO
         }
     }
 }

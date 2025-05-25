@@ -1440,6 +1440,7 @@ impl<const FORWARD: bool> Player for Sol<GroundThrowSuccess<FORWARD>> {
         }
 
         if self.frame < 18 {
+            world.set_entity_velocity(self.player_id.other_player(), Vector2::ZERO);
             world.set_entity_position(
                 self.player_id.other_player(),
                 self.position + Vector2::new(10.0 * self.dir(), 7.0),
