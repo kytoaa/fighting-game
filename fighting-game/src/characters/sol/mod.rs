@@ -553,7 +553,7 @@ where
             _ => unreachable!(),
         }
     }
-    fn air_actionable_state(mut self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
+    fn air_actionable_state(self: Box<Sol<S>>, input: &InputHandler) -> Box<dyn Player> {
         try_transition!(air_attack_options; self, input).air_movement_state(input)
     }
     fn air_attack_options(
@@ -694,6 +694,14 @@ where
             &Action::Pressed(Button::Heavy, None),
         ) {
             return Ok(Box::new(self.transition(VolcanicViper, true)));
+        }
+
+        // NOTE: wild throw
+        if input.has_motion_input(
+            &Motion::dp().direction(self.direction),
+            &Action::Pressed(Button::Light, None),
+        ) {
+            return Ok(Box::new(self.transition(WildThrow::new(), true)));
         }
 
         // NOTE: bandit revolver
