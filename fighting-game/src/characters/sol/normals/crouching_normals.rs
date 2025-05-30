@@ -48,8 +48,16 @@ impl Player for Sol<CrouchLight> {
                             AttackData {
                                 attack: HitData::level_1(
                                     CROUCH_LIGHT_DAMAGE,
-                                    Vector2::new(30.0 * self.dir(), 60.0),
+                                    Vector2::new(10.0 * self.dir(), 50.0),
                                     active_frames_extra_hitstun,
+                                )
+                                .with_air(
+                                    HitEffect::launcher(
+                                        Vector2::new(10.0 * self.dir(), 50.0),
+                                        KnockdownType::Soft,
+                                    )
+                                    .gravity(5.0)
+                                    .build(),
                                 )
                                 .attack_type(AttackType::Low)
                                 .with_grounded(

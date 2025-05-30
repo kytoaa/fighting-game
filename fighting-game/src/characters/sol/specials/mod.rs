@@ -13,12 +13,14 @@ use super::{Sol, SolDamageableState, BASE_SPRITE_OFFSET, STANDING_HURTBOX};
 
 mod bandit_revolver;
 mod fafnir;
+mod ground_viper;
 mod gunflame;
 mod volcanic_viper;
 mod wild_throw;
 
 pub use bandit_revolver::*;
 pub use fafnir::*;
+pub use ground_viper::*;
 pub use gunflame::*;
 pub use volcanic_viper::*;
 pub use wild_throw::*;

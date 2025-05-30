@@ -696,6 +696,14 @@ where
             return Ok(Box::new(self.transition(VolcanicViper, true)));
         }
 
+        // NOTE: ground_viper
+        if input.has_motion_input(
+            &Motion::quarter_circle().direction(!self.direction),
+            &Action::Pressed(Button::Mid, None),
+        ) {
+            return Ok(Box::new(self.transition(GroundViper::default(), true)));
+        }
+
         // NOTE: wild throw
         if input.has_motion_input(
             &Motion::dp().direction(self.direction),
@@ -1116,7 +1124,7 @@ impl Player for Sol<Tumble> {
         self.frame += 1;
 
         // if wall bounce
-        if let (
+        let bounced_off_wall = if let (
             Some(dir),
             Some(BounceInfo {
                 velocity,
@@ -1139,15 +1147,21 @@ impl Player for Sol<Tumble> {
             );
             self.state.gravity = gravity;
             self.state.wall_bounce = None;
+
+            true
         } else if World::position_in_wall(self.position).is_some() {
             // else if in wall
             let p = self.state.wall_pushback_mult;
             world.player_hit_wall(self.as_mut(), p);
 
             self.state.wall_bounce = None;
-        }
 
-        if self.grounded {
+            false
+        } else {
+            false
+        };
+
+        if self.grounded && !bounced_off_wall {
             if let Some(BounceInfo {
                 velocity,
                 gravity,
