@@ -874,6 +874,9 @@ impl Player for Sol<Backdash> {
             self
         }
     }
+    fn actionable(&self) -> bool {
+        false
+    }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some(("sol/backdash/backdash1".into(), BASE_SPRITE_OFFSET))
     }
@@ -900,6 +903,9 @@ impl Player for Sol<BackdashVulnerable> {
         } else {
             self
         }
+    }
+    fn actionable(&self) -> bool {
+        false
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some(("sol/backdash/backdash2".into(), BASE_SPRITE_OFFSET))
@@ -1060,6 +1066,9 @@ impl Player for Sol<Airdash> {
                 self
             }
         }
+    }
+    fn actionable(&self) -> bool {
+        false
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some((
