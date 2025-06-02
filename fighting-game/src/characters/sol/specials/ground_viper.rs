@@ -2,33 +2,36 @@ use super::*;
 
 const GROUND_VIPER_STARTUP: usize = 4;
 const MIN_GROUND_VIPER_SLIDE_FRAMES: usize = 10;
-const MAX_GROUND_VIPER_SLIDE_FRAMES: usize = 32;
+const MAX_GROUND_VIPER_SLIDE_FRAMES: usize = 22;
 const GROUND_VIPER_ACTIVE: usize = 2;
 const GROUND_VIPER_RECOVERY: usize = 30;
 const GROUND_VIPER_DAMAGE: u32 = 20;
+const GROUND_VIPER_CHARGED_DAMAGE: u32 = 25;
 
 #[derive(Default)]
 pub struct GroundViper {
-    release_frame: usize,
+    frames_sliding: usize,
+    released: bool,
 }
 impl Player for Sol<GroundViper> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
-        const MIN_SLIDE_END: usize = GROUND_VIPER_STARTUP + MIN_GROUND_VIPER_SLIDE_FRAMES;
-        const RECOVERY_FRAME: usize = MIN_SLIDE_END + GROUND_VIPER_ACTIVE;
+        const SLIDE_HOLD_FRAME: usize = GROUND_VIPER_STARTUP; // stay on slide frame until release
+        const ACTIVE_FRAME: usize = SLIDE_HOLD_FRAME + MIN_GROUND_VIPER_SLIDE_FRAMES;
+        const RECOVERY_FRAME: usize = ACTIVE_FRAME + GROUND_VIPER_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + GROUND_VIPER_RECOVERY;
-        const SPEED: f32 = 120.0;
+        const SPEED: f32 = 130.0;
         const DECEL: f32 = 20.0;
 
         if self.frame == 0 {
             self.has_hit = false;
         }
-        /*if input.has_action(&Action::Released(Button::Mid)) {
-            self.state.release_frame = self.frame;
-        }*/
-        self.frame += 1;
 
-        if self.frame >= MIN_SLIDE_END - 2 {
-            self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+        if self.frame != SLIDE_HOLD_FRAME || self.state.released {
+            self.frame += 1;
+        }
+
+        if input.has_action(&Action::Released(Button::Mid)) {
+            self.state.released = true;
         }
 
         match self.frame {
@@ -42,7 +45,17 @@ impl Player for Sol<GroundViper> {
                 );
                 self
             }
-            GROUND_VIPER_STARTUP..MIN_SLIDE_END => {
+            SLIDE_HOLD_FRAME..ACTIVE_FRAME => {
+                if self.frame == SLIDE_HOLD_FRAME {
+                    if !self.state.released {
+                        if self.state.frames_sliding < MAX_GROUND_VIPER_SLIDE_FRAMES {
+                            self.state.frames_sliding += 1;
+                        } else {
+                            self.state.released = true;
+                        }
+                    }
+                }
+
                 self.velocity = Vector2::new(SPEED * self.dir(), 0.0);
 
                 world.spawn_hurtbox(
@@ -51,9 +64,12 @@ impl Player for Sol<GroundViper> {
                     )))),
                     self.position + Vector2::new(-2.0 * self.dir(), -4.0),
                 );
+
                 self
             }
-            MIN_SLIDE_END..RECOVERY_FRAME => {
+            ACTIVE_FRAME..RECOVERY_FRAME => {
+                self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+
                 world.spawn_hurtbox(
                     self.create_hurtbox(CollisionShape::new(BoundingBox::pos_size(
                         STANDING_HURTBOX.position(),
@@ -70,53 +86,102 @@ impl Player for Sol<GroundViper> {
 
                 if !self.has_hit {
                     let active_frames_extra_hitstun =
-                        GROUND_VIPER_ACTIVE - (self.frame as usize - MIN_SLIDE_END);
+                        GROUND_VIPER_ACTIVE - (self.frame as usize - ACTIVE_FRAME);
+
+                    let attack_data = if self.state.frames_sliding == MAX_GROUND_VIPER_SLIDE_FRAMES
+                    {
+                        AttackData {
+                            attack: HitData::grounded(
+                                GROUND_VIPER_CHARGED_DAMAGE,
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 100.0),
+                                    KnockdownType::Hard,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                                18 + active_frames_extra_hitstun,
+                                Proration::percent(85),
+                                HitData::DEFAULT_LEVEL_3_SCALING,
+                            )
+                            .with_air(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 110.0),
+                                    KnockdownType::Hard,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                            )
+                            .with_counterhit_ground(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 130.0),
+                                    KnockdownType::Hard,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                            )
+                            .with_counterhit_air(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 150.0),
+                                    KnockdownType::Hard,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                            )
+                            .build(),
+                            priority: 10,
+                            hitbox_id: 1,
+                            hit_level: HitLevel::Heavy,
+                            attack_id: "ground viper charged".into(),
+                        }
+                    } else {
+                        AttackData {
+                            attack: HitData::grounded(
+                                GROUND_VIPER_DAMAGE,
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 90.0),
+                                    KnockdownType::Soft,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                                15 + active_frames_extra_hitstun,
+                                Proration::percent(80),
+                                HitData::DEFAULT_LEVEL_2_SCALING,
+                            )
+                            .with_air(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 100.0),
+                                    KnockdownType::Soft,
+                                )
+                                .gravity(5.3)
+                                .build(),
+                            )
+                            .with_counterhit_ground(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 125.0),
+                                    KnockdownType::Soft,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                            )
+                            .with_counterhit_air(
+                                HitEffect::launcher(
+                                    Vector2::new(8.0 * self.dir(), 145.0),
+                                    KnockdownType::Soft,
+                                )
+                                .gravity(4.5)
+                                .build(),
+                            )
+                            .build(),
+                            priority: 10,
+                            hitbox_id: 1,
+                            hit_level: HitLevel::Medium,
+                            attack_id: "ground viper".into(),
+                        }
+                    };
                     world.spawn_hitbox(
                         self.create_hitbox(
                             CollisionShape::new(BoundingBox::with_size(Vector2::new(10.0, 24.0))),
-                            AttackData {
-                                attack: HitData::grounded(
-                                    GROUND_VIPER_DAMAGE,
-                                    HitEffect::launcher(
-                                        Vector2::new(8.0 * self.dir(), 90.0),
-                                        KnockdownType::Soft,
-                                    )
-                                    .gravity(4.5)
-                                    .build(),
-                                    15 + active_frames_extra_hitstun,
-                                    Proration::percent(80),
-                                    HitData::DEFAULT_LEVEL_2_SCALING,
-                                )
-                                .with_air(
-                                    HitEffect::launcher(
-                                        Vector2::new(8.0 * self.dir(), 100.0),
-                                        KnockdownType::Soft,
-                                    )
-                                    .gravity(6.5)
-                                    .build(),
-                                )
-                                .with_counterhit_ground(
-                                    HitEffect::launcher(
-                                        Vector2::new(8.0 * self.dir(), 125.0),
-                                        KnockdownType::Soft,
-                                    )
-                                    .gravity(4.5)
-                                    .build(),
-                                )
-                                .with_counterhit_air(
-                                    HitEffect::launcher(
-                                        Vector2::new(8.0 * self.dir(), 145.0),
-                                        KnockdownType::Soft,
-                                    )
-                                    .gravity(4.5)
-                                    .build(),
-                                )
-                                .build(),
-                                priority: 10,
-                                hitbox_id: 1,
-                                hit_level: HitLevel::Medium,
-                                attack_id: "ground viper".into(),
-                            },
+                            attack_data,
                         ),
                         self.position + Vector2::new(8.0 * self.dir(), 14.0),
                     );
@@ -124,6 +189,8 @@ impl Player for Sol<GroundViper> {
                 self
             }
             RECOVERY_FRAME..END_FRAME => {
+                self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+
                 world.spawn_hurtbox(
                     self.create_hurtbox(CollisionShape::new(BoundingBox::pos_size(
                         STANDING_HURTBOX.position(),
@@ -145,6 +212,16 @@ impl Player for Sol<GroundViper> {
                 self.grounded_actionable_state(input)
             }
         }
+    }
+
+    fn moveable(&self) -> bool {
+        false
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
     }
 }
 impl SolDamageableState for GroundViper {}

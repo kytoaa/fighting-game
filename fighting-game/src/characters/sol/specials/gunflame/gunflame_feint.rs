@@ -1,17 +1,19 @@
 use super::*;
 
-const GUNFLAME_FEINT_HOLD_LENGTH: usize = 5;
+const GUNFLAME_FEINT_HOLD_LENGTH: usize = 9;
 pub struct GunFlameFeint;
 impl Player for Sol<GunFlameFeint> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         self.frame += 1;
+
+        self.velocity.x = self.velocity.x.move_towards(0.0, GUNFLAME_DECEL);
 
         world.spawn_hurtbox(
             self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
             self.position,
         );
 
-        if self.frame == 3 {
+        if self.frame == 7 {
             world.spawn_hitbox(
                 self.create_hitbox(
                     CollisionShape::new(BoundingBox::pos_size(

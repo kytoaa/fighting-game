@@ -302,8 +302,7 @@ impl Damageable for Sol<WalkState<true>> {
 }
 impl Damageable for Sol<Crouch<true>> {
     fn hit(mut self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
-        self.velocity.x =
-            info.block_pushback * (1.0 + ((info.wall_pushback_mult - 1.0) / 2.0).clamp(0.0, 2.0));
+        self.velocity.x = info.block_pushback;
 
         if let crate::collision::AttackType::High = info.attack_type {
             return Sol::hit(self, info);

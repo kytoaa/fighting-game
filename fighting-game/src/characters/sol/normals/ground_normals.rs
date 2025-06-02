@@ -238,6 +238,7 @@ impl Player for Sol<FarMid> {
                                     .gravity(5.0)
                                     .build(),
                                 )
+                                .block_pushback(50.0 * self.dir())
                                 .counterhit_ground_from_ground_default()
                                 .counterhit_air_from_air_default()
                                 .build(),

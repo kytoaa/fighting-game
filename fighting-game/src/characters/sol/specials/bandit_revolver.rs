@@ -74,10 +74,10 @@ impl Player for Sol<BanditRevolverGrounded> {
                                 )
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(50.0 * self.dir(), 60.0),
+                                        Vector2::new(50.0 * self.dir(), 90.0),
                                         KnockdownType::Soft,
                                     )
-                                    .gravity(6.0)
+                                    .gravity(5.5)
                                     .build(),
                                 )
                                 .counterhit_ground_from_ground_default()
@@ -358,7 +358,7 @@ impl Player for Sol<BanditRevolverAir> {
                         BANDIT_REVOLVER_AIR_ACTIVE_2 - (self.frame as usize - (HIT_2_FRAME));
                     world.spawn_hitbox(
                         self.create_hitbox(
-                            CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 14.0))),
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(20.0, 20.0))),
                             AttackData {
                                 attack: HitData::grounded(
                                     BANDIT_REVOLVER_AIR_DAMAGE_2,
@@ -373,7 +373,7 @@ impl Player for Sol<BanditRevolverAir> {
                                 )
                                 .with_air(
                                     HitEffect::launcher(
-                                        Vector2::new(70.0 * self.dir(), -10.0),
+                                        Vector2::new(100.0 * self.dir(), -30.0),
                                         KnockdownType::Hard,
                                     )
                                     .momentum_scaling((0.0, 0.0))
@@ -389,7 +389,7 @@ impl Player for Sol<BanditRevolverAir> {
                                 attack_id: "bandit revolver 2".into(),
                             },
                         ),
-                        self.position + Vector2::new(14.0 * self.dir(), 6.0),
+                        self.position + Vector2::new(14.0 * self.dir(), 4.0),
                     );
                 }
                 self

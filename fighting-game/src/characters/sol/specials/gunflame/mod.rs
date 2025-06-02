@@ -6,7 +6,7 @@ mod gunflame_projectile;
 pub use gunflame_feint::*;
 pub use gunflame_projectile::*;
 
-const GUNFLAME_STARTUP: usize = 18;
+const GUNFLAME_STARTUP: usize = 14;
 const GUNFLAME_DECEL: f32 = 3.0;
 
 /// bool is feint
