@@ -94,10 +94,10 @@ impl Player for Sol<GroundViper> {
                             attack: HitData::grounded(
                                 GROUND_VIPER_CHARGED_DAMAGE,
                                 HitEffect::launcher(
-                                    Vector2::new(8.0 * self.dir(), 100.0),
+                                    Vector2::new(8.0 * self.dir(), 150.0),
                                     KnockdownType::Hard,
                                 )
-                                .gravity(4.5)
+                                .gravity(7.5)
                                 .build(),
                                 18 + active_frames_extra_hitstun,
                                 Proration::percent(85),
@@ -105,10 +105,10 @@ impl Player for Sol<GroundViper> {
                             )
                             .with_air(
                                 HitEffect::launcher(
-                                    Vector2::new(8.0 * self.dir(), 110.0),
+                                    Vector2::new(8.0 * self.dir(), 160.0),
                                     KnockdownType::Hard,
                                 )
-                                .gravity(4.5)
+                                .gravity(7.5)
                                 .build(),
                             )
                             .with_counterhit_ground(
@@ -222,6 +222,24 @@ impl Player for Sol<GroundViper> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const SLIDE_HOLD_FRAME: usize = GROUND_VIPER_STARTUP; // stay on slide frame until release
+        const ACTIVE_FRAME: usize = SLIDE_HOLD_FRAME + MIN_GROUND_VIPER_SLIDE_FRAMES;
+        Some(match self.frame {
+            0..GROUND_VIPER_STARTUP => (
+                "sol/specials/ground_viper/ground_viper1".into(),
+                BASE_SPRITE_OFFSET,
+            ),
+            SLIDE_HOLD_FRAME..ACTIVE_FRAME => (
+                "sol/specials/ground_viper/ground_viper2".into(),
+                BASE_SPRITE_OFFSET + Vector2::new(-4.0 * self.dir(), -4.0),
+            ),
+            ACTIVE_FRAME.. => (
+                "sol/specials/ground_viper/ground_viper3".into(),
+                BASE_SPRITE_OFFSET + Vector2::new(-3.0 * self.dir(), 8.0),
+            ),
+        })
     }
 }
 impl SolDamageableState for GroundViper {}
