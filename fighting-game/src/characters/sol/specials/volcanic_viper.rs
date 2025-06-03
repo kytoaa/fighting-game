@@ -9,6 +9,11 @@ const VOLCANIC_VIPER_DAMAGE_2: u32 = 22;
 const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_1: u32 = 20;
 const VOLCANIC_VIPER_CLEAN_HIT_DAMAGE_2: u32 = 38;
 
+const KNOCKDOWN_STARTUP: usize = 18;
+const KNOCKDOWN_ACTIVE: usize = 3;
+const KNOCKDOWN_LANDING_LAG: usize = 16;
+const KNOCKDOWN_DAMAGE: u32 = 12;
+
 pub struct VolcanicViper;
 impl Player for Sol<VolcanicViper> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -184,7 +189,17 @@ impl Player for Sol<VolcanicViper> {
                         self.position + Vector2::new(5.0 * self.dir(), 9.0),
                     );
                 }
-                self
+
+                if input.has_motion_input(
+                    &crate::input::directions::Motion::quarter_circle()
+                        .direction(!self.direction)
+                        .frames(40),
+                    &Action::Pressed(Button::Light, None),
+                ) {
+                    Box::new(self.transition(Knockdown, true))
+                } else {
+                    self
+                }
             }
             RECOVERY_FRAME..END_FRAME => {
                 self.gravity();
@@ -196,7 +211,16 @@ impl Player for Sol<VolcanicViper> {
                     self.position + Vector2::new(-3.0 * self.dir(), 6.0),
                 );
 
-                self
+                if input.has_motion_input(
+                    &crate::input::directions::Motion::quarter_circle()
+                        .direction(!self.direction)
+                        .frames(40),
+                    &Action::Pressed(Button::Light, None),
+                ) {
+                    Box::new(self.transition(Knockdown, true))
+                } else {
+                    self
+                }
             }
             _ => {
                 world.spawn_hurtbox(
@@ -248,3 +272,117 @@ impl Player for Sol<VolcanicViper> {
     }
 }
 impl SolDamageableState for VolcanicViper {}
+
+struct Knockdown;
+impl Player for Sol<Knockdown> {
+    fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Player> {
+        const RECOVERY_FRAME: usize = KNOCKDOWN_STARTUP + KNOCKDOWN_ACTIVE;
+        if self.frame == 0 {
+            self.has_hit = false;
+        }
+        self.frame += 1;
+
+        world.spawn_hurtbox(
+            self.create_hurtbox(CollisionShape::new(BoundingBox::with_size(Vector2::new(
+                16.0, 20.0,
+            )))),
+            self.position + Vector2::new(-3.0 * self.dir(), 6.0),
+        );
+
+        match self.frame {
+            0..KNOCKDOWN_STARTUP => {
+                self.gravity();
+                self
+            }
+            KNOCKDOWN_STARTUP..RECOVERY_FRAME => {
+                self.velocity.y = 0.0;
+
+                if !self.has_hit {
+                    let active_frames_extra_hitstun =
+                        KNOCKDOWN_ACTIVE - (self.frame as usize - KNOCKDOWN_STARTUP);
+
+                    world.spawn_hitbox(
+                        self.create_hitbox(
+                            CollisionShape::new(BoundingBox::with_size(Vector2::new(25.0, 20.0))),
+                            AttackData {
+                                attack: HitData::grounded(
+                                    KNOCKDOWN_DAMAGE,
+                                    HitEffect::pushback(
+                                        20.0 * self.dir(),
+                                        16 + active_frames_extra_hitstun,
+                                    )
+                                    .build(),
+                                    16 + active_frames_extra_hitstun,
+                                    Proration::percent(80),
+                                    HitData::DEFAULT_LEVEL_1_SCALING,
+                                )
+                                .with_air(
+                                    HitEffect::launcher(
+                                        Vector2::new(30.0 * self.dir(), -100.0),
+                                        KnockdownType::Hard,
+                                    )
+                                    .momentum_scaling((0.0, 0.0))
+                                    .build(),
+                                )
+                                .counterhit_ground_from_ground_default()
+                                .counterhit_air_from_air_default()
+                                .meter_gain(HitData::DEFAULT_LEVEL_2_METER_GAIN)
+                                .build(),
+                                priority: 10,
+                                hitbox_id: 1,
+                                hit_level: HitLevel::Light,
+                                attack_id: "vv knockdown".into(),
+                            },
+                        ),
+                        self.position + Vector2::new(12.0 * self.dir(), 4.0),
+                    );
+                }
+                self
+            }
+            f @ RECOVERY_FRAME.. => {
+                if f > RECOVERY_FRAME + 10 && self.has_hit {
+                    self.velocity.y = -110.0;
+                    self.gravity();
+                    self.gravity();
+                }
+                self.gravity();
+
+                if self.is_grounded() {
+                    Box::new(self.transition(
+                        BanditRevolverGroundedRecovery::<KNOCKDOWN_LANDING_LAG>,
+                        true,
+                    ))
+                } else {
+                    self
+                }
+            }
+        }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn moveable(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const ANIM_START_FRAME: usize = KNOCKDOWN_STARTUP - 8;
+        const ANIM_RECOVERY_FRAME: usize = KNOCKDOWN_STARTUP + KNOCKDOWN_ACTIVE + 10;
+
+        Some(match self.frame {
+            0..ANIM_START_FRAME => ("sol/fall/fall2".into(), BASE_SPRITE_OFFSET),
+            ANIM_START_FRAME..KNOCKDOWN_STARTUP => (
+                "sol/specials/bandit_revolver/bandit_revolver1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+            KNOCKDOWN_STARTUP..ANIM_RECOVERY_FRAME => (
+                "sol/specials/bandit_revolver/bandit_revolver2".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+            _ => ("sol/fall/fall2".into(), BASE_SPRITE_OFFSET),
+        })
+    }
+}
+impl SolDamageableState for Knockdown {}

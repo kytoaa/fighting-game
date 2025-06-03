@@ -125,14 +125,14 @@ impl Player for Sol<BanditRevolverGrounded> {
             0..5 => ("sol/fall/fall1".into(), BASE_SPRITE_OFFSET),
             _ => (
                 "sol/specials/bandit_revolver/bandit_revolver1".into(),
-                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
             ),
         })
     }
 }
 impl SolDamageableState for BanditRevolverGrounded {}
 
-struct BanditRevolverGroundedRecovery<const FRAMES: usize>;
+pub(super) struct BanditRevolverGroundedRecovery<const FRAMES: usize>;
 impl<const FRAMES: usize> Player for Sol<BanditRevolverGroundedRecovery<FRAMES>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const DECEL: f32 = 5.0;
@@ -156,12 +156,12 @@ impl<const FRAMES: usize> Player for Sol<BanditRevolverGroundedRecovery<FRAMES>>
         false
     }
     fn counterhit(&self) -> bool {
-        true
+        false
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some((
             "sol/run/run_stop".into(),
-            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
         ))
     }
 }
@@ -261,15 +261,15 @@ impl Player for Sol<BanditRevolverGroundedSecondHit> {
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         Some((
             "sol/specials/bandit_revolver/bandit_revolver2".into(),
-            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
         ))
     }
 }
 impl SolDamageableState for BanditRevolverGroundedSecondHit {}
 
-const BANDIT_REVOLVER_AIR_STARTUP: usize = BANDIT_REVOLVER_GROUNDED_1_STARTUP;
+const BANDIT_REVOLVER_AIR_STARTUP: usize = 10;
 const BANDIT_REVOLVER_AIR_ACTIVE_1: usize = 3;
-const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 10;
+const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 5;
 const BANDIT_REVOLVER_AIR_ACTIVE_2: usize = 2;
 const BANDIT_REVOLVER_AIR_RECOVERY: usize = 10;
 const BANDIT_REVOLVER_AIR_DAMAGE_1: u32 = BANDIT_REVOLVER_GROUNDED_1_DAMAGE;
@@ -299,7 +299,7 @@ impl Player for Sol<BanditRevolverAir> {
 
         match self.frame {
             0..BANDIT_REVOLVER_AIR_STARTUP => {
-                self.velocity = Vector2::new(70.0 * self.dir(), 55.0);
+                self.velocity = Vector2::new(90.0 * self.dir(), 55.0);
                 self
             }
             BANDIT_REVOLVER_AIR_STARTUP..STARTUP_2 => {
@@ -399,6 +399,7 @@ impl Player for Sol<BanditRevolverAir> {
                 self
             }
             _ => {
+                self.gravity();
                 if self.is_grounded() {
                     Box::new(self.transition(
                         BanditRevolverGroundedRecovery::<BANDIT_REVOLVER_AIR_LANDING_LAG>,
@@ -427,11 +428,11 @@ impl Player for Sol<BanditRevolverAir> {
         Some(match self.frame {
             0..HIT_2_FRAME => (
                 "sol/specials/bandit_revolver/bandit_revolver1".into(),
-                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
             ),
             HIT_2_FRAME.. => (
                 "sol/specials/bandit_revolver/bandit_revolver2".into(),
-                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0,
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
             ),
         })
     }

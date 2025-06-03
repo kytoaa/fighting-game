@@ -931,7 +931,7 @@ impl Player for Sol<Stand> {
         self.grounded_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        if self.velocity.x * self.dir() > 5.0 {
+        if self.velocity.x.abs() > 5.0 {
             Some(("sol/run/run_stop".into(), BASE_SPRITE_OFFSET))
         } else {
             Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
@@ -1361,13 +1361,28 @@ const SOFT_KNOCKDOWN_FRAMES: usize = 25;
 #[derive(Debug)]
 struct SoftKnockdown;
 impl Player for Sol<SoftKnockdown> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+    fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        const DECEL: f32 = 3.0;
+        const MIN_SPEED: f32 = 40.0;
+        self.velocity = self
+            .velocity
+            .move_towards(Vector2::LEFT * MIN_SPEED * self.velocity.x.signum(), DECEL);
+
         self.frame += 1;
         if self.frame >= SOFT_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
         } else {
             self
         }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn in_hitstun(&self) -> bool {
+        true
+    }
+    fn can_cancel(&self) -> bool {
+        false
     }
 }
 impl Damageable for Sol<SoftKnockdown> {
@@ -1379,13 +1394,25 @@ impl Damageable for Sol<SoftKnockdown> {
 #[derive(Debug)]
 struct HardKnockdown;
 impl Player for Sol<HardKnockdown> {
-    fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+    fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        const DECEL: f32 = 7.0;
+        self.velocity = self.velocity.move_towards(Vector2::ZERO, DECEL);
+
         self.frame += 1;
         if self.frame >= HARD_KNOCKDOWN_FRAMES {
             self.walk_block_state(input)
         } else {
             self
         }
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn in_hitstun(&self) -> bool {
+        true
+    }
+    fn can_cancel(&self) -> bool {
+        false
     }
 }
 impl Damageable for Sol<HardKnockdown> {

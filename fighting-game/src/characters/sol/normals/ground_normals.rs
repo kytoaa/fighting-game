@@ -49,7 +49,7 @@ impl Player for Sol<CloseMid> {
                         self.create_hitbox(
                             CollisionShape::new(BoundingBox::pos_size(
                                 Vector2::ZERO,
-                                Vector2::new(10.0, 18.0),
+                                Vector2::new(12.0, 18.0),
                             )),
                             AttackData {
                                 attack: HitData::grounded(
@@ -83,7 +83,7 @@ impl Player for Sol<CloseMid> {
                     world.spawn_hurtbox(
                         self.create_hurtbox(CollisionShape::new(BoundingBox::pos_size(
                             Vector2::ZERO,
-                            Vector2::new(12.0, 20.0),
+                            Vector2::new(14.0, 20.0),
                         ))),
                         self.position + Vector2::new(5.0 * self.dir(), 10.0),
                     );

@@ -38,6 +38,10 @@ impl Motion {
             frames: self.frames,
         }
     }
+    pub const fn frames(mut self, value: usize) -> Self {
+        self.frames = value;
+        self
+    }
     pub fn direction(self, facing_right: bool) -> Self {
         if facing_right {
             self
