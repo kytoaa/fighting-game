@@ -69,6 +69,12 @@ impl Player for Sol<WildThrow> {
     fn counterhit(&self) -> bool {
         true
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some((
+            "sol/specials/wild_throw/wild_throw1".into(),
+            BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+        ))
+    }
 }
 impl SolDamageableState for WildThrow {}
 
@@ -80,7 +86,7 @@ impl Player for Sol<WildThrowSuccess> {
         if self.frame == 0 {
             self.has_hit = false;
         }
-        if self.frame == 28 {
+        if self.frame == 33 {
             self.direction = !self.direction;
         }
 
@@ -154,8 +160,20 @@ impl Player for Sol<WildThrowSuccess> {
         true
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        // TODO: wild throw sprites
-        Some(("sol/throw".into(), BASE_SPRITE_OFFSET))
+        Some(match self.frame {
+            0..30 => (
+                "sol/specials/wild_throw/wild_throw1".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 4.0 * self.dir(),
+            ),
+            30..38 => (
+                "sol/specials/wild_throw/wild_throw2".into(),
+                BASE_SPRITE_OFFSET,
+            ),
+            38.. => (
+                "sol/specials/wild_throw/wild_throw3".into(),
+                BASE_SPRITE_OFFSET,
+            ),
+        })
     }
 }
 impl SolDamageableState for WildThrowSuccess {}

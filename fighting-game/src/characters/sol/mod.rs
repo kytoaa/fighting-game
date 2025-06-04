@@ -1364,9 +1364,14 @@ impl Player for Sol<SoftKnockdown> {
     fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const DECEL: f32 = 3.0;
         const MIN_SPEED: f32 = 40.0;
-        self.velocity = self
-            .velocity
-            .move_towards(Vector2::LEFT * MIN_SPEED * self.velocity.x.signum(), DECEL);
+        self.velocity = self.velocity.move_towards(
+            if World::position_in_wall(self.position).is_some() {
+                Vector2::ZERO
+            } else {
+                Vector2::LEFT * MIN_SPEED * self.velocity.x.signum()
+            },
+            DECEL,
+        );
 
         self.frame += 1;
         if self.frame >= SOFT_KNOCKDOWN_FRAMES {
@@ -1482,6 +1487,9 @@ impl<const FORWARD: bool> Player for Sol<GroundThrow<FORWARD>> {
     }
     fn counterhit(&self) -> bool {
         true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/throw".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl<const FORWARD: bool> SolDamageableState for GroundThrow<FORWARD> {}
