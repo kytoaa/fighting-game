@@ -155,7 +155,7 @@ pub(super) fn hit_player(
                 (player_data[hit_player_id.id()].meter_gain as i32 + hit_data.meter_gain_modifier)
                     as u32;
 
-            player_data[hit_player_id.id()].add_meter(hit_data.meter_gain);
+            player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain);
 
             Some(combo_info)
         }
@@ -175,8 +175,8 @@ pub(super) fn hit_player(
                 * hit_data.scaling_on_block_mult as i32
                 / 100;
 
-            player_data[hit_player_id.id()].add_meter(hit_data.meter_gain / 2);
-            player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain / 4);
+            player_data[hit_player_id.id()].add_meter(hit_data.meter_gain / 4);
+            player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain / 2);
             player_data[hit_player_id.other_player().id()].add_scaling(-block_scaling);
 
             None

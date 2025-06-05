@@ -41,7 +41,7 @@ impl TrackedPlayerData {
         }
     }
     pub fn add_meter(&mut self, meter: u32) {
-        self.meter += meter * self.meter_gain / 1000;
+        self.meter += meter; //* self.meter_gain / 1000;
         self.meter = self.meter.clamp(0, 10000);
     }
     pub fn add_scaling(&mut self, scaling: i32) {
