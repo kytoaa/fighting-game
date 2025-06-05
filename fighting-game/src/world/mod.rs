@@ -189,6 +189,13 @@ impl World {
                     println!("{} meter remaining", self.player_data[i].meter);
                     player.update(self, &input_provider)
                 }
+            } else if check_for_burst(input_provider) && self.try_spend_burst(player.id()) {
+                println!("BURST");
+                self.trigger_superfreeze(15);
+
+                self.burst(player.as_ref());
+
+                player.cancel_state()
             } else {
                 player.update(self, &input_provider)
             };
@@ -272,6 +279,54 @@ impl World {
             true
         }
     }
+    pub fn try_spend_burst(&mut self, player: EntityID) -> bool {
+        if !player.is_player() {
+            panic!();
+        }
+        if self.player_data[player.id()].burst_meter == TrackedPlayerData::BURST_MAX {
+            self.player_data[player.id()].burst_meter = 0;
+            true
+        } else {
+            false
+        }
+    }
+    pub fn burst(&mut self, player: &dyn crate::characters::Player) {
+        let id = player.id();
+        let other_player = self.players[id.other_player().id()].take().unwrap();
+        let dir = other_player.position() - player.position();
+
+        let p = if dir.magnitude() <= 30.0 {
+            let (p, s) = other_player.hit(
+                crate::collision::HitData::grounded(
+                    0,
+                    crate::collision::HitEffect::launcher(
+                        Vector2::new(dir.x.signum() * 200.0, 150.0),
+                        crate::collision::KnockdownType::Soft,
+                    )
+                    .build(),
+                    0,
+                    crate::collision::Proration::percent(100),
+                    0,
+                )
+                .attack_type(crate::collision::AttackType::Unblockable)
+                .air_from_grounded(|g| g)
+                .counterhit_ground_from_grounded(|g| g)
+                .counterhit_air_from_air(|g| g)
+                .build()
+                .as_on_hit_hitdata(false, false, |_| 0),
+            );
+            match s {
+                crate::collision::HitConnectionStatus::Hit => (),
+                _ => unreachable!(),
+            }
+
+            p
+        } else {
+            other_player
+        };
+
+        _ = self.players[id.other_player().id()].insert(p);
+    }
     pub fn set_entity_position(&mut self, entity: EntityID, position: Vector2) {
         if entity.is_player() {
             self.players[entity.id()]
@@ -314,4 +369,11 @@ impl World {
             Vector2::ZERO
         }
     }
+}
+
+pub fn check_for_burst(input: &InputHandler) -> bool {
+    input.has_action(&Action::Pressed(Button::Utility, None))
+        && (input.has_action(&Action::Pressed(Button::Light, None))
+            || input.has_action(&Action::Pressed(Button::Mid, None))
+            || input.has_action(&Action::Pressed(Button::Heavy, None)))
 }

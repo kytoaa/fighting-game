@@ -2,6 +2,7 @@ use super::World;
 use crate::datatypes::MoveTowards;
 
 pub(super) struct TrackedPlayerData {
+    max_health: u32,
     pub(super) health: u32,
 
     /// max of 10000
@@ -24,9 +25,11 @@ pub(super) struct TrackedPlayerData {
 }
 impl TrackedPlayerData {
     pub const CANCEL_COST: u32 = 3333;
+    pub const BURST_MAX: u32 = 10000;
 
     pub const fn new(max_health: u32) -> Self {
         Self {
+            max_health,
             health: max_health,
             meter: 0,
             meter_gain: 1000,
@@ -50,15 +53,28 @@ impl TrackedPlayerData {
             self.scaling = -10000;
         }
     }
+    pub fn add_burst(&mut self, burst: u32) {
+        self.burst_meter = (self.burst_meter + burst).min(Self::BURST_MAX);
+        if burst > 5 {
+            println!("adding {} burst, burst at {}", burst, self.burst_meter);
+        }
+    }
 }
 
 pub fn burst_gain(damage: u32, hit_number: usize) -> u32 {
-    damage * (10 + hit_number as u32 * 2) / 10
+    damage
+        * (10
+            + match hit_number as u32 {
+                h @ 0..15 => h * 2,
+                h @ 15..25 => h * 4,
+                h @ 25.. => h * 8,
+            })
+        / 10
 }
 
 impl World {
     pub fn update_player_meters(&mut self) {
-        for player_data in self.player_data.iter_mut() {
+        for (i, player_data) in self.player_data.iter_mut().enumerate() {
             if self.combo.is_none() && player_data.scaling > 0 {
                 player_data.scaling = 0;
             }
@@ -68,6 +84,23 @@ impl World {
             player_data.frames_since_scaling_set += 1;
 
             player_data.add_meter(1);
+
+            player_data.add_burst(calculate_burst_gain(&player_data));
+            if player_data.burst_meter % 1000 == 0 && player_data.burst_meter != 10000 {
+                println!("player {} burst: {}", i, player_data.burst_meter);
+            }
         }
+    }
+}
+
+pub fn calculate_burst_gain(data: &TrackedPlayerData) -> u32 {
+    const BASE_GAIN_PER_FRAME: u32 = 1; // takes roughly 167 seconds to reach full
+
+    let health_percent = data.health * 100 / data.max_health;
+
+    if health_percent < 20 {
+        BASE_GAIN_PER_FRAME * 2
+    } else {
+        BASE_GAIN_PER_FRAME
     }
 }

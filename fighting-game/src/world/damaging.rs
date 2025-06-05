@@ -147,12 +147,15 @@ pub(super) fn hit_player(
             player_data[hit_player_id.id()].health = player_data[hit_player_id.id()]
                 .health
                 .saturating_sub(on_hit_hitdata_damage);
-            player_data[hit_player_id.id()].burst_meter +=
-                super::players::burst_gain(hit_data.damage, combo_info.hits);
-            player_data[(hit_player_id.id() + 1) % 2].meter_gain =
+
+            player_data[hit_player_id.id()]
+                .add_burst(super::players::burst_gain(hit_data.damage, combo_info.hits));
+
+            player_data[hit_player_id.other_player().id()].meter_gain =
                 (player_data[hit_player_id.id()].meter_gain as i32 + hit_data.meter_gain_modifier)
                     as u32;
-            player_data[(hit_player_id.id() + 1) % 2].add_meter(hit_data.meter_gain);
+
+            player_data[hit_player_id.id()].add_meter(hit_data.meter_gain);
 
             Some(combo_info)
         }
@@ -172,8 +175,9 @@ pub(super) fn hit_player(
                 * hit_data.scaling_on_block_mult as i32
                 / 100;
 
-            player_data[(hit_player_id.id() + 1) % 2].add_scaling(-block_scaling);
-            player_data[(hit_player_id.id() + 1) % 2].add_meter(hit_data.meter_gain / 2);
+            player_data[hit_player_id.id()].add_meter(hit_data.meter_gain / 2);
+            player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain / 4);
+            player_data[hit_player_id.other_player().id()].add_scaling(-block_scaling);
 
             None
         }
