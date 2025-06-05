@@ -52,8 +52,7 @@ pub trait Player:
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        Some(("sol/idle".into(), Vector2::UP * 8.0))
-        //None
+        None
     }
     fn actionable(&self) -> bool {
         true

@@ -206,13 +206,37 @@ where
     Sol<S>: Player,
 {
     fn cancel_state(self: Box<Sol<S>>) -> Box<dyn Player> {
+        Box::new(self.transition(SolCancelState, true))
+    }
+}
+struct SolCancelState;
+impl Player for Sol<SolCancelState> {
+    fn update(self: Box<Self>, _: &mut World, _: &InputHandler) -> Box<dyn Player> {
         if self.grounded {
             Box::new(self.transition(Stand, true))
         } else {
             Box::new(self.transition(Air::<false>, true))
         }
     }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn throwable(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/cancel_state".into(), BASE_SPRITE_OFFSET))
+    }
 }
+impl Damageable for Sol<SolCancelState> {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
+        (self, HitConnectionStatus::Invuln)
+    }
+}
+
 impl<S> HasThrownState for Sol<S>
 where
     Sol<S>: Player,
@@ -931,7 +955,7 @@ impl Player for Sol<Stand> {
         self.grounded_actionable_state(input)
     }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        if self.velocity.x.abs() > 5.0 {
+        if self.velocity.x.abs() > 10.0 {
             Some(("sol/run/run_stop".into(), BASE_SPRITE_OFFSET))
         } else {
             Some(("sol/idle".into(), BASE_SPRITE_OFFSET))
@@ -1110,8 +1134,17 @@ impl Player for Sol<BasicHitstun> {
             self
         }
     }
+    fn actionable(&self) -> bool {
+        false
+    }
     fn in_hitstun(&self) -> bool {
         true
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/hitstun".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for BasicHitstun {}
@@ -1156,6 +1189,9 @@ impl Player for Sol<Tumble> {
             self.state.gravity = gravity;
             self.state.wall_bounce = None;
 
+            // reset frame for animation
+            self.frame = 0;
+
             true
         } else if World::position_in_wall(self.position).is_some() {
             // else if in wall
@@ -1197,6 +1233,9 @@ impl Player for Sol<Tumble> {
 
                 self.state.ground_bounce = None;
 
+                // reset frame for animation
+                self.frame = 0;
+
                 world.spawn_hurtbox(
                     crate::collision::Hurtbox {
                         shape: crate::collision::CollisionShape::new(STANDING_HURTBOX),
@@ -1228,6 +1267,18 @@ impl Player for Sol<Tumble> {
     }
     fn in_hitstun(&self) -> bool {
         true
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(match self.frame {
+            0..10 => ("sol/fall/tumble1".into(), BASE_SPRITE_OFFSET),
+            _ => ("sol/fall/tumble2".into(), BASE_SPRITE_OFFSET),
+        })
     }
 }
 impl SolDamageableState for Tumble {}
@@ -1266,6 +1317,18 @@ impl Player for Sol<FloatingCrumple> {
     }
     fn in_hitstun(&self) -> bool {
         true
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some((
+            "sol/floating_crumple".into(),
+            BASE_SPRITE_OFFSET + Vector2::UP * 3.0,
+        ))
     }
 }
 impl SolDamageableState for FloatingCrumple {}
@@ -1318,8 +1381,10 @@ impl<const CROUCHING: bool> Player for Sol<BlockStun<CROUCHING>> {
     fn can_cancel(&self) -> bool {
         false
     }
+    fn throwable(&self) -> bool {
+        false
+    }
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
-        // TODO: replace with sprites when theyre done
         Some(if CROUCHING {
             ("sol/crouch_block".into(), BASE_SPRITE_OFFSET)
         } else {
@@ -1352,6 +1417,12 @@ impl Player for Sol<AirBlockStun> {
     }
     fn can_cancel(&self) -> bool {
         false
+    }
+    fn throwable(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/air_block".into(), BASE_SPRITE_OFFSET))
     }
 }
 
@@ -1389,6 +1460,16 @@ impl Player for Sol<SoftKnockdown> {
     fn can_cancel(&self) -> bool {
         false
     }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(match self.frame {
+            0..10 => (
+                "sol/hard_knockdown".into(),
+                BASE_SPRITE_OFFSET + Vector2::DOWN * 12.0,
+            ),
+            10..15 => ("sol/normals/2l/2l3".into(), BASE_SPRITE_OFFSET),
+            15.. => ("sol/normals/2l/2l1".into(), BASE_SPRITE_OFFSET),
+        })
+    }
 }
 impl Damageable for Sol<SoftKnockdown> {
     fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
@@ -1418,6 +1499,16 @@ impl Player for Sol<HardKnockdown> {
     }
     fn can_cancel(&self) -> bool {
         false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        const STAND_FRAME: usize = HARD_KNOCKDOWN_FRAMES - 6;
+        Some(match self.frame {
+            0..STAND_FRAME => (
+                "sol/hard_knockdown".into(),
+                BASE_SPRITE_OFFSET + Vector2::DOWN * 12.0,
+            ),
+            STAND_FRAME.. => ("sol/normals/2l/2l3".into(), BASE_SPRITE_OFFSET),
+        })
     }
 }
 impl Damageable for Sol<HardKnockdown> {
@@ -1582,21 +1673,24 @@ impl<const FACING_RIGHT: bool> SolDamageableState for GroundThrowSuccess<FACING_
 #[derive(Debug)]
 struct ThrownState;
 impl Player for Sol<ThrownState> {
-    fn update(self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
+    fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
         world.spawn_hurtbox(
             self.create_hurtbox(crate::collision::CollisionShape::new(STANDING_HURTBOX)),
             self.position,
         );
+        // not grounded so dir wont be set
+        self.direction =
+            world.get_entity_position(self.player_id.other_player()).x - self.position.x > 0.0;
         self
-    }
-    fn actionable(&self) -> bool {
-        false
     }
     fn in_hitstun(&self) -> bool {
         true
     }
     fn can_cancel(&self) -> bool {
         false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(("sol/fall/tumble1".into(), BASE_SPRITE_OFFSET))
     }
 }
 impl SolDamageableState for ThrownState {}
