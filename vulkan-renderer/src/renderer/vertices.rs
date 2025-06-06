@@ -90,7 +90,12 @@ impl<const FRAMES: usize> VertexBuffer<FRAMES> {
     pub fn index_buffer(&self, frame: usize) -> &vk::Buffer {
         &self.index_buffers[frame].0 .0
     }
-    pub fn write_vertices(&self, vertices: &[VertexData], frame: usize) {
+    pub fn write_vertices(
+        &self,
+        vertices: &[VertexData],
+        primative_vertices: &[(Vertex, [f32; 4])],
+        frame: usize,
+    ) {
         assert!(frame < MAX_FRAMES_IN_FLIGHT);
         //println!("writing {:?} to vertex buffer", vertices);
 
@@ -99,6 +104,14 @@ impl<const FRAMES: usize> VertexBuffer<FRAMES> {
                 (self.vertex_buffers[frame].1 as *mut VertexData)
                     .add(i)
                     .write(*vert);
+            }
+        }
+        let primative_index = unsafe {
+            (self.vertex_buffers[frame].1 as *mut (Vertex, [f32; 4])).add(vertices.len())
+        };
+        for (i, vert) in primative_vertices.iter().enumerate().take(MAX_VERTICES) {
+            unsafe {
+                primative_index.add(i).write(*vert);
             }
         }
     }

@@ -58,3 +58,37 @@ void main() {
 }"#,
     frag
 );
+
+pub const PRIMATIVE_VERT_SHADER: &'static [u32] = inline_spirv!(
+    r#"
+#version 450
+
+layout(binding = 0) uniform Matrices {
+    mat4 proj;
+} matrices;
+
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec4 inColor;
+
+layout(location = 0) out vec4 outColor;
+
+void main() {
+    gl_Position = matrices.proj * vec4(inPosition, 1.0);
+    outColor = inColor;
+}"#,
+    vert
+);
+
+pub const PRIMATIVE_FRAG_SHADER: &'static [u32] = inline_spirv!(
+    r#"
+#version 450
+
+layout(location = 0) in vec4 inColor;
+
+layout(location = 0) out vec4 outColor;
+
+void main() {
+    outColor = inColor;
+}"#,
+    frag
+);

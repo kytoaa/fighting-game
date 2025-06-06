@@ -82,10 +82,10 @@ impl Drop for Renderer {
             self.core.device.destroy_pipeline(self.pipeline, None);
             self.core
                 .device
-                .destroy_pipeline_layout(self.depthless_pipeline_layout, None);
+                .destroy_pipeline_layout(self.primative_pipeline_layout, None);
             self.core
                 .device
-                .destroy_pipeline(self.depthless_pipeline, None);
+                .destroy_pipeline(self.primative_pipeline, None);
         }
     }
 }

@@ -140,13 +140,13 @@ pub fn create_graphics_pipeline(
     (pipeline, pipeline_layout)
 }
 
-pub fn create_depthless_graphics_pipeline(
+pub fn create_primative_pipeline(
     core: &CoreRenderData,
     render_pass: &vk::RenderPass,
     descriptor_set_layouts: &[vk::DescriptorSetLayout],
 ) -> (vk::Pipeline, vk::PipelineLayout) {
-    let vert_shader = shaders::VERT_SHADER;
-    let frag_shader = shaders::DRAW_SPRITE_FRAG_SHADER;
+    let vert_shader = shaders::PRIMATIVE_VERT_SHADER;
+    let frag_shader = shaders::PRIMATIVE_FRAG_SHADER;
 
     let vert_shader_module = create_shader_module(&core.device, vert_shader);
     let frag_shader_module = create_shader_module(&core.device, frag_shader);
@@ -167,26 +167,23 @@ pub fn create_depthless_graphics_pipeline(
     let dynamic_state_stage_info =
         vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_states);
 
+    type VertShaderInput = (vertices::Vertex, [f32; 4]);
+
     let vertex_input_binding_description = vk::VertexInputBindingDescription::default()
         .binding(0)
-        .stride(vertices::VERTEX_DATA_SIZE as u32)
+        .stride(size_of::<VertShaderInput>() as u32)
         .input_rate(vk::VertexInputRate::VERTEX);
     let vertex_input_attribute_descriptions = [
         vk::VertexInputAttributeDescription::default()
             .binding(0)
             .location(0)
             .format(vk::Format::R32G32B32_SFLOAT)
-            .offset(std::mem::offset_of!(vertices::VertexData, 0) as u32),
+            .offset(std::mem::offset_of!(VertShaderInput, 0) as u32),
         vk::VertexInputAttributeDescription::default()
             .binding(0)
             .location(1)
-            .format(vk::Format::R32G32_SFLOAT)
-            .offset(std::mem::offset_of!(vertices::VertexData, 1) as u32),
-        vk::VertexInputAttributeDescription::default()
-            .binding(0)
-            .location(2)
-            .format(vk::Format::R32_UINT)
-            .offset(std::mem::offset_of!(vertices::VertexData, 2) as u32),
+            .format(vk::Format::R32G32B32A32_SFLOAT)
+            .offset(std::mem::offset_of!(VertShaderInput, 1) as u32),
     ];
     let vertex_input_info_stage = vk::PipelineVertexInputStateCreateInfo::default()
         .vertex_binding_descriptions(std::slice::from_ref(&vertex_input_binding_description))
@@ -282,7 +279,6 @@ pub fn create_depthless_graphics_pipeline(
 
     (pipeline, pipeline_layout)
 }
-
 fn create_shader_module(device: &Device, code: &[u32]) -> vk::ShaderModule {
     let shader_module_create_info = vk::ShaderModuleCreateInfo::default().code(code);
 

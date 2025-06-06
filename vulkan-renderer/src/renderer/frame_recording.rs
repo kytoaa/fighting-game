@@ -135,7 +135,7 @@ impl Renderer {
             self.core.device.cmd_bind_pipeline(
                 *command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                self.depthless_pipeline,
+                self.primative_pipeline,
             );
 
             self.core.device.cmd_set_viewport(

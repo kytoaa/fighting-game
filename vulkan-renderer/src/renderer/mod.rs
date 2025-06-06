@@ -24,19 +24,16 @@ const MAX_FRAMES_IN_FLIGHT: usize = 2;
 struct VulkanImage(vk::Image, vk::ImageView);
 struct VulkanObject<T>(T, vk::DeviceMemory);
 
-#[derive(Debug, Clone, Copy)]
-pub enum RectColor {
-    Red,
-    Green,
-    Blue,
+pub struct Sprite {
+    pub sprite: SpriteHandle,
+    pub position: Vector2,
+    pub facing_right: bool,
+    pub depth: f32,
 }
-pub enum Material {
-    Sprite(SpriteHandle, Vector2, bool, f32),
-    Rect {
-        pos: Vector2,
-        size: Vector2,
-        color: RectColor,
-    },
+pub struct Primative {
+    pub pos: Vector2,
+    pub size: Vector2,
+    pub color: (f32, f32, f32, f32),
 }
 
 struct Queues {
@@ -81,8 +78,8 @@ pub struct Renderer {
     framebuffers: Vec<vk::Framebuffer>,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
-    depthless_pipeline: vk::Pipeline,
-    depthless_pipeline_layout: vk::PipelineLayout,
+    primative_pipeline: vk::Pipeline,
+    primative_pipeline_layout: vk::PipelineLayout,
 
     image_available_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
     render_finished_semaphores: [vk::Semaphore; MAX_FRAMES_IN_FLIGHT],
@@ -140,8 +137,8 @@ impl Renderer {
             &render_pass,
             &[descriptor_set_layout, sampler_descriptor_set_layout],
         );
-        let (depthless_pipeline, depthless_pipeline_layout) =
-            graphics_pipeline::create_depthless_graphics_pipeline(
+        let (primative_pipeline, primative_pipeline_layout) =
+            graphics_pipeline::create_primative_pipeline(
                 &core,
                 &render_pass,
                 &[descriptor_set_layout, sampler_descriptor_set_layout],
@@ -173,8 +170,8 @@ impl Renderer {
             render_pass,
             pipeline,
             pipeline_layout,
-            depthless_pipeline,
-            depthless_pipeline_layout,
+            primative_pipeline,
+            primative_pipeline_layout,
 
             framebuffers,
 
@@ -203,7 +200,12 @@ impl Renderer {
 }
 
 impl Renderer {
-    pub fn draw_frame(&mut self, assets: &asset_manager::AssetManager, objects: &[Material]) {
+    pub fn draw_frame(
+        &mut self,
+        assets: &asset_manager::AssetManager,
+        objects: &[Sprite],
+        primatives: &[Primative],
+    ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
         if objects.len() == 0 {
             self.frame += 1;
@@ -212,16 +214,12 @@ impl Renderer {
 
         let images: Vec<vk::ImageView> = objects
             .iter()
-            .filter_map(|s| match s {
-                Material::Sprite(handle, ..) => Some(*handle),
-                _ => None,
-            })
+            .map(|s| s.sprite)
             .map(|handle| match self.images.get(&handle) {
                 Some(image) => image.0 .1,
                 None => {
                     let image = assets.get_sprite(handle);
                     let data = image.data().data();
-                    //println!("{:?}", data);
                     let image = textures::create_image(&self.core, (image.size(), data));
                     self.images.insert(handle, image);
                     self.images.get(&handle).unwrap().0 .1
@@ -245,44 +243,34 @@ impl Renderer {
                 objects
                     .iter()
                     .enumerate()
-                    .map(|(i, s)| match s {
-                        Material::Sprite(handle, position, flipped, depth) => {
-                            /*println!(
-                                "sprite of position {:?}, size {:?}, index {:?}",
+                    .map(
+                        |(
+                            i,
+                            Sprite {
+                                sprite,
                                 position,
-                                assets.get_sprite(*handle).size(),
-                                i
-                            );*/
+                                facing_right,
+                                depth,
+                            },
+                        )| {
                             (
                                 i as u32,
                                 (
-                                    assets.get_sprite(*handle).size(),
+                                    assets.get_sprite(*sprite).size(),
                                     *position,
-                                    *flipped,
-                                    0.6, //*depth,
+                                    *facing_right,
+                                    0.6,
                                 ),
                             )
-                        }
-                        Material::Rect { pos, size, color } => {
-                            let rounded = size.rounded();
-                            /*println!(
-                                "rect of position {:?}, size {:?}, color {:?}",
-                                pos, size, color
-                            );*/
-                            (
-                                match color {
-                                    RectColor::Red => 64u32,
-                                    RectColor::Green => 65u32,
-                                    RectColor::Blue => 66u32,
-                                },
-                                ((rounded.x as usize, rounded.y as usize), *pos, false, 0.5),
-                            )
-                        }
-                    })
+                        },
+                    )
                     .map(|(i, (size, position, flipped, depth))| {
                         let position = position.y(-position.y);
                         (size, position.rounded(), flipped, depth, i)
                     }),
+                primatives
+                    .iter()
+                    .map(|Primative { pos, size, color }| (*pos, *size, *color)),
                 frame,
             );
 
@@ -316,7 +304,7 @@ impl Renderer {
                 image_index,
                 frame,
                 images.len(),
-                objects.len() - images.len(),
+                primatives.len(),
             );
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];
@@ -355,6 +343,7 @@ impl Renderer {
     fn populate_vertex_index_buffers(
         &mut self,
         sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, u32)>,
+        primatives: impl Iterator<Item = (Vector2, Vector2, (f32, f32, f32, f32))>,
         frame: usize,
     ) {
         let verts: Vec<_> = sprites
@@ -423,7 +412,19 @@ impl Renderer {
             .flatten()
             .collect();
 
-        let indices: Vec<_> = (0..(verts.len() / 4))
+        let primative_verts: Vec<_> = primatives
+            .map(|(pos, size, color)| {
+                [
+                    ((pos.x, -pos.y, 0.6), color.into()),
+                    ((pos.x, -(pos.y - size.y), 0.6), color.into()),
+                    ((pos.x + size.x, -(pos.y - size.y), 0.6), color.into()),
+                    ((pos.x + size.x, -pos.y, 0.6), color.into()),
+                ]
+            })
+            .flatten()
+            .collect();
+
+        let indices: Vec<_> = (0..(verts.len() + primative_verts.len() / 4))
             .map(|i| {
                 [0, 1, 3, 3, 1, 2]
                     .into_iter()
@@ -434,7 +435,8 @@ impl Renderer {
             .collect();
         //println!("{:?} quads", verts);
 
-        self.vertex_buffers.write_vertices(&verts, frame);
+        self.vertex_buffers
+            .write_vertices(&verts, &primative_verts, frame);
         self.vertex_buffers.write_indices(&indices, frame);
     }
 }

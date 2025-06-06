@@ -27,11 +27,6 @@ pub struct App {
     recording_iterator: Box<dyn Iterator<Item = fighting_game::input::InputState>>,
 }
 
-pub struct RenderData {
-    sprites_to_render: [Vec<renderer::Material>; 2],
-    index: usize,
-}
-
 impl winit::application::ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.window = Some(
@@ -126,54 +121,59 @@ impl winit::application::ApplicationHandler for App {
                 self.previous_time = std::time::SystemTime::now();
 
                 let input_states = self.get_input_states();
-                let mut sprite_data =
+                let sprite_data =
                     self.state
                         .update(&self.asset_manager, self.debug_paused, input_states);
 
-                if self.show_hitboxes {
-                    sprite_data = match &self.state {
-                        GameState::Game(game) => sprite_data
-                            .into_iter()
-                            .chain(game.world().get_hurtboxes().map(|hitbox| {
+                let primatives = if self.show_hitboxes {
+                    match &self.state {
+                        GameState::Game(game) => game
+                            .world()
+                            .get_hurtboxes()
+                            .map(|hitbox| {
                                 let b = hitbox.shape.get_bounding_box();
-                                renderer::Material::Rect {
-                                    pos: b.position(),
-                                    size: b.size(),
-                                    color: renderer::RectColor::Green,
+                                renderer::Primative {
+                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                    size: b.size() * 6.0,
+                                    color: (0.2, 1.0, 0.2, 0.3),
                                 }
-                            }))
+                            })
                             .chain(game.world().get_hitboxes().map(|hitbox| {
                                 let b = hitbox.shape.get_bounding_box();
-                                renderer::Material::Rect {
-                                    pos: b.position(),
-                                    size: b.size(),
-                                    color: renderer::RectColor::Red,
+                                renderer::Primative {
+                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                    size: b.size() * 6.0,
+                                    color: (1.0, 0.2, 0.2, 0.8),
                                 }
                             }))
                             .chain(game.world().get_throwboxes().map(|throwbox| {
                                 let b = throwbox.shape.get_bounding_box();
-                                renderer::Material::Rect {
-                                    pos: b.position(),
-                                    size: b.size(),
-                                    color: renderer::RectColor::Red,
+                                renderer::Primative {
+                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                    size: b.size() * 6.0,
+                                    color: (1.0, 0.2, 0.2, 0.8),
                                 }
                             }))
                             .chain(game.world().get_players().iter().map(|player| {
                                 let collider = player.get_collider_world_space();
-                                renderer::Material::Rect {
-                                    pos: collider.position(),
-                                    size: collider.size(),
-                                    color: renderer::RectColor::Blue,
+                                renderer::Primative {
+                                    pos: (collider.position() - collider.size().flip_y() / 2.0)
+                                        * 6.0,
+                                    size: collider.size() * 6.0,
+                                    color: (0.2, 0.2, 1.0, 0.3),
                                 }
                             }))
                             .collect(),
                     }
-                }
+                } else {
+                    vec![]
+                };
 
-                self.renderer
-                    .as_mut()
-                    .unwrap()
-                    .draw_frame(&self.asset_manager, &sprite_data);
+                self.renderer.as_mut().unwrap().draw_frame(
+                    &self.asset_manager,
+                    &sprite_data,
+                    &primatives,
+                );
 
                 self.window.as_ref().unwrap().request_redraw();
             }
@@ -189,24 +189,6 @@ impl App {
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
         let asset_manager = STATIC_ASSETS.into_asset_manager();
-
-        /*let render_data = RenderData {
-            sprites_to_render: [
-                vec![(
-                    asset_manager.get_sprite_handle("idle.png").unwrap(),
-                    Vector2::ZERO,
-                    false,
-                    0.5,
-                )],
-                vec![(
-                    asset_manager.get_sprite_handle("idle.png").unwrap(),
-                    Vector2::ZERO,
-                    false,
-                    0.5,
-                )],
-            ],
-            index: 0,
-        };*/
 
         event_loop
             .run_app(&mut App {
@@ -342,12 +324,6 @@ impl App {
     }
 }
 
-impl RenderData {
-    pub fn get_sprite_names(&self) -> &[renderer::Material] {
-        &self.sprites_to_render[self.index]
-    }
-}
-
 enum GameState {
     Game(fighting_game::Game),
 }
@@ -368,7 +344,7 @@ impl GameState {
         assets: &asset_manager::AssetManager,
         paused: bool,
         input_states: [fighting_game::input::InputState; 2],
-    ) -> Vec<renderer::Material> {
+    ) -> Vec<renderer::Sprite> {
         match self {
             GameState::Game(game) => {
                 if !paused {
@@ -382,14 +358,14 @@ impl GameState {
                         let mut sprite_name = frame.into_string();
                         sprite_name.push_str(".png");
                         //println!("{}", &sprite_name);
-                        renderer::Material::Sprite(
-                            assets
+                        renderer::Sprite {
+                            sprite: assets
                                 .get_sprite_handle(&sprite_name)
                                 .expect(&format!("failed to find sprite {}", &sprite_name)),
-                            player.position() + offset,
-                            !player.get_direction(),
-                            0.5,
-                        )
+                            position: player.position() + offset,
+                            facing_right: !player.get_direction(),
+                            depth: 0.5,
+                        }
                     })
                     .collect()
             }
