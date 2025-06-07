@@ -2,7 +2,7 @@ use super::World;
 use crate::datatypes::MoveTowards;
 
 pub(super) struct TrackedPlayerData {
-    max_health: u32,
+    pub(super) max_health: u32,
     pub(super) health: u32,
 
     /// max of 10000

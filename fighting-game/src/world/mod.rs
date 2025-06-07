@@ -15,8 +15,8 @@ const BORDER_X: f32 = 100.0;
 const MIN_WALL_BOUNCE_HEIGHT: f32 = 0.0;
 
 impl EntityID {
-    const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
-    const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
+    pub const PLAYER_1_ID: EntityID = EntityID(0, EntityType::Unique);
+    pub const PLAYER_2_ID: EntityID = EntityID(1, EntityType::Unique);
 }
 const CANCEL_ACTION: Action = Action::MultiplePress(Button::Mid, Button::Heavy);
 
@@ -369,9 +369,28 @@ impl World {
             Vector2::ZERO
         }
     }
+    pub fn get_player_state(&self, player: EntityID) -> crate::PlayerState {
+        if !player.is_player() {
+            panic!()
+        }
+        let player_data = &self.player_data[player.id()];
+        crate::PlayerState {
+            health_percent: player_data.health as f32 * 100.0 / player_data.max_health as f32,
+            burst_percent: player_data.burst_meter as f32 * 100.0
+                / TrackedPlayerData::BURST_MAX as f32,
+            scaling_percent: if player_data.scaling < 0 {
+                player_data.scaling as f32 / 100.0
+            } else {
+                player_data.scaling as f32 / 200.0
+            },
+        }
+    }
+    pub fn get_combo_hits(&self) -> Option<usize> {
+        self.combo.as_ref().map(|c| c.hits())
+    }
 }
 
-pub fn check_for_burst(input: &InputHandler) -> bool {
+fn check_for_burst(input: &InputHandler) -> bool {
     input.has_action(&Action::Pressed(Button::Utility, None))
         && (input.has_action(&Action::Pressed(Button::Light, None))
             || input.has_action(&Action::Pressed(Button::Mid, None))

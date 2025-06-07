@@ -1,7 +1,8 @@
 use fighting_game::datatypes::Vector2;
 use winit::window::Window;
 
-pub mod renderer;
+mod renderer;
+mod ui;
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
@@ -121,53 +122,53 @@ impl winit::application::ApplicationHandler for App {
                 self.previous_time = std::time::SystemTime::now();
 
                 let input_states = self.get_input_states();
-                let sprite_data =
+                let (sprite_data, mut primatives) =
                     self.state
                         .update(&self.asset_manager, self.debug_paused, input_states);
 
-                let primatives = if self.show_hitboxes {
+                if self.show_hitboxes {
                     match &self.state {
-                        GameState::Game(game) => game
-                            .world()
-                            .get_hurtboxes()
-                            .map(|hitbox| {
-                                let b = hitbox.shape.get_bounding_box();
-                                renderer::Primative {
-                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
-                                    size: b.size() * 6.0,
-                                    color: (0.2, 1.0, 0.2, 0.3),
-                                }
-                            })
-                            .chain(game.world().get_hitboxes().map(|hitbox| {
-                                let b = hitbox.shape.get_bounding_box();
-                                renderer::Primative {
-                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
-                                    size: b.size() * 6.0,
-                                    color: (1.0, 0.2, 0.2, 0.8),
-                                }
-                            }))
-                            .chain(game.world().get_throwboxes().map(|throwbox| {
-                                let b = throwbox.shape.get_bounding_box();
-                                renderer::Primative {
-                                    pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
-                                    size: b.size() * 6.0,
-                                    color: (1.0, 0.2, 0.2, 0.8),
-                                }
-                            }))
-                            .chain(game.world().get_players().iter().map(|player| {
-                                let collider = player.get_collider_world_space();
-                                renderer::Primative {
-                                    pos: (collider.position() - collider.size().flip_y() / 2.0)
-                                        * 6.0,
-                                    size: collider.size() * 6.0,
-                                    color: (0.2, 0.2, 1.0, 0.3),
-                                }
-                            }))
-                            .collect(),
+                        GameState::Game(game) => primatives.append(
+                            &mut game
+                                .world()
+                                .get_hurtboxes()
+                                .map(|hitbox| {
+                                    let b = hitbox.shape.get_bounding_box();
+                                    renderer::Primative {
+                                        pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        size: b.size() * 6.0,
+                                        color: (0.2, 1.0, 0.2, 0.3),
+                                    }
+                                })
+                                .chain(game.world().get_hitboxes().map(|hitbox| {
+                                    let b = hitbox.shape.get_bounding_box();
+                                    renderer::Primative {
+                                        pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        size: b.size() * 6.0,
+                                        color: (1.0, 0.2, 0.2, 0.8),
+                                    }
+                                }))
+                                .chain(game.world().get_throwboxes().map(|throwbox| {
+                                    let b = throwbox.shape.get_bounding_box();
+                                    renderer::Primative {
+                                        pos: (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        size: b.size() * 6.0,
+                                        color: (1.0, 0.2, 0.2, 0.8),
+                                    }
+                                }))
+                                .chain(game.world().get_players().iter().map(|player| {
+                                    let collider = player.get_collider_world_space();
+                                    renderer::Primative {
+                                        pos: (collider.position() - collider.size().flip_y() / 2.0)
+                                            * 6.0,
+                                        size: collider.size() * 6.0,
+                                        color: (0.2, 0.2, 1.0, 0.3),
+                                    }
+                                }))
+                                .collect(),
+                        ),
                     }
-                } else {
-                    vec![]
-                };
+                }
 
                 self.renderer.as_mut().unwrap().draw_frame(
                     &self.asset_manager,
@@ -344,13 +345,14 @@ impl GameState {
         assets: &asset_manager::AssetManager,
         paused: bool,
         input_states: [fighting_game::input::InputState; 2],
-    ) -> Vec<renderer::Sprite> {
+    ) -> (Vec<renderer::Sprite>, Vec<renderer::Primative>) {
         match self {
             GameState::Game(game) => {
                 if !paused {
                     game.update(input_states);
                 }
-                game.world()
+                let sprites = game
+                    .world()
                     .get_players()
                     .iter()
                     .map(|player| {
@@ -367,7 +369,35 @@ impl GameState {
                             depth: 0.5,
                         }
                     })
-                    .collect()
+                    .collect();
+
+                let fighting_game::GameState { player_1, player_2 } = game.get_gamestate();
+
+                const BORDER_L: f32 = -(WINDOW_WIDTH as f32) / 2.0;
+                const BORDER_R: f32 = WINDOW_WIDTH as f32 / 2.0;
+                const BORDER_T: f32 = WINDOW_HEIGHT as f32 / 2.0;
+                const BORDER_B: f32 = -(WINDOW_HEIGHT as f32) / 2.0;
+
+                let primatives = vec![
+                    ui::progress_bar(
+                        player_1.health_percent,
+                        300.0,
+                        false,
+                        10.0,
+                        Vector2::new(BORDER_L + 30.0, BORDER_T - 30.0),
+                        (0.0, 1.0, 0.0, 1.0),
+                    ),
+                    ui::progress_bar(
+                        player_2.health_percent,
+                        300.0,
+                        true,
+                        10.0,
+                        Vector2::new(BORDER_R - 30.0, BORDER_T - 30.0),
+                        (0.0, 1.0, 0.0, 1.0),
+                    ),
+                ];
+
+                (sprites, primatives)
             }
         }
     }

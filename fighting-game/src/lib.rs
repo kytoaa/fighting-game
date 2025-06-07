@@ -44,4 +44,24 @@ impl Game {
     pub fn world(&self) -> &world::World {
         &self.world
     }
+    pub fn get_gamestate(&self) -> GameState {
+        GameState {
+            player_1: self.world.get_player_state(world::EntityID::PLAYER_1_ID),
+            player_2: self.world.get_player_state(world::EntityID::PLAYER_2_ID),
+        }
+    }
+    pub fn get_combo_hits(&self) -> Option<usize> {
+        self.world.get_combo_hits()
+    }
+}
+
+pub struct PlayerState {
+    pub health_percent: f32,
+    pub burst_percent: f32,
+    pub scaling_percent: f32,
+}
+
+pub struct GameState {
+    pub player_1: PlayerState,
+    pub player_2: PlayerState,
 }
