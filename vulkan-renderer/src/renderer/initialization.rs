@@ -11,7 +11,7 @@ pub fn create_framebuffers(
         .iter()
         .map(|image| image.1)
         .map(|image| {
-            let attachments = [image, core.depth_image.0 .1];
+            let attachments = [core.color_image.0 .1, core.depth_image.0 .1, image];
 
             let framebuffer_create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(*render_pass)
@@ -288,6 +288,61 @@ impl CoreRenderData {
             let device_memory_properties =
                 instance.get_physical_device_memory_properties(physical_device);
 
+            let (color_image, color_image_memory, color_image_view) = {
+                let color_image_create_info = vk::ImageCreateInfo::default()
+                    .image_type(vk::ImageType::TYPE_2D)
+                    .format(swapchain_info.format)
+                    .extent(surface_resolution.into())
+                    .mip_levels(1)
+                    .array_layers(1)
+                    .samples(SAMPLES)
+                    .tiling(vk::ImageTiling::OPTIMAL)
+                    .usage(
+                        vk::ImageUsageFlags::TRANSIENT_ATTACHMENT
+                            | vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                    )
+                    .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+                let color_image = device.create_image(&color_image_create_info, None).unwrap();
+
+                let color_image_memory_reqs = device.get_image_memory_requirements(color_image);
+                let color_image_memory_index = find_memorytype_index(
+                    &color_image_memory_reqs,
+                    &device_memory_properties,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                )
+                .expect("unable to find suitable memory index for color image");
+
+                let color_image_allocate_info = vk::MemoryAllocateInfo::default()
+                    .allocation_size(color_image_memory_reqs.size)
+                    .memory_type_index(color_image_memory_index);
+
+                let color_image_memory = device
+                    .allocate_memory(&color_image_allocate_info, None)
+                    .unwrap();
+
+                device
+                    .bind_image_memory(color_image, color_image_memory, 0)
+                    .expect("failed to bind memory to color image");
+
+                let color_image_view_create_info = vk::ImageViewCreateInfo::default()
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .level_count(1)
+                            .layer_count(1),
+                    )
+                    .image(color_image)
+                    .format(color_image_create_info.format)
+                    .view_type(vk::ImageViewType::TYPE_2D);
+
+                let color_image_view = device
+                    .create_image_view(&color_image_view_create_info, None)
+                    .unwrap();
+
+                (color_image, color_image_memory, color_image_view)
+            };
+
             let (depth_image, depth_image_memory, depth_image_view) = {
                 let depth_image_create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
@@ -295,7 +350,7 @@ impl CoreRenderData {
                     .extent(surface_resolution.into())
                     .mip_levels(1)
                     .array_layers(1)
-                    .samples(vk::SampleCountFlags::TYPE_1)
+                    .samples(SAMPLES)
                     .tiling(vk::ImageTiling::OPTIMAL)
                     .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
                     .sharing_mode(vk::SharingMode::EXCLUSIVE);
@@ -378,6 +433,10 @@ impl CoreRenderData {
 
                 command_buffers,
 
+                color_image: VulkanObject(
+                    VulkanImage(color_image, color_image_view),
+                    color_image_memory,
+                ),
                 depth_image: VulkanObject(
                     VulkanImage(depth_image, depth_image_view),
                     depth_image_memory,
@@ -398,6 +457,15 @@ pub fn find_physical_device(
 ) -> Option<(vk::PhysicalDevice, u32, u32)> {
     unsafe {
         pdevices.iter().find_map(|pdevice| {
+            let pdevice_properties = instance.get_physical_device_properties(*pdevice);
+            if !pdevice_properties
+                .limits
+                .sampled_image_color_sample_counts
+                .contains(SAMPLES)
+            {
+                return None;
+            }
+
             let properties = instance.get_physical_device_queue_family_properties(*pdevice);
 
             let graphics_queue = match instance

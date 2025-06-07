@@ -59,6 +59,7 @@ pub struct PlayerState {
     pub health_percent: f32,
     pub burst_percent: f32,
     pub scaling_percent: f32,
+    pub meter_percent: f32,
 }
 
 pub struct GameState {

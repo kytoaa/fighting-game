@@ -5,7 +5,7 @@ use super::*;
 pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
     let color_attachment = vk::AttachmentDescription::default()
         .format(core.swapchain_info.format)
-        .samples(vk::SampleCountFlags::TYPE_1)
+        .samples(SAMPLES)
         .load_op(vk::AttachmentLoadOp::CLEAR)
         .store_op(vk::AttachmentStoreOp::STORE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
@@ -22,7 +22,7 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
             &core.instance,
             &core.physical_device,
         ))
-        .samples(vk::SampleCountFlags::TYPE_1)
+        .samples(SAMPLES)
         .load_op(vk::AttachmentLoadOp::CLEAR)
         .store_op(vk::AttachmentStoreOp::DONT_CARE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
@@ -34,6 +34,20 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
         .attachment(1)
         .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
+    let color_attachment_resolve = vk::AttachmentDescription::default()
+        .format(core.swapchain_info.format)
+        .samples(vk::SampleCountFlags::TYPE_1)
+        .load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR);
+
+    let color_attachment_resolve_ref = vk::AttachmentReference::default()
+        .attachment(2)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
     let subpass = vk::SubpassDescription::default()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
         .color_attachments(std::slice::from_ref(&color_attachment_ref))
@@ -41,7 +55,8 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
 
     let depthless_subpass = vk::SubpassDescription::default()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-        .color_attachments(std::slice::from_ref(&color_attachment_ref));
+        .color_attachments(std::slice::from_ref(&color_attachment_ref))
+        .resolve_attachments(std::slice::from_ref(&color_attachment_resolve_ref));
 
     let dependency = vk::SubpassDependency::default()
         .src_subpass(vk::SUBPASS_EXTERNAL)
@@ -73,7 +88,7 @@ pub fn create_render_pass(core: &CoreRenderData) -> vk::RenderPass {
         )
         .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE);
 
-    let attachments = [color_attachment, depth_attachment];
+    let attachments = [color_attachment, depth_attachment, color_attachment_resolve];
     let subpasses = [subpass, depthless_subpass];
     let dependencies = [dependency, depthless_dependency];
 

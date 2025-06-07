@@ -8,6 +8,11 @@ impl Drop for CoreRenderData {
             self.device.destroy_image_view(self.depth_image.0 .1, None);
             self.device.destroy_image(self.depth_image.0 .0, None);
             self.device.free_memory(self.depth_image.1, None);
+
+            self.device.destroy_image_view(self.color_image.0 .1, None);
+            self.device.destroy_image(self.color_image.0 .0, None);
+            self.device.free_memory(self.color_image.1, None);
+
             self.present_images.iter().for_each(|image| {
                 // NOTE: image views get destroyed but not the images
                 self.device.destroy_image_view(image.1, None);

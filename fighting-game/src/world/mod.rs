@@ -383,6 +383,7 @@ impl World {
             } else {
                 player_data.scaling as f32 / 200.0
             },
+            meter_percent: player_data.meter as f32 / 100.0,
         }
     }
     pub fn get_combo_hits(&self) -> Option<usize> {

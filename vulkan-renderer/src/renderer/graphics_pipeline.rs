@@ -77,7 +77,7 @@ pub fn create_graphics_pipeline(
 
     let multisampling_state = vk::PipelineMultisampleStateCreateInfo::default()
         .sample_shading_enable(false)
-        .rasterization_samples(vk::SampleCountFlags::TYPE_1);
+        .rasterization_samples(SAMPLES);
 
     let colorblend_attachment_state = vk::PipelineColorBlendAttachmentState::default()
         .color_write_mask(
@@ -211,7 +211,7 @@ pub fn create_primative_pipeline(
 
     let multisampling_state = vk::PipelineMultisampleStateCreateInfo::default()
         .sample_shading_enable(false)
-        .rasterization_samples(vk::SampleCountFlags::TYPE_1);
+        .rasterization_samples(SAMPLES);
 
     let colorblend_attachment_state = vk::PipelineColorBlendAttachmentState::default()
         .color_write_mask(

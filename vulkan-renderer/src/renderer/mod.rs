@@ -20,6 +20,7 @@ use super::Vector2;
 use asset_manager::SpriteHandle;
 
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
+const SAMPLES: vk::SampleCountFlags = vk::SampleCountFlags::TYPE_4;
 
 struct VulkanImage(vk::Image, vk::ImageView);
 struct VulkanObject<T>(T, vk::DeviceMemory);
@@ -31,9 +32,36 @@ pub struct Sprite {
     pub depth: f32,
 }
 pub struct Primative {
-    pub pos: Vector2,
-    pub size: Vector2,
-    pub color: (f32, f32, f32, f32),
+    pub top_l: Vector2,
+    pub top_r: Vector2,
+    pub bottom_l: Vector2,
+    pub bottom_r: Vector2,
+    pub colors: Box<[(f32, f32, f32, f32); 4]>,
+}
+impl Primative {
+    pub fn rect(pos: Vector2, size: Vector2, color: (f32, f32, f32, f32)) -> Self {
+        Self {
+            top_l: pos,
+            top_r: pos + size.y(0.0),
+            bottom_l: pos - size.x(0.0),
+            bottom_r: pos + size.flip_y(),
+            colors: Box::new([color; 4]),
+        }
+    }
+    pub fn flip_x(self) -> Self {
+        Self {
+            top_l: self.top_l - (self.top_r - self.top_l).flip_y(),
+            top_r: self.top_l,
+            bottom_r: self.top_l - (self.bottom_l - self.top_l).flip_y(),
+            bottom_l: self.top_l - (self.bottom_r - self.top_l).flip_y(),
+            colors: Box::new([
+                self.colors[2],
+                self.colors[3],
+                self.colors[1],
+                self.colors[0],
+            ]),
+        }
+    }
 }
 
 struct Queues {
@@ -65,6 +93,7 @@ struct CoreRenderData {
 
     command_buffers: Vec<vk::CommandBuffer>,
 
+    color_image: VulkanObject<VulkanImage>,
     depth_image: VulkanObject<VulkanImage>,
 
     debug_callback: vk::DebugUtilsMessengerEXT,
@@ -268,9 +297,17 @@ impl Renderer {
                         let position = position.y(-position.y);
                         (size, position.rounded(), flipped, depth, i)
                     }),
-                primatives
-                    .iter()
-                    .map(|Primative { pos, size, color }| (*pos, *size, *color)),
+                primatives.iter().map(
+                    |Primative {
+                         top_l,
+                         bottom_l,
+                         bottom_r,
+                         top_r,
+                         colors,
+                     }| {
+                        ([*top_l, *bottom_l, *bottom_r, *top_r], colors.as_ref())
+                    },
+                ),
                 frame,
             );
 
@@ -340,10 +377,10 @@ impl Renderer {
         self.frame += 1;
     }
 
-    fn populate_vertex_index_buffers(
+    fn populate_vertex_index_buffers<'a>(
         &mut self,
         sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, u32)>,
-        primatives: impl Iterator<Item = (Vector2, Vector2, (f32, f32, f32, f32))>,
+        primatives: impl Iterator<Item = ([Vector2; 4], &'a [(f32, f32, f32, f32); 4])>,
         frame: usize,
     ) {
         let verts: Vec<_> = sprites
@@ -413,12 +450,12 @@ impl Renderer {
             .collect();
 
         let primative_verts: Vec<_> = primatives
-            .map(|(pos, size, color)| {
+            .map(|([tl, bl, br, tr], colors)| {
                 [
-                    ((pos.x, -pos.y, 0.6), color.into()),
-                    ((pos.x, -(pos.y - size.y), 0.6), color.into()),
-                    ((pos.x + size.x, -(pos.y - size.y), 0.6), color.into()),
-                    ((pos.x + size.x, -pos.y, 0.6), color.into()),
+                    ((tl.x, -tl.y, 0.6), colors[0].into()),
+                    ((bl.x, -bl.y, 0.6), colors[1].into()),
+                    ((br.x, -br.y, 0.6), colors[2].into()),
+                    ((tr.x, -tr.y, 0.6), colors[3].into()),
                 ]
             })
             .flatten()
