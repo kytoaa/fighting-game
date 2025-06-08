@@ -16,7 +16,7 @@ layout(location = 0) out vec2 outUV;
 layout(location = 1) out uint outTextureIndex;
 
 void main() {
-	gl_Position = matrices.proj * vec4(inPosition, 1.0) * vec4(6.0, 6.0, 1.0, 1.0);
+	gl_Position = matrices.proj * vec4(inPosition.x, inPosition.y + 30.0, inPosition.z, 1.0) * vec4(6.0, 6.0, 1.0, 1.0);
 	outUV = inUV;
     outTextureIndex = inTextureIndex;
 }"#,

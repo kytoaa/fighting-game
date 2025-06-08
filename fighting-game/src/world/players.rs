@@ -59,6 +59,12 @@ impl TrackedPlayerData {
             println!("adding {} burst, burst at {}", burst, self.burst_meter);
         }
     }
+    pub fn damage(&mut self, damage: u32) {
+        self.health = self.health.saturating_sub(damage);
+        if self.health <= 0 {
+            println!("dead");
+        }
+    }
 }
 
 pub fn burst_gain(damage: u32, hit_number: usize) -> u32 {

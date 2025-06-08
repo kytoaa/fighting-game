@@ -296,7 +296,7 @@ impl World {
         let dir = other_player.position() - player.position();
 
         let p = if dir.magnitude() <= 30.0 {
-            let (p, s) = other_player.hit(
+            let (p, _) = other_player.hit(
                 crate::collision::HitData::grounded(
                     0,
                     crate::collision::HitEffect::launcher(
@@ -308,17 +308,14 @@ impl World {
                     crate::collision::Proration::percent(100),
                     0,
                 )
-                .attack_type(crate::collision::AttackType::Unblockable)
+                .block_pushback(30.0 * dir.x.signum())
+                .attack_type(crate::collision::AttackType::Mid)
                 .air_from_grounded(|g| g)
                 .counterhit_ground_from_grounded(|g| g)
                 .counterhit_air_from_air(|g| g)
                 .build()
                 .as_on_hit_hitdata(false, false, |_| 0),
             );
-            match s {
-                crate::collision::HitConnectionStatus::Hit => (),
-                _ => unreachable!(),
-            }
 
             p
         } else {
@@ -375,15 +372,25 @@ impl World {
         }
         let player_data = &self.player_data[player.id()];
         crate::PlayerState {
-            health_percent: player_data.health as f32 * 100.0 / player_data.max_health as f32,
-            burst_percent: player_data.burst_meter as f32 * 100.0
-                / TrackedPlayerData::BURST_MAX as f32,
+            health_percent: player_data.health as f32 / player_data.max_health as f32,
+            burst_percent: player_data.burst_meter as f32 / TrackedPlayerData::BURST_MAX as f32,
             scaling_percent: if player_data.scaling < 0 {
-                player_data.scaling as f32 / 100.0
+                player_data.scaling as f32 / 10000.0
             } else {
-                player_data.scaling as f32 / 200.0
+                player_data.scaling as f32 / 20000.0
             },
-            meter_percent: player_data.meter as f32 / 100.0,
+            meter_percent: player_data.meter as f32 / 10000.0,
+            combo_damage_health_percent: self
+                .combo
+                .as_ref()
+                .map(|combo| {
+                    if *combo.target() == player && player_data.health != 0 {
+                        Some(combo.total_damage() as f32 / player_data.max_health as f32)
+                    } else {
+                        None
+                    }
+                })
+                .flatten(),
         }
     }
     pub fn get_combo_hits(&self) -> Option<usize> {

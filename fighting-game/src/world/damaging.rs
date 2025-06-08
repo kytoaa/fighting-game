@@ -144,9 +144,7 @@ pub(super) fn hit_player(
             combo_info.add_attack(attack_id);
 
             player_data[hit_player_id.id()].scaling += hit_data.scaling;
-            player_data[hit_player_id.id()].health = player_data[hit_player_id.id()]
-                .health
-                .saturating_sub(on_hit_hitdata_damage);
+            player_data[hit_player_id.id()].damage(on_hit_hitdata_damage);
 
             player_data[hit_player_id.id()]
                 .add_burst(super::players::burst_gain(hit_data.damage, combo_info.hits));

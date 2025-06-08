@@ -59,8 +59,10 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                     },
                     BORDER_T - 60.0,
                 ),
-                value: 100.0,
-                display_value: 100.0,
+                value: 1.0,
+                display_value: 1.0,
+                behind_value: 1.0,
+                behind_display_value: 1.0,
             },
             burst_meter: ProgressBar {
                 position: Vector2::new(
@@ -74,8 +76,8 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 color: (0.251, 0.8627, 1.0, 1.0),
                 height: 30.0,
                 max_width: 60.0,
-                value: 100.0,
-                display_value: 100.0,
+                value: 1.0,
+                display_value: 1.0,
             },
             meter: ProgressBar {
                 position: Vector2::new(
@@ -89,14 +91,17 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 color: (0.251, 1.0, 0.8, 1.0),
                 height: 10.0,
                 max_width: 300.0,
-                value: 100.0,
-                display_value: 100.0,
+                value: 1.0,
+                display_value: 1.0,
             },
         }
     }
 
     fn update(&mut self, state: &fighting_game::PlayerState) {
-        self.health_bar.set_progress(state.health_percent);
+        self.health_bar.set_progress(
+            state.health_percent,
+            state.health_percent + state.combo_damage_health_percent.unwrap_or(0.0),
+        );
         self.burst_meter.set_progress(state.burst_percent);
         self.meter.set_progress(state.meter_percent);
 
@@ -106,14 +111,15 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
     }
 
     fn get_render_info(&self) -> impl Iterator<Item = renderer::Primative> {
-        self.get_player_ui_background_ui(!IS_PLAYER_1).chain(
-            vec![
-                self.health_bar.get_render_info(!IS_PLAYER_1),
-                self.burst_meter.get_render_info(!IS_PLAYER_1),
-                self.meter.get_render_info(!IS_PLAYER_1),
-            ]
-            .into_iter(),
-        )
+        self.get_player_ui_background_ui(!IS_PLAYER_1)
+            .chain(self.health_bar.get_render_info(!IS_PLAYER_1))
+            .chain(
+                vec![
+                    self.burst_meter.get_render_info(!IS_PLAYER_1),
+                    self.meter.get_render_info(!IS_PLAYER_1),
+                ]
+                .into_iter(),
+            )
     }
 
     fn get_player_ui_background_ui(
@@ -121,7 +127,7 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
         flipped: bool,
     ) -> impl Iterator<Item = renderer::Primative> {
         const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0);
-        const OFFSET: Vector2 = Vector2::new(5.0, -10.0);
+        const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
         const TOP: Vector2 = Vector2::new(-400.0, 8.0).mul(1.01);
         const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0).mul(1.01);
 
@@ -154,7 +160,7 @@ fn basic_progress_bar(
     position: Vector2,
     color: Color,
 ) -> renderer::Primative {
-    let width = percent * max_len / 100.0;
+    let width = percent * max_len;
     renderer::Primative::rect(
         if flipped {
             position - Vector2::new(width, 0.0)
@@ -203,52 +209,93 @@ struct HealthBar {
     position: Vector2,
     value: f32,
     display_value: f32,
+    behind_value: f32,
+    behind_display_value: f32,
 }
 
 impl HealthBar {
-    fn set_progress(&mut self, new_value: f32) {
+    fn set_progress(&mut self, new_value: f32, behind_value: f32) {
         self.value = new_value;
+        self.behind_value = behind_value;
     }
     fn update(&mut self) {
         self.display_value = lerp(self.value, self.display_value, 0.9);
+        if self.behind_display_value != self.behind_value {
+            self.behind_display_value = lerp(self.behind_value, self.behind_display_value, 0.9);
+        }
 
-        if (self.display_value - self.value).abs() < 1.0 {
+        if (self.display_value - self.value).abs() < 0.01 {
             self.display_value = self.value;
         }
+        if (self.behind_display_value - self.behind_value).abs() < 0.01 {
+            self.behind_display_value = self.behind_value;
+        }
     }
-    fn get_render_info(&self, flipped: bool) -> renderer::Primative {
-        const OFFSET: Vector2 = Vector2::new(5.0, -10.0);
+    fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
+        const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
         const TOP: Vector2 = Vector2::new(-400.0, 8.0);
         const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0);
 
         let progress = self.display_value;
 
         if !flipped {
-            renderer::Primative {
-                top_r: self.position,
-                top_l: self.position + TOP * progress / 100.0,
-                bottom_r: self.position + OFFSET,
-                bottom_l: self.position + OFFSET + BOTTOM * progress / 100.0,
-                colors: Box::new([
-                    (1.0, 0.7529, 0.1294, 1.0),
-                    (1.0, 0.7529, 0.1294, 1.0),
-                    (1.0, 0.4059, 0.1294, 1.0),
-                    (1.0, 0.4059, 0.1294, 1.0),
-                ]),
-            }
+            vec![
+                renderer::Primative {
+                    top_r: self.position,
+                    top_l: self.position + TOP * self.behind_display_value,
+                    bottom_r: self.position + OFFSET,
+                    bottom_l: self.position + OFFSET + BOTTOM * self.behind_display_value,
+                    colors: Box::new([
+                        (1.0, 0.0784, 0.1725, 1.0),
+                        (1.0, 0.1804, 0.2627, 1.0),
+                        (1.0, 0.0784, 0.1725, 1.0),
+                        (1.0, 0.0784, 0.1725, 1.0),
+                    ]),
+                },
+                renderer::Primative {
+                    top_r: self.position,
+                    top_l: self.position + TOP * progress,
+                    bottom_r: self.position + OFFSET,
+                    bottom_l: self.position + OFFSET + BOTTOM * progress,
+                    colors: Box::new([
+                        (1.0, 0.7529, 0.1294, 1.0),
+                        (1.0, 0.7529, 0.1294, 1.0),
+                        (1.0, 0.4059, 0.1294, 1.0),
+                        (1.0, 0.4059, 0.1294, 1.0),
+                    ]),
+                },
+            ]
+            .into_iter()
         } else {
-            renderer::Primative {
-                top_l: self.position,
-                top_r: self.position + TOP.flip_x() * progress / 100.0,
-                bottom_l: self.position + OFFSET.flip_x(),
-                bottom_r: self.position + OFFSET.flip_x() + BOTTOM.flip_x() * progress / 100.0,
-                colors: Box::new([
-                    (1.0, 0.4059, 0.1294, 1.0),
-                    (1.0, 0.4059, 0.1294, 1.0),
-                    (1.0, 0.7529, 0.1294, 1.0),
-                    (1.0, 0.7529, 0.1294, 1.0),
-                ]),
-            }
+            vec![
+                renderer::Primative {
+                    top_l: self.position,
+                    top_r: self.position + TOP.flip_x() * self.behind_display_value,
+                    bottom_l: self.position + OFFSET.flip_x(),
+                    bottom_r: self.position
+                        + OFFSET.flip_x()
+                        + BOTTOM.flip_x() * self.behind_display_value,
+                    colors: Box::new([
+                        (1.0, 0.0784, 0.1725, 1.0),
+                        (1.0, 0.0784, 0.1725, 1.0),
+                        (1.0, 0.1804, 0.2627, 1.0),
+                        (1.0, 0.0784, 0.1725, 1.0),
+                    ]),
+                },
+                renderer::Primative {
+                    top_l: self.position,
+                    top_r: self.position + TOP.flip_x() * progress,
+                    bottom_l: self.position + OFFSET.flip_x(),
+                    bottom_r: self.position + OFFSET.flip_x() + BOTTOM.flip_x() * progress,
+                    colors: Box::new([
+                        (1.0, 0.4059, 0.1294, 1.0),
+                        (1.0, 0.4059, 0.1294, 1.0),
+                        (1.0, 0.7529, 0.1294, 1.0),
+                        (1.0, 0.7529, 0.1294, 1.0),
+                    ]),
+                },
+            ]
+            .into_iter()
         }
     }
 }
