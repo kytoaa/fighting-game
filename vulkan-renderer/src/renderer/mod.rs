@@ -288,7 +288,7 @@ impl Renderer {
                                     assets.get_sprite(*sprite).size(),
                                     *position,
                                     *facing_right,
-                                    0.6,
+                                    *depth,
                                 ),
                             )
                         },

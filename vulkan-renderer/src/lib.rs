@@ -142,7 +142,9 @@ impl winit::application::ApplicationHandler for App {
                                 .map(|hitbox| {
                                     let b = hitbox.shape.get_bounding_box();
                                     renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        (b.position() - b.size().flip_y() / 2.0
+                                            + Vector2::DOWN * 30.0)
+                                            * 6.0,
                                         b.size() * 6.0,
                                         (0.2, 1.0, 0.2, 0.3),
                                     )
@@ -150,7 +152,9 @@ impl winit::application::ApplicationHandler for App {
                                 .chain(game.world().get_hitboxes().map(|hitbox| {
                                     let b = hitbox.shape.get_bounding_box();
                                     renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        (b.position() - b.size().flip_y() / 2.0
+                                            + Vector2::DOWN * 30.0)
+                                            * 6.0,
                                         b.size() * 6.0,
                                         (1.0, 0.2, 0.2, 0.8),
                                     )
@@ -158,7 +162,9 @@ impl winit::application::ApplicationHandler for App {
                                 .chain(game.world().get_throwboxes().map(|throwbox| {
                                     let b = throwbox.shape.get_bounding_box();
                                     renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0) * 6.0,
+                                        (b.position() - b.size().flip_y() / 2.0
+                                            + Vector2::DOWN * 30.0)
+                                            * 6.0,
                                         b.size() * 6.0,
                                         (1.0, 0.2, 0.2, 0.8),
                                     )
@@ -166,7 +172,8 @@ impl winit::application::ApplicationHandler for App {
                                 .chain(game.world().get_players().iter().map(|player| {
                                     let collider = player.get_collider_world_space();
                                     renderer::Primative::rect(
-                                        (collider.position() - collider.size().flip_y() / 2.0)
+                                        (collider.position() - collider.size().flip_y() / 2.0
+                                            + Vector2::DOWN * 30.0)
                                             * 6.0,
                                         collider.size() * 6.0,
                                         (0.2, 0.2, 1.0, 0.3),
