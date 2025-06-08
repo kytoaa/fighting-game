@@ -44,7 +44,7 @@ impl PlayerUi {
 struct PlayerSpecificUI<const IS_PLAYER_1: bool> {
     health_bar: HealthBar,
     burst_meter: ProgressBar,
-    meter: ProgressBar,
+    meter: PlayerMeter,
 }
 
 impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
@@ -79,18 +79,15 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 value: 1.0,
                 display_value: 1.0,
             },
-            meter: ProgressBar {
+            meter: PlayerMeter {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 80.0
+                        BORDER_L + 370.0
                     } else {
-                        BORDER_R - 80.0
+                        BORDER_R - 370.0
                     },
-                    BORDER_B + 50.0,
+                    BORDER_B + 70.0,
                 ),
-                color: (0.251, 1.0, 0.8, 1.0),
-                height: 10.0,
-                max_width: 300.0,
                 value: 1.0,
                 display_value: 1.0,
             },
@@ -113,41 +110,70 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
     fn get_render_info(&self) -> impl Iterator<Item = renderer::Primative> {
         self.get_player_ui_background_ui(!IS_PLAYER_1)
             .chain(self.health_bar.get_render_info(!IS_PLAYER_1))
-            .chain(
-                vec![
-                    self.burst_meter.get_render_info(!IS_PLAYER_1),
-                    self.meter.get_render_info(!IS_PLAYER_1),
-                ]
-                .into_iter(),
-            )
+            .chain(self.meter.get_render_info(!IS_PLAYER_1))
+            .chain(vec![self.burst_meter.get_render_info(!IS_PLAYER_1)].into_iter())
     }
 
     fn get_player_ui_background_ui(
         &self,
         flipped: bool,
     ) -> impl Iterator<Item = renderer::Primative> {
-        const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0);
-        const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
-        const TOP: Vector2 = Vector2::new(-400.0, 8.0).mul(1.01);
-        const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0).mul(1.01);
-
-        vec![if !flipped {
-            renderer::Primative {
-                top_r: self.health_bar.position + OVERALL_OFFSET,
-                top_l: self.health_bar.position + TOP + OVERALL_OFFSET,
-                bottom_r: self.health_bar.position + OFFSET + OVERALL_OFFSET,
-                bottom_l: self.health_bar.position + OFFSET + BOTTOM + OVERALL_OFFSET,
-                colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
-            }
-        } else {
-            renderer::Primative {
-                top_l: self.health_bar.position + OVERALL_OFFSET.flip_x(),
-                top_r: self.health_bar.position + (TOP + OVERALL_OFFSET).flip_x(),
-                bottom_l: self.health_bar.position + (OFFSET + OVERALL_OFFSET).flip_x(),
-                bottom_r: self.health_bar.position + (OFFSET + BOTTOM + OVERALL_OFFSET).flip_x(),
-                colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
-            }
-        }]
+        vec![
+            {
+                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0);
+                const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
+                const TOP: Vector2 = Vector2::new(-400.0, 8.0).mul(1.01);
+                const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0).mul(1.01);
+                if !flipped {
+                    renderer::Primative {
+                        top_r: self.health_bar.position + OVERALL_OFFSET,
+                        top_l: self.health_bar.position + TOP + OVERALL_OFFSET,
+                        bottom_r: self.health_bar.position + OFFSET + OVERALL_OFFSET,
+                        bottom_l: self.health_bar.position + OFFSET + BOTTOM + OVERALL_OFFSET,
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                } else {
+                    renderer::Primative {
+                        top_l: self.health_bar.position + OVERALL_OFFSET.flip_x(),
+                        top_r: self.health_bar.position + TOP.flip_x() + OVERALL_OFFSET.flip_x(),
+                        bottom_l: self.health_bar.position
+                            + OFFSET.flip_x()
+                            + OVERALL_OFFSET.flip_x(),
+                        bottom_r: self.health_bar.position
+                            + OFFSET.flip_x()
+                            + BOTTOM.flip_x()
+                            + OVERALL_OFFSET.flip_x(),
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                }
+            },
+            {
+                const OVERALL_OFFSET: Vector2 = Vector2::new(2.0, -4.0);
+                const OFFSET: Vector2 = Vector2::new(-4.0, -12.0);
+                const TOP: Vector2 = Vector2::new(-300.0, 8.0).mul(1.05);
+                const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0).mul(1.05);
+                if !flipped {
+                    renderer::Primative {
+                        top_r: self.meter.position + OVERALL_OFFSET,
+                        top_l: self.meter.position + TOP + OVERALL_OFFSET,
+                        bottom_r: self.meter.position + OFFSET + OVERALL_OFFSET,
+                        bottom_l: self.meter.position + OFFSET + BOTTOM + OVERALL_OFFSET,
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                } else {
+                    renderer::Primative {
+                        top_l: self.meter.position + OVERALL_OFFSET.flip_x(),
+                        top_r: self.meter.position + TOP.flip_x() + OVERALL_OFFSET.flip_x(),
+                        bottom_l: self.meter.position + OFFSET.flip_x() + OVERALL_OFFSET.flip_x(),
+                        bottom_r: self.meter.position
+                            + OFFSET.flip_x()
+                            + BOTTOM.flip_x()
+                            + OVERALL_OFFSET.flip_x(),
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                }
+            },
+        ]
         .into_iter()
     }
 }
@@ -296,6 +322,77 @@ impl HealthBar {
                 },
             ]
             .into_iter()
+        }
+    }
+}
+
+struct PlayerMeter {
+    position: Vector2,
+    value: f32,
+    display_value: f32,
+}
+
+impl PlayerMeter {
+    fn set_progress(&mut self, new_value: f32) {
+        self.value = new_value;
+    }
+    fn update(&mut self) {
+        self.display_value = lerp(self.value, self.display_value, 0.9);
+
+        if (self.display_value - self.value).abs() < 0.01 {
+            self.display_value = self.value;
+        }
+    }
+    fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
+        const OFFSET: Vector2 = Vector2::new(-4.0, -12.0);
+        const TOP: Vector2 = Vector2::new(-300.0, 8.0);
+        const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0);
+
+        let progress = self.display_value;
+        let full_count = (progress * 3.0).ceil() as u32;
+
+        if !flipped {
+            (0..full_count)
+                .map(|i| {
+                    let min = i as f32 / 3.0 + (0.02 * i as f32);
+                    let max = min + f32::min(progress - (min - (0.02 * i as f32)), 1.0 / 3.0);
+                    renderer::Primative {
+                        top_r: self.position + TOP * min,
+                        top_l: self.position + TOP * max,
+                        bottom_r: self.position + OFFSET + BOTTOM * min,
+                        bottom_l: self.position + OFFSET + BOTTOM * max,
+                        colors: Box::new(
+                            [if i == full_count - 1 && progress != 1.0 {
+                                (0.196, 0.6235, 1.0, 1.0)
+                            } else {
+                                (0.251, 1.0, 0.7, 1.0)
+                            }; 4],
+                        ),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+        } else {
+            (0..full_count)
+                .map(|i| {
+                    let min = i as f32 / 3.0 + (0.02 * i as f32);
+                    let max = min + f32::min(progress - (min - (0.02 * i as f32)), 1.0 / 3.0);
+                    renderer::Primative {
+                        top_l: self.position + TOP.flip_x() * min,
+                        top_r: self.position + TOP.flip_x() * max,
+                        bottom_l: self.position + OFFSET.flip_x() + BOTTOM.flip_x() * min,
+                        bottom_r: self.position + OFFSET.flip_x() + BOTTOM.flip_x() * max,
+                        colors: Box::new(
+                            [if i == full_count - 1 && progress != 1.0 {
+                                (0.196, 0.6235, 1.0, 1.0)
+                            } else {
+                                (0.251, 1.0, 0.7, 1.0)
+                            }; 4],
+                        ),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
         }
     }
 }

@@ -99,7 +99,7 @@ impl Player for Sol<WildThrowSuccess> {
                 world.set_entity_velocity(self.player_id.other_player(), Vector2::ZERO);
                 world.set_entity_position(
                     self.player_id.other_player(),
-                    self.position + Vector2::new(8.0 * self.dir(), 5.0),
+                    self.position + Vector2::new(12.0 * self.dir(), 5.0),
                 );
                 if let Some(overlap) = World::position_in_wall(
                     world.get_entity_position(self.player_id.other_player()),
@@ -108,7 +108,7 @@ impl Player for Sol<WildThrowSuccess> {
 
                     world.set_entity_position(
                         self.player_id.other_player(),
-                        self.position + Vector2::new(8.0 * self.dir(), 5.0),
+                        self.position + Vector2::new(12.0 * self.dir(), 5.0),
                     );
                 }
                 self

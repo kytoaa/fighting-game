@@ -32,7 +32,7 @@ impl TrackedPlayerData {
             max_health,
             health: max_health,
             meter: 0,
-            meter_gain: 1000,
+            meter_gain: 1200,
             burst_meter: 10000,
             scaling: 0,
             damage_boost: 0,
@@ -41,7 +41,7 @@ impl TrackedPlayerData {
         }
     }
     pub fn add_meter(&mut self, meter: u32) {
-        self.meter += meter; //* self.meter_gain / 1000;
+        self.meter += meter * self.meter_gain / 1000;
         self.meter = self.meter.clamp(0, 10000);
     }
     pub fn add_scaling(&mut self, scaling: i32) {
