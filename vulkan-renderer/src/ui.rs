@@ -45,6 +45,7 @@ struct PlayerSpecificUI<const IS_PLAYER_1: bool> {
     health_bar: HealthBar,
     burst_meter: ProgressBar,
     meter: PlayerMeter,
+    scaling_bar: ScalingBar,
 }
 
 impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
@@ -91,6 +92,17 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 value: 1.0,
                 display_value: 1.0,
             },
+            scaling_bar: ScalingBar {
+                position: Vector2::new(
+                    if IS_PLAYER_1 {
+                        BORDER_L + 450.0
+                    } else {
+                        BORDER_R - 450.0
+                    },
+                    BORDER_T - 85.0,
+                ),
+                value: 0.0,
+            },
         }
     }
 
@@ -101,10 +113,13 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
         );
         self.burst_meter.set_progress(state.burst_percent);
         self.meter.set_progress(state.meter_percent);
+        self.scaling_bar
+            .set_progress((-state.scaling_percent).max(0.0));
 
         self.health_bar.update();
         self.burst_meter.update();
         self.meter.update();
+        self.scaling_bar.update();
     }
 
     fn get_render_info(&self) -> impl Iterator<Item = renderer::Primative> {
@@ -112,6 +127,7 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             .chain(self.health_bar.get_render_info(!IS_PLAYER_1))
             .chain(self.meter.get_render_info(!IS_PLAYER_1))
             .chain(vec![self.burst_meter.get_render_info(!IS_PLAYER_1)].into_iter())
+            .chain(self.scaling_bar.get_render_info(!IS_PLAYER_1))
     }
 
     fn get_player_ui_background_ui(
@@ -122,8 +138,8 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             {
                 const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0);
                 const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
-                const TOP: Vector2 = Vector2::new(-400.0, 8.0).mul(1.01);
-                const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0).mul(1.01);
+                const TOP: Vector2 = Vector2::new(-400.0, 12.0).mul(1.01);
+                const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0).mul(1.01);
                 if !flipped {
                     renderer::Primative {
                         top_r: self.health_bar.position + OVERALL_OFFSET,
@@ -169,6 +185,33 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                             + OFFSET.flip_x()
                             + BOTTOM.flip_x()
                             + OVERALL_OFFSET.flip_x(),
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                }
+            },
+            {
+                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -4.0);
+                const OFFSET: Vector2 = Vector2::new(4.0, -8.0);
+                const TOP: Vector2 = Vector2::new(-140.0, -2.0).mul(1.05);
+                const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).mul(1.05);
+
+                if !flipped {
+                    renderer::Primative {
+                        top_r: self.scaling_bar.position + OVERALL_OFFSET,
+                        top_l: self.scaling_bar.position + TOP + OVERALL_OFFSET,
+                        bottom_r: self.scaling_bar.position + OFFSET + OVERALL_OFFSET,
+                        bottom_l: self.scaling_bar.position + OFFSET + BOTTOM + OVERALL_OFFSET,
+                        colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
+                    }
+                } else {
+                    renderer::Primative {
+                        top_l: self.scaling_bar.position + OVERALL_OFFSET,
+                        top_r: self.scaling_bar.position + TOP.flip_x() + OVERALL_OFFSET,
+                        bottom_l: self.scaling_bar.position + OFFSET.flip_x() + OVERALL_OFFSET,
+                        bottom_r: self.scaling_bar.position
+                            + OFFSET.flip_x()
+                            + BOTTOM.flip_x()
+                            + OVERALL_OFFSET,
                         colors: Box::new([(0.0, 0.0, 0.0, 1.0); 4]),
                     }
                 }
@@ -245,7 +288,7 @@ impl HealthBar {
         self.behind_value = behind_value;
     }
     fn update(&mut self) {
-        self.display_value = lerp(self.value, self.display_value, 0.9);
+        self.display_value = self.value; //lerp(self.value, self.display_value, 0.9);
         if self.behind_display_value != self.behind_value {
             self.behind_display_value = lerp(self.behind_value, self.behind_display_value, 0.9);
         }
@@ -259,8 +302,8 @@ impl HealthBar {
     }
     fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
         const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
-        const TOP: Vector2 = Vector2::new(-400.0, 8.0);
-        const BOTTOM: Vector2 = Vector2::new(-395.0, -12.0);
+        const TOP: Vector2 = Vector2::new(-400.0, 12.0);
+        const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0);
 
         let progress = self.display_value;
 
@@ -393,6 +436,62 @@ impl PlayerMeter {
                 })
                 .collect::<Vec<_>>()
                 .into_iter()
+        }
+    }
+}
+
+struct ScalingBar {
+    position: Vector2,
+    value: f32,
+}
+impl ScalingBar {
+    fn set_progress(&mut self, new_value: f32) {
+        self.value = new_value;
+    }
+    fn update(&mut self) {}
+    fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
+        const OFFSET: Vector2 = Vector2::new(4.0, -8.0);
+        const TOP: Vector2 = Vector2::new(-140.0, -2.0);
+        const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0);
+
+        let progress = self.value;
+
+        if !flipped {
+            vec![renderer::Primative {
+                top_r: self.position,
+                top_l: self.position + TOP * progress,
+                bottom_r: self.position + OFFSET,
+                bottom_l: self.position + OFFSET + BOTTOM * progress,
+                colors: Box::new(if progress < 0.9 {
+                    [
+                        (0.8902, 0.0902, 0.7294, 1.0),
+                        (0.8902, 0.0902, 0.7294, 1.0),
+                        (0.651, 0.0, 0.9294, 1.0),
+                        (0.651, 0.0, 0.9294, 1.0),
+                    ]
+                } else {
+                    [(1.0, 0.0, 0.0, 1.0); 4]
+                }),
+            }]
+            .into_iter()
+        } else {
+            vec![renderer::Primative {
+                top_l: self.position,
+                top_r: self.position + TOP.flip_x() * progress,
+                bottom_l: self.position + OFFSET.flip_x(),
+                bottom_r: self.position + OFFSET.flip_x() + BOTTOM.flip_x() * progress,
+                colors: Box::new(if progress < 0.9 {
+                    [
+                        (0.651, 0.0, 0.9294, 1.0),
+                        (0.651, 0.0, 0.9294, 1.0),
+                        (0.8902, 0.0902, 0.7294, 1.0),
+                        (0.8902, 0.0902, 0.7294, 1.0),
+                    ]
+                } else {
+                    [(1.0, 0.0, 0.0, 1.0); 4]
+                }),
+            }]
+            .into_iter()
         }
     }
 }

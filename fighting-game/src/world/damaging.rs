@@ -54,7 +54,9 @@ pub(super) fn hit_player(
     for extension in &hit_data.extensions {
         match extension {
             HitDataExtension::SetScaling(scaling) => {
-                player_data[hit_player_id.id()].scaling = *scaling
+                if player_data[hit_player_id.id()].scaling > *scaling {
+                    player_data[hit_player_id.id()].scaling = *scaling;
+                }
             }
             HitDataExtension::SetProration(proration) => {
                 combo_info = combo_info.map(|mut combo| {
@@ -171,11 +173,11 @@ pub(super) fn hit_player(
                 .unwrap_or(hit_data.scaling)
                 * if grounded { 1 } else { 2 }
                 * hit_data.scaling_on_block_mult as i32
-                / 100;
+                / 200;
 
             player_data[hit_player_id.id()].add_meter(hit_data.meter_gain / 4);
             player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain / 2);
-            player_data[hit_player_id.other_player().id()].add_scaling(-block_scaling);
+            player_data[hit_player_id.id()].add_scaling(-block_scaling);
 
             None
         }

@@ -51,7 +51,7 @@ pub const fn initial_state(player: EntityID, position: Vector2) -> impl Player {
     }
 }
 pub const fn init_info() -> CharacterInitInfo {
-    CharacterInitInfo { max_health: 500 }
+    CharacterInitInfo { max_health: 1000 }
 }
 
 struct Sol<S> {
