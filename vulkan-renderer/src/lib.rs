@@ -19,8 +19,6 @@ pub struct App {
 
     key_states: std::collections::HashMap<winit::keyboard::PhysicalKey, winit::event::ElementState>,
 
-    ui: ui::PlayerUi,
-
     previous_time: std::time::SystemTime,
     show_hitboxes: bool,
     show_fps: bool,
@@ -83,9 +81,7 @@ impl winit::application::ApplicationHandler for App {
                 ) = (event.physical_key, event.state)
                 {
                     let input_states = self.get_input_states();
-                    _ = self
-                        .state
-                        .update(&self.asset_manager, &mut self.ui, false, input_states);
+                    _ = self.state.update(&self.asset_manager, false, input_states);
                 }
                 if let (
                     winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit1),
@@ -126,16 +122,13 @@ impl winit::application::ApplicationHandler for App {
                 self.previous_time = std::time::SystemTime::now();
 
                 let input_states = self.get_input_states();
-                let (sprite_data, mut primatives) = self.state.update(
-                    &self.asset_manager,
-                    &mut self.ui,
-                    self.debug_paused,
-                    input_states,
-                );
+                let (sprite_data, mut primatives) =
+                    self.state
+                        .update(&self.asset_manager, self.debug_paused, input_states);
 
                 if self.show_hitboxes {
                     match &self.state {
-                        GameState::Game(game) => primatives.append(
+                        GameState::Game(game, _) => primatives.append(
                             &mut game
                                 .world()
                                 .get_hurtboxes()
@@ -207,7 +200,7 @@ impl App {
 
         event_loop
             .run_app(&mut App {
-                state: GameState::create_game(),
+                state: GameState::create_game(&asset_manager),
                 renderer: None,
                 window: None,
 
@@ -247,8 +240,6 @@ impl App {
                     );
                     map
                 },
-
-                ui: ui::PlayerUi::new(),
 
                 asset_manager,
 
@@ -342,16 +333,19 @@ impl App {
 }
 
 enum GameState {
-    Game(fighting_game::Game),
+    Game(fighting_game::Game, ui::PlayerUi),
 }
 
 impl GameState {
     // TODO: add character selection
-    pub fn create_game() -> Self {
-        Self::Game(fighting_game::Game::init(
-            fighting_game::initialization::Character::Sol,
-            fighting_game::initialization::Character::Sol,
-        ))
+    pub fn create_game(asset_manager: &asset_manager::AssetManager) -> Self {
+        Self::Game(
+            fighting_game::Game::init(
+                fighting_game::initialization::Character::Sol,
+                fighting_game::initialization::Character::Sol,
+            ),
+            ui::PlayerUi::new(&asset_manager),
+        )
     }
 }
 
@@ -359,12 +353,11 @@ impl GameState {
     pub fn update(
         &mut self,
         assets: &asset_manager::AssetManager,
-        ui: &mut ui::PlayerUi,
         paused: bool,
         input_states: [fighting_game::input::InputState; 2],
     ) -> (Vec<renderer::Sprite>, Vec<renderer::Primative>) {
         match self {
-            GameState::Game(game) => {
+            GameState::Game(game, ui) => {
                 if !paused {
                     game.update(input_states);
                 }
@@ -388,7 +381,7 @@ impl GameState {
                                 .get_sprite_handle(&sprite_name)
                                 .expect(&format!("failed to find sprite {}", &sprite_name)),
                             position: player.position() + offset,
-                            facing_right: !player.get_direction(),
+                            facing_left: !player.get_direction(),
                             depth: 0.5,
                         }
                     })

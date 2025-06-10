@@ -10,12 +10,14 @@ type Color = (f32, f32, f32, f32);
 pub struct PlayerUi {
     player_1: PlayerSpecificUI<true>,
     player_2: PlayerSpecificUI<false>,
+    timer: Timer,
 }
 impl PlayerUi {
-    pub fn new() -> Self {
+    pub fn new(assets: &asset_manager::AssetManager) -> Self {
         Self {
             player_1: PlayerSpecificUI::new(),
             player_2: PlayerSpecificUI::new(),
+            timer: Timer::new(Vector2::new(0.0, 78.0), 60, assets),
         }
     }
     pub fn update(
@@ -25,6 +27,7 @@ impl PlayerUi {
     ) {
         self.player_1.update(player_1_state);
         self.player_2.update(player_2_state);
+        self.timer.update(60);
     }
     pub fn get_render_info(
         &self,
@@ -33,7 +36,7 @@ impl PlayerUi {
         impl Iterator<Item = renderer::Primative>,
     ) {
         (
-            vec![].into_iter(),
+            self.timer.get_render_info(),
             self.player_1
                 .get_render_info()
                 .chain(self.player_2.get_render_info()),
@@ -54,9 +57,9 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             health_bar: HealthBar {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 500.0
+                        BORDER_L + 550.0
                     } else {
-                        BORDER_R - 500.0
+                        BORDER_R - 550.0
                     },
                     BORDER_T - 60.0,
                 ),
@@ -68,9 +71,9 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             burst_meter: ProgressBar {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 60.0
+                        BORDER_L + 110.0
                     } else {
-                        BORDER_R - 60.0
+                        BORDER_R - 110.0
                     },
                     BORDER_T - 100.0,
                 ),
@@ -192,8 +195,8 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             {
                 const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -4.0);
                 const OFFSET: Vector2 = Vector2::new(4.0, -8.0);
-                const TOP: Vector2 = Vector2::new(-140.0, -2.0).mul(1.05);
-                const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).mul(1.05);
+                const TOP: Vector2 = Vector2::new(-140.0, -2.0).mul(1.02);
+                const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).mul(1.02);
 
                 if !flipped {
                     renderer::Primative {
@@ -493,6 +496,66 @@ impl ScalingBar {
             }]
             .into_iter()
         }
+    }
+}
+
+struct Timer(
+    Vector2,
+    usize,
+    Vec<asset_manager::SpriteHandle>,
+    asset_manager::SpriteHandle,
+);
+impl Timer {
+    fn new(position: Vector2, time: usize, assets: &asset_manager::AssetManager) -> Self {
+        // macro instead of const so concat can be used
+        macro_rules! path {
+            () => {
+                "ui/text/numbers_accessible/"
+            };
+        }
+        Self(
+            position,
+            time,
+            vec![
+                assets.get_sprite_handle(concat!(path!(), "0.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "1.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "2.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "3.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "4.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "5.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "6.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "7.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "8.png")).unwrap(),
+                assets.get_sprite_handle(concat!(path!(), "9.png")).unwrap(),
+            ],
+            assets.get_sprite_handle("ui/timer_ui.png").unwrap(),
+        )
+    }
+    fn update(&mut self, time: usize) {
+        self.1 = time;
+    }
+    fn get_render_info(&self) -> impl Iterator<Item = renderer::Sprite> {
+        vec![
+            renderer::Sprite {
+                position: self.0 + Vector2::LEFT * 1.5,
+                sprite: self.2[self.1 / 10],
+                facing_left: false,
+                depth: 0.6,
+            },
+            renderer::Sprite {
+                position: self.0 + Vector2::RIGHT * 1.5,
+                sprite: self.2[self.1 % 10],
+                facing_left: false,
+                depth: 0.6,
+            },
+            renderer::Sprite {
+                position: self.0,
+                sprite: self.3,
+                facing_left: false,
+                depth: 0.6,
+            },
+        ]
+        .into_iter()
     }
 }
 

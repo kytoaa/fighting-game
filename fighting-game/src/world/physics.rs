@@ -145,7 +145,7 @@ impl World {
     where
         P: Position + Velocity + HasID,
     {
-        let other = (player.id().id() + 1) % 2;
+        let other = player.id().other_player().id();
         let player_vel = player.velocity();
 
         let other_player = self.players[other].as_mut().unwrap();

@@ -28,7 +28,7 @@ struct VulkanObject<T>(T, vk::DeviceMemory);
 pub struct Sprite {
     pub sprite: SpriteHandle,
     pub position: Vector2,
-    pub facing_right: bool,
+    pub facing_left: bool,
     pub depth: f32,
 }
 pub struct Primative {
@@ -278,7 +278,7 @@ impl Renderer {
                             Sprite {
                                 sprite,
                                 position,
-                                facing_right,
+                                facing_left: facing_right,
                                 depth,
                             },
                         )| {
