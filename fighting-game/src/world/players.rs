@@ -27,13 +27,13 @@ impl TrackedPlayerData {
     pub const CANCEL_COST: u32 = 3333;
     pub const BURST_MAX: u32 = 10000;
 
-    pub const fn new(max_health: u32) -> Self {
+    pub const fn new(max_health: u32, burst_meter: u32) -> Self {
         Self {
             max_health,
             health: max_health,
             meter: 0,
             meter_gain: 1200,
-            burst_meter: 10000,
+            burst_meter,
             scaling: 0,
             damage_boost: 0,
             defense_boost: 0,

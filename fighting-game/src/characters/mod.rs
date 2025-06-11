@@ -21,8 +21,21 @@ mod wrapper_state;
 #[allow(unused_imports)]
 pub(crate) use wrapper_state::WrapperState;
 
-pub struct CharacterInitInfo {
+pub(crate) struct CharacterSpecificInitInfo {
     pub(crate) max_health: u32,
+}
+impl CharacterSpecificInitInfo {
+    pub fn into_init_info(self, burst: u32) -> CharacterInitInfo {
+        CharacterInitInfo {
+            max_health: self.max_health,
+            burst,
+        }
+    }
+}
+
+pub(crate) struct CharacterInitInfo {
+    pub(crate) max_health: u32,
+    pub(crate) burst: u32,
 }
 
 pub enum EntityUpdateResult {
@@ -33,6 +46,13 @@ pub enum EntityUpdateResult {
 
 pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny {
     fn update(&mut self, world: &mut World, input: Option<&InputHandler>) -> EntityUpdateResult;
+
+    fn dir(&self) -> bool {
+        true
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        None
+    }
 }
 
 pub trait Player:
@@ -48,6 +68,7 @@ pub trait Player:
     + DistanceFromOtherPlayer
     + HasCancelState
     + HasThrownState
+    + HasDeadState
     + AsAny
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
@@ -151,4 +172,8 @@ where
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
+
+pub trait HasDeadState {
+    fn dead_state(self: Box<Self>) -> Box<dyn Player>;
 }

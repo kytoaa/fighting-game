@@ -10,6 +10,8 @@ mod players;
 use damaging::ComboInfo;
 use players::TrackedPlayerData;
 
+const MAX_GAME_FRAMES: usize = 60 * 60;
+
 const DELTA: f32 = 1.0 / 60.0;
 const BORDER_X: f32 = 100.0;
 const MIN_WALL_BOUNCE_HEIGHT: f32 = 0.0;
@@ -20,7 +22,7 @@ impl EntityID {
 }
 const CANCEL_ACTION: Action = Action::MultiplePress(Button::Mid, Button::Heavy);
 
-pub struct World {
+pub(crate) struct World {
     players: [Option<Box<dyn crate::characters::Player>>; 2],
     player_data: [TrackedPlayerData; 2],
 
@@ -84,7 +86,7 @@ impl EntityID {
 }
 
 impl World {
-    pub fn new(
+    pub(crate) fn new(
         players: (
             impl FnOnce(
                 EntityID,
@@ -107,8 +109,8 @@ impl World {
         Self {
             players: [Some(a), Some(b)],
             player_data: [
-                TrackedPlayerData::new(a_info.max_health),
-                TrackedPlayerData::new(b_info.max_health),
+                TrackedPlayerData::new(a_info.max_health, a_info.burst),
+                TrackedPlayerData::new(b_info.max_health, a_info.burst),
             ],
             combo: None,
 
@@ -129,7 +131,7 @@ impl World {
 }
 
 impl World {
-    pub fn update(&mut self, input_providers: &[InputHandler]) {
+    pub(crate) fn update(&mut self, input_providers: &[InputHandler]) -> crate::GameStatus {
         let throw = self.update_throw_boxes();
 
         if !throw {
@@ -138,16 +140,20 @@ impl World {
             self.decrement_hitbox_hurtbox_frame_timers();
         }
 
-        self.frame += 1;
-
         if self.hitstop_frames_left > 0 {
             self.hitstop_frames_left -= 1;
-            return;
+            return crate::GameStatus::Running {
+                frames_left: MAX_GAME_FRAMES.saturating_sub(self.frame),
+            };
         }
         if self.superfreeze_frames_left > 0 {
             self.superfreeze_frames_left -= 1;
-            return;
+            return crate::GameStatus::Running {
+                frames_left: MAX_GAME_FRAMES.saturating_sub(self.frame),
+            };
         }
+
+        self.frame += 1;
 
         let non_player_entities = self
             .non_player_entities
@@ -212,18 +218,35 @@ impl World {
         self.update_player_meters();
 
         self.move_players();
+
+        if self.player_data.iter().all(|d| d.health == 0) {
+            return crate::GameStatus::Draw;
+        }
+
+        for (i, player_data) in self.player_data.iter().enumerate() {
+            if player_data.health == 0 {
+                return crate::GameStatus::RoundWon(i);
+            }
+        }
+
+        return crate::GameStatus::Running {
+            frames_left: MAX_GAME_FRAMES.saturating_sub(self.frame),
+        };
     }
 
-    pub fn spawn_hurtbox(&mut self, hurtbox: Hurtbox, position: Vector2) {
+    pub(crate) fn spawn_hurtbox(&mut self, hurtbox: Hurtbox, position: Vector2) {
         self.hurtboxes.push(Spawn(hurtbox.at_position(position), 1));
     }
-    pub fn spawn_hitbox(&mut self, hitbox: Hitbox, position: Vector2) {
+    pub(crate) fn spawn_hitbox(&mut self, hitbox: Hitbox, position: Vector2) {
         self.hitboxes.push(Spawn(hitbox.at_position(position), 1));
     }
-    pub fn spawn_throwbox(&mut self, throwbox: ThrowBox, position: Vector2) {
+    pub(crate) fn spawn_throwbox(&mut self, throwbox: ThrowBox, position: Vector2) {
         self.throwboxes.push(throwbox.at_position(position));
     }
-    pub fn spawn_non_player_entity(&mut self, entity: Box<dyn crate::characters::NonPlayerEntity>) {
+    pub(crate) fn spawn_non_player_entity(
+        &mut self,
+        entity: Box<dyn crate::characters::NonPlayerEntity>,
+    ) {
         self.non_player_entities
             .as_mut()
             .unwrap()
@@ -239,6 +262,15 @@ impl World {
             self.players[1].as_ref().unwrap().as_ref(),
         ])
     }
+    pub fn get_non_player_entities(
+        &self,
+    ) -> impl Iterator<Item = &dyn crate::characters::NonPlayerEntity> {
+        self.non_player_entities
+            .as_ref()
+            .unwrap()
+            .values()
+            .map(|e| e.as_ref())
+    }
     pub fn get_hurtboxes(&self) -> impl Iterator<Item = &Hurtbox> {
         self.hurtboxes.iter().map(|s| &s.0)
     }
@@ -249,26 +281,26 @@ impl World {
         self.throwboxes.iter().map(|s| s)
     }
 
-    pub fn trigger_hitstop(&mut self, frames: usize) {
+    pub(crate) fn trigger_hitstop(&mut self, frames: usize) {
         self.hitstop_frames_left = frames.max(self.hitstop_frames_left);
     }
-    pub fn trigger_superfreeze(&mut self, frames: usize) {
+    pub(crate) fn trigger_superfreeze(&mut self, frames: usize) {
         self.superfreeze_frames_left = frames.max(self.superfreeze_frames_left);
     }
 
-    pub const fn in_hitstop(&self) -> bool {
+    pub(crate) const fn in_hitstop(&self) -> bool {
         self.hitstop_frames_left > 0
     }
-    pub const fn in_superfreeze(&self) -> bool {
+    pub(crate) const fn in_superfreeze(&self) -> bool {
         self.superfreeze_frames_left > 0
     }
 
-    pub fn create_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
+    pub(crate) fn create_new_entity_id(&mut self, entity_type: EntityType) -> EntityID {
         let id = self.id_counter;
         self.id_counter += 1;
         EntityID(id, entity_type)
     }
-    pub fn try_spend_meter(&mut self, player: EntityID, meter_cost: u32) -> bool {
+    pub(crate) fn try_spend_meter(&mut self, player: EntityID, meter_cost: u32) -> bool {
         if !player.is_player() {
             panic!();
         }
@@ -279,7 +311,7 @@ impl World {
             true
         }
     }
-    pub fn try_spend_burst(&mut self, player: EntityID) -> bool {
+    pub(crate) fn try_spend_burst(&mut self, player: EntityID) -> bool {
         if !player.is_player() {
             panic!();
         }
@@ -290,7 +322,7 @@ impl World {
             false
         }
     }
-    pub fn burst(&mut self, player: &dyn crate::characters::Player) {
+    pub(crate) fn burst(&mut self, player: &dyn crate::characters::Player) {
         let id = player.id();
         let other_player = self.players[id.other_player().id()].take().unwrap();
         let dir = other_player.position() - player.position();
@@ -324,7 +356,7 @@ impl World {
 
         _ = self.players[id.other_player().id()].insert(p);
     }
-    pub fn set_entity_position(&mut self, entity: EntityID, position: Vector2) {
+    pub(crate) fn set_entity_position(&mut self, entity: EntityID, position: Vector2) {
         if entity.is_player() {
             self.players[entity.id()]
                 .as_mut()
@@ -339,7 +371,7 @@ impl World {
                 .set_position(position)
         }
     }
-    pub fn get_entity_position(&self, entity: EntityID) -> Vector2 {
+    pub(crate) fn get_entity_position(&self, entity: EntityID) -> Vector2 {
         if entity.is_player() {
             self.players[entity.id()].as_ref().unwrap().position()
         } else {
@@ -351,7 +383,7 @@ impl World {
                 .position()
         }
     }
-    pub fn set_entity_velocity(&mut self, entity: EntityID, velocity: Vector2) {
+    pub(crate) fn set_entity_velocity(&mut self, entity: EntityID, velocity: Vector2) {
         if entity.is_player() {
             self.players[entity.id()]
                 .as_mut()
@@ -359,7 +391,7 @@ impl World {
                 .set_velocity(velocity)
         }
     }
-    pub fn get_entity_velocity(&self, entity: EntityID) -> Vector2 {
+    pub(crate) fn get_entity_velocity(&self, entity: EntityID) -> Vector2 {
         if entity.is_player() {
             self.players[entity.id()].as_ref().unwrap().velocity()
         } else {

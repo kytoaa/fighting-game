@@ -1,6 +1,7 @@
 use super::{
-    CharacterInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded, HasCancelState,
-    HasCollider, HasID, HasThrownState, OnHit, Player, Position, Velocity,
+    CharacterSpecificInitInfo, Damageable, Direction, DistanceFromOtherPlayer, Grounded,
+    HasCancelState, HasCollider, HasDeadState, HasID, HasThrownState, OnHit, Player, Position,
+    Velocity,
 };
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitData, HitEffect, KnockdownType,
@@ -50,8 +51,8 @@ pub const fn initial_state(player: EntityID, position: Vector2) -> impl Player {
         state: Stand,
     }
 }
-pub const fn init_info() -> CharacterInitInfo {
-    CharacterInitInfo { max_health: 1000 }
+pub const fn init_info() -> CharacterSpecificInitInfo {
+    CharacterSpecificInitInfo { max_health: 800 }
 }
 
 struct Sol<S> {
@@ -243,6 +244,12 @@ where
 {
     fn thrown(self: Box<Self>) -> Box<dyn Player> {
         Box::new(self.transition(ThrownState, true))
+    }
+}
+
+impl<S> HasDeadState for Sol<S> {
+    fn dead_state(self: Box<Self>) -> Box<dyn Player> {
+        Box::new(self.transition(DeadState, true))
     }
 }
 
@@ -1694,3 +1701,50 @@ impl Player for Sol<ThrownState> {
     }
 }
 impl SolDamageableState for ThrownState {}
+
+struct DeadState;
+impl Player for Sol<DeadState> {
+    fn update(mut self: Box<Self>, _: &mut World, _: &InputHandler) -> Box<dyn Player> {
+        self.gravity();
+        if self.frame < 10 {
+            self.frame += 1;
+        }
+        self
+    }
+    fn actionable(&self) -> bool {
+        false
+    }
+    fn in_hitstun(&self) -> bool {
+        false
+    }
+    fn counterhit(&self) -> bool {
+        false
+    }
+    fn moveable(&self) -> bool {
+        false
+    }
+    fn throwable(&self) -> bool {
+        false
+    }
+    fn can_cancel(&self) -> bool {
+        false
+    }
+    fn should_wall_bounce(&self) -> bool {
+        false
+    }
+    fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
+        Some(match self.frame {
+            _ if self.grounded => (
+                "sol/hard_knockdown".into(),
+                BASE_SPRITE_OFFSET + Vector2::DOWN * 12.0,
+            ),
+            0..10 => ("sol/fall/tumble1".into(), BASE_SPRITE_OFFSET),
+            _ => ("sol/fall/tumble2".into(), BASE_SPRITE_OFFSET),
+        })
+    }
+}
+impl Damageable for Sol<DeadState> {
+    fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
+        (self, HitConnectionStatus::Invuln)
+    }
+}

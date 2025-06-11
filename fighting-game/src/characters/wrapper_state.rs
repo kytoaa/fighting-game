@@ -135,3 +135,11 @@ where
         self.entity.thrown()
     }
 }
+impl<const FRAMES: usize, F> HasDeadState for WrapperState<FRAMES, F>
+where
+    F: Fn(usize) -> Option<(Box<str>, Vector2)> + 'static,
+{
+    fn dead_state(self: Box<Self>) -> Box<dyn Player> {
+        self.entity.dead_state()
+    }
+}

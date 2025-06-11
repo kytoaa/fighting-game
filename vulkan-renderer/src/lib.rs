@@ -130,48 +130,30 @@ impl winit::application::ApplicationHandler for App {
                     match &self.state {
                         GameState::Game(game, _) => primatives.append(
                             &mut game
-                                .world()
-                                .get_hurtboxes()
-                                .map(|hitbox| {
-                                    let b = hitbox.shape.get_bounding_box();
+                                .get_hitboxes()
+                                .map(|h| {
+                                    let (bb, color) = match h {
+                                        fighting_game::SpawnedCollider::Hurtbox(b) => {
+                                            (b, (0.2, 1.0, 0.2, 0.3))
+                                        }
+                                        fighting_game::SpawnedCollider::Hitbox(b) => {
+                                            (b, (1.0, 0.2, 0.2, 0.8))
+                                        }
+                                        fighting_game::SpawnedCollider::Throwbox(b) => {
+                                            (b, (1.0, 0.2, 0.2, 0.8))
+                                        }
+                                        fighting_game::SpawnedCollider::Collider(b) => {
+                                            (b, (0.2, 0.2, 1.0, 0.3))
+                                        }
+                                    };
                                     renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0
+                                        (bb.position() - bb.size().flip_y() / 2.0
                                             + Vector2::DOWN * 30.0)
                                             * 6.0,
-                                        b.size() * 6.0,
-                                        (0.2, 1.0, 0.2, 0.3),
+                                        bb.size() * 6.0,
+                                        color,
                                     )
                                 })
-                                .chain(game.world().get_hitboxes().map(|hitbox| {
-                                    let b = hitbox.shape.get_bounding_box();
-                                    renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0
-                                            + Vector2::DOWN * 30.0)
-                                            * 6.0,
-                                        b.size() * 6.0,
-                                        (1.0, 0.2, 0.2, 0.8),
-                                    )
-                                }))
-                                .chain(game.world().get_throwboxes().map(|throwbox| {
-                                    let b = throwbox.shape.get_bounding_box();
-                                    renderer::Primative::rect(
-                                        (b.position() - b.size().flip_y() / 2.0
-                                            + Vector2::DOWN * 30.0)
-                                            * 6.0,
-                                        b.size() * 6.0,
-                                        (1.0, 0.2, 0.2, 0.8),
-                                    )
-                                }))
-                                .chain(game.world().get_players().iter().map(|player| {
-                                    let collider = player.get_collider_world_space();
-                                    renderer::Primative::rect(
-                                        (collider.position() - collider.size().flip_y() / 2.0
-                                            + Vector2::DOWN * 30.0)
-                                            * 6.0,
-                                        collider.size() * 6.0,
-                                        (0.2, 0.2, 1.0, 0.3),
-                                    )
-                                }))
                                 .collect(),
                         ),
                     }
@@ -368,21 +350,15 @@ impl GameState {
                 let (ui_sprites, ui_primatives) = ui.get_render_info();
 
                 let sprites = game
-                    .world()
-                    .get_players()
-                    .iter()
-                    .map(|player| {
-                        let (frame, offset) = player.frame_name().unwrap();
-                        let mut sprite_name = frame.into_string();
-                        sprite_name.push_str(".png");
-                        //println!("{}", &sprite_name);
+                    .render_state()
+                    .map(|e| {
+                        let mut s = e.sprite_name.into_string();
+                        s.push_str(".png");
                         renderer::Sprite {
-                            sprite: assets
-                                .get_sprite_handle(&sprite_name)
-                                .expect(&format!("failed to find sprite {}", &sprite_name)),
-                            position: player.position() + offset,
-                            facing_left: !player.get_direction(),
-                            depth: 0.5,
+                            sprite: assets.get_sprite_handle(&s).expect("failed to find sprite"),
+                            position: e.position,
+                            depth: e.depth,
+                            facing_left: e.flipped,
                         }
                     })
                     .chain(ui_sprites)
