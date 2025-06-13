@@ -1,8 +1,10 @@
 use fighting_game::datatypes::Vector2;
 use winit::window::Window;
 
+mod input;
 mod renderer;
 mod ui;
+mod game_state;
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
