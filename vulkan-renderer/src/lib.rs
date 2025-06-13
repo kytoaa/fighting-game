@@ -1,10 +1,12 @@
 use fighting_game::datatypes::Vector2;
 use winit::window::Window;
 
+mod game_state;
 mod input;
 mod renderer;
 mod ui;
-mod game_state;
+
+use game_state::GameState;
 
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 720;
@@ -13,21 +15,12 @@ static STATIC_ASSETS: asset_manager::static_data::StaticAssets =
     asset_manager_macros::generate_static_asset_manager_from_dir!("./assets/");
 
 pub struct App {
-    state: GameState,
     renderer: Option<renderer::Renderer>,
     window: Option<Window>,
 
-    asset_manager: asset_manager::AssetManager,
-
-    key_states: std::collections::HashMap<winit::keyboard::PhysicalKey, winit::event::ElementState>,
+    game_state: GameState,
 
     previous_time: std::time::SystemTime,
-    show_hitboxes: bool,
-    show_fps: bool,
-    debug_paused: bool,
-    recording: bool,
-    recorded_states: Vec<fighting_game::input::InputState>,
-    recording_iterator: Box<dyn Iterator<Item = fighting_game::input::InputState>>,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -62,51 +55,11 @@ impl winit::application::ApplicationHandler for App {
                 event,
                 is_synthetic: _,
             } => {
-                self.key_states.insert(event.physical_key, event.state);
-                if let (
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyQ),
-                    winit::event::ElementState::Pressed,
-                ) = (event.physical_key, event.state)
-                {
-                    self.show_hitboxes = !self.show_hitboxes;
-                }
-                if let (
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyW),
-                    winit::event::ElementState::Pressed,
-                ) = (event.physical_key, event.state)
-                {
-                    self.debug_paused = !self.debug_paused;
-                }
-                if let (
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyE),
-                    winit::event::ElementState::Pressed,
-                ) = (event.physical_key, event.state)
-                {
-                    let input_states = self.get_input_states();
-                    _ = self.state.update(&self.asset_manager, false, input_states);
-                }
-                if let (
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit1),
-                    winit::event::ElementState::Pressed,
-                ) = (event.physical_key, event.state)
-                {
-                    self.show_fps = !self.show_fps;
-                }
-                if let (
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyR),
-                    winit::event::ElementState::Pressed,
-                ) = (event.physical_key, event.state)
-                {
-                    if !self.recording {
-                        self.recorded_states.clear();
-                        self.recording = true;
-                    } else {
-                        self.recording = false;
-                        self.recording_iterator = Box::new(
-                            std::iter::repeat(self.recorded_states.clone().into_iter()).flatten(),
-                        );
-                    }
-                }
+                let keycode = match event.physical_key {
+                    winit::keyboard::PhysicalKey::Code(k) => k,
+                    _ => return,
+                };
+                self.game_state.keyboard_input(keycode, event.state);
             }
             winit::event::WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -115,54 +68,15 @@ impl winit::application::ApplicationHandler for App {
                 let time = std::time::SystemTime::now()
                     .duration_since(self.previous_time)
                     .unwrap();
-                if self.show_fps {
-                    println!("{}", 1.0 / time.as_secs_f64());
-                }
                 std::thread::sleep(
                     std::time::Duration::from_secs_f64(1.0 / 60.0).saturating_sub(time),
                 );
                 self.previous_time = std::time::SystemTime::now();
 
-                let input_states = self.get_input_states();
-                let (sprite_data, mut primatives) =
-                    self.state
-                        .update(&self.asset_manager, self.debug_paused, input_states);
-
-                if self.show_hitboxes {
-                    match &self.state {
-                        GameState::Game(game, _) => primatives.append(
-                            &mut game
-                                .get_hitboxes()
-                                .map(|h| {
-                                    let (bb, color) = match h {
-                                        fighting_game::SpawnedCollider::Hurtbox(b) => {
-                                            (b, (0.2, 1.0, 0.2, 0.3))
-                                        }
-                                        fighting_game::SpawnedCollider::Hitbox(b) => {
-                                            (b, (1.0, 0.2, 0.2, 0.8))
-                                        }
-                                        fighting_game::SpawnedCollider::Throwbox(b) => {
-                                            (b, (1.0, 0.2, 0.2, 0.8))
-                                        }
-                                        fighting_game::SpawnedCollider::Collider(b) => {
-                                            (b, (0.2, 0.2, 1.0, 0.3))
-                                        }
-                                    };
-                                    renderer::Primative::rect(
-                                        (bb.position() - bb.size().flip_y() / 2.0
-                                            + Vector2::DOWN * 30.0)
-                                            * 6.0,
-                                        bb.size() * 6.0,
-                                        color,
-                                    )
-                                })
-                                .collect(),
-                        ),
-                    }
-                }
+                let (sprite_data, primatives) = self.game_state.update();
 
                 self.renderer.as_mut().unwrap().draw_frame(
-                    &self.asset_manager,
+                    &self.game_state.asset_manager(),
                     &sprite_data,
                     &primatives,
                 );
@@ -184,190 +98,13 @@ impl App {
 
         event_loop
             .run_app(&mut App {
-                state: GameState::create_game(&asset_manager),
                 renderer: None,
                 window: None,
 
-                key_states: {
-                    let mut map = std::collections::HashMap::new();
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyD),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyF),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyG),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Space),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyJ),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyU),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyI),
-                        winit::event::ElementState::Released,
-                    );
-                    map.insert(
-                        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyK),
-                        winit::event::ElementState::Released,
-                    );
-                    map
-                },
-
-                asset_manager,
+                game_state: GameState::new(asset_manager),
 
                 previous_time: std::time::SystemTime::now(),
-                show_hitboxes: false,
-                show_fps: false,
-                debug_paused: false,
-                recording: false,
-                recorded_states: vec![],
-                recording_iterator: Box::new(vec![].into_iter()),
             })
             .unwrap();
-    }
-
-    fn get_input_states(&mut self) -> [fighting_game::input::InputState; 2] {
-        use fighting_game::input::{ButtonState, InputState};
-        use winit::event::ElementState;
-        use winit::keyboard::{KeyCode, PhysicalKey};
-
-        let light = match self
-            .key_states
-            .get(&PhysicalKey::Code(KeyCode::KeyJ))
-            .unwrap()
-        {
-            ElementState::Released => ButtonState::Up,
-            ElementState::Pressed => ButtonState::Down,
-        };
-        let mid = match self
-            .key_states
-            .get(&PhysicalKey::Code(KeyCode::KeyU))
-            .unwrap()
-        {
-            ElementState::Released => ButtonState::Up,
-            ElementState::Pressed => ButtonState::Down,
-        };
-        let heavy = match self
-            .key_states
-            .get(&PhysicalKey::Code(KeyCode::KeyI))
-            .unwrap()
-        {
-            ElementState::Released => ButtonState::Up,
-            ElementState::Pressed => ButtonState::Down,
-        };
-        let utility = match self
-            .key_states
-            .get(&PhysicalKey::Code(KeyCode::KeyK))
-            .unwrap()
-        {
-            ElementState::Released => ButtonState::Up,
-            ElementState::Pressed => ButtonState::Down,
-        };
-
-        fn button_state(
-            button: KeyCode,
-            states: &std::collections::HashMap<PhysicalKey, ElementState>,
-        ) -> f32 {
-            match states.get(&PhysicalKey::Code(button)).unwrap() {
-                ElementState::Pressed => 1.0,
-                ElementState::Released => 0.0,
-            }
-        }
-
-        let dir = Vector2::new(
-            0.0 - button_state(KeyCode::KeyD, &self.key_states)
-                + button_state(KeyCode::KeyG, &self.key_states),
-            0.0 - button_state(KeyCode::KeyF, &self.key_states)
-                + button_state(KeyCode::Space, &self.key_states),
-        )
-        .into();
-
-        let player_state = InputState {
-            dir,
-            button_states: fighting_game::input::ButtonStates {
-                light,
-                mid,
-                heavy,
-                utility,
-            },
-        };
-
-        if self.recording {
-            self.recorded_states.push(player_state.clone());
-
-            return [Default::default(), player_state];
-        }
-
-        let other = self.recording_iterator.next().unwrap_or_default(); //InputState::default();
-
-        [player_state, other]
-    }
-}
-
-enum GameState {
-    Game(fighting_game::Game, ui::PlayerUi),
-}
-
-impl GameState {
-    // TODO: add character selection
-    pub fn create_game(asset_manager: &asset_manager::AssetManager) -> Self {
-        Self::Game(
-            fighting_game::Game::init(
-                fighting_game::initialization::Character::Sol,
-                fighting_game::initialization::Character::Sol,
-            ),
-            ui::PlayerUi::new(&asset_manager),
-        )
-    }
-}
-
-impl GameState {
-    pub fn update(
-        &mut self,
-        assets: &asset_manager::AssetManager,
-        paused: bool,
-        input_states: [fighting_game::input::InputState; 2],
-    ) -> (Vec<renderer::Sprite>, Vec<renderer::Primative>) {
-        match self {
-            GameState::Game(game, ui) => {
-                if !paused {
-                    game.update(input_states);
-                }
-
-                let fighting_game::GameState { player_1, player_2 } = game.get_gamestate();
-                ui.update(&player_1, &player_2);
-
-                let (ui_sprites, ui_primatives) = ui.get_render_info();
-
-                let sprites = game
-                    .render_state()
-                    .map(|e| {
-                        let mut s = e.sprite_name.into_string();
-                        s.push_str(".png");
-                        renderer::Sprite {
-                            sprite: assets.get_sprite_handle(&s).expect("failed to find sprite"),
-                            position: e.position,
-                            depth: e.depth,
-                            facing_left: e.flipped,
-                        }
-                    })
-                    .chain(ui_sprites)
-                    .collect();
-
-                (sprites, ui_primatives.collect())
-            }
-        }
     }
 }
