@@ -241,22 +241,34 @@ impl InputDevice {
                 let state = gamepad.state();
 
                 let dir = Vector2::new(
-                    gamepad
+                    (gamepad
                         .button_code(gilrs::Button::DPadRight)
                         .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
                         .unwrap_or_default()
                         - gamepad
                             .button_code(gilrs::Button::DPadLeft)
                             .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
-                            .unwrap_or_default(),
-                    gamepad
+                            .unwrap_or_default()
+                        + gamepad
+                            .axis_data(gilrs::Axis::LeftStickX)
+                            .map(|a| a.value())
+                            .unwrap_or_default())
+                    .clamp(-1.0, 1.0)
+                    .round(),
+                    (gamepad
                         .button_code(gilrs::Button::DPadUp)
                         .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
                         .unwrap_or_default()
                         - gamepad
                             .button_code(gilrs::Button::DPadDown)
                             .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
-                            .unwrap_or_default(),
+                            .unwrap_or_default()
+                        + gamepad
+                            .axis_data(gilrs::Axis::LeftStickY)
+                            .map(|a| a.value())
+                            .unwrap_or_default())
+                    .clamp(-1.0, 1.0)
+                    .round(),
                 )
                 .into();
 
