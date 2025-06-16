@@ -541,18 +541,21 @@ impl Timer {
                 sprite: self.2[self.1 / 10],
                 facing_left: false,
                 depth: 0.6,
+                scale: (6.0, 6.0),
             },
             renderer::Sprite {
                 position: self.0 + Vector2::RIGHT * 1.5,
                 sprite: self.2[self.1 % 10],
                 facing_left: false,
                 depth: 0.6,
+                scale: (6.0, 6.0),
             },
             renderer::Sprite {
                 position: self.0,
                 sprite: self.3,
                 facing_left: false,
                 depth: 0.6,
+                scale: (6.0, 6.0),
             },
         ]
         .into_iter()

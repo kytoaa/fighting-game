@@ -102,10 +102,11 @@ impl CharacterSelectInputManager {
     fn try_add_input_device(&mut self, device: InputDevice) {
         println!("requested to add {:?}", device);
         match &mut self.active_input_sources {
-            [a @ InputDevice::None, _] if *a != device => *a = device,
-            [_, b @ InputDevice::None] if *b != device => *b = device,
+            [a @ InputDevice::None, b] if *b != device => *a = device,
+            [a, b @ InputDevice::None] if *a != device => *b = device,
             _ => (),
         }
+        println!("devices: {:?}", self.active_input_sources);
     }
     fn try_remove_input_device(&mut self, device: InputDevice) {
         println!("requested to remove {:?}", device);
@@ -132,6 +133,12 @@ impl CharacterSelectInputManager {
                 active_input_sources: self.active_input_sources,
             }),
         }
+    }
+    pub fn connected_input_devices(&self) -> [bool; 2] {
+        [
+            !(self.active_input_sources[0] == InputDevice::None),
+            !(self.active_input_sources[1] == InputDevice::None),
+        ]
     }
 }
 
@@ -256,10 +263,10 @@ impl InputDevice {
                 Ok(fighting_game::input::InputState {
                     dir,
                     button_states: fighting_game::input::ButtonStates {
-                        light: bool_as_button_state(gamepad.is_pressed(gilrs::Button::South)),
-                        mid: bool_as_button_state(gamepad.is_pressed(gilrs::Button::West)),
-                        heavy: bool_as_button_state(gamepad.is_pressed(gilrs::Button::North)),
-                        utility: bool_as_button_state(gamepad.is_pressed(gilrs::Button::East)),
+                        light: bool_as_button_state(gamepad.is_pressed(gilrs::Button::West)),
+                        mid: bool_as_button_state(gamepad.is_pressed(gilrs::Button::North)),
+                        heavy: bool_as_button_state(gamepad.is_pressed(gilrs::Button::East)),
+                        utility: bool_as_button_state(gamepad.is_pressed(gilrs::Button::South)),
                     },
                 })
             }

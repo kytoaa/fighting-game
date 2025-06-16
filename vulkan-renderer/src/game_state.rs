@@ -1,3 +1,5 @@
+use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use fighting_game::datatypes::Vector2;
 use winit::{event::ElementState, keyboard::KeyCode};
 
 pub struct GameState {
@@ -35,6 +37,43 @@ impl GameState {
     ) {
         match self.state.take().unwrap() {
             GameStateInner::CharacterSelect(mut char_select) => {
+                let connected_text = char_select
+                    .input_manager
+                    .connected_input_devices()
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, c)| *c)
+                    .map(|(i, _)| {
+                        let dir = (i as isize * 2 - 1).signum() as f32;
+                        crate::renderer::Sprite {
+                            sprite: self
+                                .asset_manager
+                                .get_sprite_handle("ui/connected_text.png")
+                                .unwrap(),
+                            position: Vector2::new(
+                                WINDOW_WIDTH as f32 / 11.0 * dir,
+                                WINDOW_HEIGHT as f32 / 12.0,
+                            ),
+                            facing_left: false,
+                            depth: 0.5,
+                            scale: (4.0, 4.0),
+                        }
+                    })
+                    .chain(
+                        [crate::renderer::Sprite {
+                            sprite: self
+                                .asset_manager
+                                .get_sprite_handle("ui/background.png")
+                                .unwrap(),
+                            position: Vector2::ZERO,
+                            facing_left: false,
+                            depth: 0.7,
+                            scale: (WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
+                        }]
+                        .into_iter(),
+                    )
+                    .collect();
+
                 if char_select.input_manager.should_start() {
                     println!("updated");
                     self.state = Some(GameStateInner::Game(Game {
@@ -54,7 +93,7 @@ impl GameState {
                         .state
                         .insert(GameStateInner::CharacterSelect(char_select));
                 }
-                (vec![], vec![])
+                (connected_text, vec![])
             }
             GameStateInner::Game(Game {
                 mut game,
@@ -81,9 +120,10 @@ impl GameState {
                                 .asset_manager
                                 .get_sprite_handle(&s)
                                 .expect("failed to find sprite"),
-                            position: e.position,
+                            position: e.position + Vector2::DOWN * 30.0,
                             depth: e.depth,
                             facing_left: e.flipped,
+                            scale: (6.0, 6.0),
                         }
                     })
                     .chain(ui_sprites)

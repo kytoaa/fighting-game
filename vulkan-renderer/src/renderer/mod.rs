@@ -30,6 +30,7 @@ pub struct Sprite {
     pub position: Vector2,
     pub facing_left: bool,
     pub depth: f32,
+    pub scale: (f32, f32),
 }
 pub struct Primative {
     pub top_l: Vector2,
@@ -236,7 +237,7 @@ impl Renderer {
         primatives: &[Primative],
     ) {
         let frame = self.frame as usize % MAX_FRAMES_IN_FLIGHT;
-        if objects.len() == 0 {
+        if objects.len() == 0 && primatives.len() == 0 {
             self.frame += 1;
             return;
         }
@@ -280,6 +281,7 @@ impl Renderer {
                                 position,
                                 facing_left: facing_right,
                                 depth,
+                                scale,
                             },
                         )| {
                             (
@@ -289,13 +291,14 @@ impl Renderer {
                                     *position,
                                     *facing_right,
                                     *depth,
+                                    *scale,
                                 ),
                             )
                         },
                     )
-                    .map(|(i, (size, position, flipped, depth))| {
+                    .map(|(i, (size, position, flipped, depth, scale))| {
                         let position = position.y(-position.y);
-                        (size, position.rounded(), flipped, depth, i)
+                        (size, position.rounded(), flipped, depth, scale, i)
                     }),
                 primatives.iter().map(
                     |Primative {
@@ -379,19 +382,19 @@ impl Renderer {
 
     fn populate_vertex_index_buffers<'a>(
         &mut self,
-        sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, u32)>,
+        sprites: impl Iterator<Item = ((usize, usize), Vector2, bool, f32, (f32, f32), u32)>,
         primatives: impl Iterator<Item = ([Vector2; 4], &'a [(f32, f32, f32, f32); 4])>,
         frame: usize,
     ) {
         let verts: Vec<_> = sprites
             .map(
-                |((width, height), position, flipped, depth, texture_index)| {
+                |((width, height), position, flipped, depth, scale, texture_index)| {
                     //println!("texture_index: {}", texture_index);
                     [
                         (
                             (
-                                position.x - (width as f32 / 2.0),
-                                position.y - (height as f32 / 2.0),
+                                (position.x - (width as f32 / 2.0)) * scale.0,
+                                (position.y - (height as f32 / 2.0)) * scale.1,
                                 depth,
                             ),
                             (0.0, 0.0),
@@ -399,8 +402,8 @@ impl Renderer {
                         ),
                         (
                             (
-                                position.x - (width as f32 / 2.0),
-                                position.y + (height as f32 / 2.0),
+                                (position.x - (width as f32 / 2.0)) * scale.0,
+                                (position.y + (height as f32 / 2.0)) * scale.1,
                                 depth,
                             ),
                             (0.0, 1.0),
@@ -408,8 +411,8 @@ impl Renderer {
                         ),
                         (
                             (
-                                position.x + (width as f32 / 2.0),
-                                position.y + (height as f32 / 2.0),
+                                (position.x + (width as f32 / 2.0)) * scale.0,
+                                (position.y + (height as f32 / 2.0)) * scale.1,
                                 depth,
                             ),
                             (1.0, 1.0),
@@ -417,8 +420,8 @@ impl Renderer {
                         ),
                         (
                             (
-                                position.x + (width as f32 / 2.0),
-                                position.y - (height as f32 / 2.0),
+                                (position.x + (width as f32 / 2.0)) * scale.0,
+                                (position.y - (height as f32 / 2.0)) * scale.1,
                                 depth,
                             ),
                             (1.0, 0.0),

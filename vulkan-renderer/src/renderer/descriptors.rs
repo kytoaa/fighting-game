@@ -133,6 +133,9 @@ pub fn create_sampler_array_descriptor_sets(
 }
 impl Renderer {
     pub fn insert_image_views(&mut self, image_views: &[vk::ImageView], frame: usize) {
+        if image_views.len() == 0 {
+            return;
+        }
         if image_views.len() as usize == MAX_IMAGE_SAMPLERS {
             panic!("too many images");
         }
