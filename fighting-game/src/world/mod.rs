@@ -229,6 +229,17 @@ impl World {
             }
         }
 
+        if self.frame == MAX_GAME_FRAMES {
+            return crate::GameStatus::RoundWon(
+                self.player_data
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(_, d)| d.health)
+                    .map(|(i, _)| i)
+                    .unwrap(),
+            );
+        }
+
         return crate::GameStatus::Running {
             frames_left: MAX_GAME_FRAMES.saturating_sub(self.frame),
         };

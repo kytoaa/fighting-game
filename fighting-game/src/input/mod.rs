@@ -38,6 +38,12 @@ impl Default for InputHandler {
 }
 
 impl InputHandler {
+    pub fn clear_history(&mut self) {
+        self.direction_queue
+            .iter_mut()
+            .for_each(|d| *d = InputDir::Dir5);
+        self.buffered_actions = Some(vec![]);
+    }
     pub fn has_motion(&self, motion: &Motion) -> bool {
         if self.direction_queue.len() < motion.frames {
             return false;

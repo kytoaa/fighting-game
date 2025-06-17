@@ -17,17 +17,21 @@ impl PlayerUi {
         Self {
             player_1: PlayerSpecificUI::new(),
             player_2: PlayerSpecificUI::new(),
-            timer: Timer::new(Vector2::new(0.0, 78.0), 60, assets),
+            timer: Timer::new(Vector2::new(0.0, 48.0), 60, assets),
         }
     }
     pub fn update(
         &mut self,
         player_1_state: &fighting_game::PlayerState,
         player_2_state: &fighting_game::PlayerState,
+        seconds_left: Option<usize>,
     ) {
         self.player_1.update(player_1_state);
         self.player_2.update(player_2_state);
-        self.timer.update(60);
+
+        if let Some(seconds_left) = seconds_left {
+            self.timer.update(seconds_left);
+        }
     }
     pub fn get_render_info(
         &self,
@@ -92,8 +96,8 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                     },
                     BORDER_B + 70.0,
                 ),
-                value: 1.0,
-                display_value: 1.0,
+                value: 0.0,
+                display_value: 0.0,
             },
             scaling_bar: ScalingBar {
                 position: Vector2::new(

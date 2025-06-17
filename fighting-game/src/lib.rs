@@ -10,6 +10,7 @@ pub struct Game {
     world: world::World,
     has_won: [bool; 2],
     characters: [initialization::Character; 2],
+    reset: bool,
 }
 
 impl Game {
@@ -25,11 +26,27 @@ impl Game {
             input_providers,
             has_won: [false; 2],
             characters: [player_1, player_2],
+            reset: false,
         }
     }
 }
 impl Game {
     pub fn update(&mut self, input_states: [input::InputState; 2]) -> GameStatus {
+        if self.reset {
+            let game_state = self.get_gamestate();
+
+            self.world = initialization::create_world(
+                initialization::WorldBuilder::with_characters(
+                    self.characters[0],
+                    self.characters[1],
+                )
+                .with_bursts(
+                    (game_state.player_1.burst_percent * 10000.0) as u32 + 3000,
+                    (game_state.player_2.burst_percent * 10000.0) as u32 + 3000,
+                ),
+            );
+            self.reset = false;
+        }
         self.input_providers
             .iter_mut()
             .zip(input_states.iter())
@@ -51,20 +68,11 @@ impl Game {
             return match self.has_won[p] {
                 true => GameStatus::GameWon(p),
                 false => {
+                    self.reset = true;
                     self.has_won[p] = true;
-                    let game_state = self.get_gamestate();
-
-                    self.world = initialization::create_world(
-                        initialization::WorldBuilder::with_characters(
-                            self.characters[0],
-                            self.characters[1],
-                        )
-                        .with_bursts(
-                            (game_state.player_1.burst_percent * 10000.0) as u32 + 3000,
-                            (game_state.player_2.burst_percent * 10000.0) as u32 + 3000,
-                        ),
-                    );
-
+                    self.input_providers
+                        .iter_mut()
+                        .for_each(|i| i.clear_history());
                     GameStatus::RoundWon(p)
                 }
             };
