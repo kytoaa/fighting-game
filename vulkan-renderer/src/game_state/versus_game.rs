@@ -106,16 +106,24 @@ impl Game {
                 let mut seconds_left = None;
 
                 match game_status {
-                    fighting_game::GameStatus::Draw | fighting_game::GameStatus::RoundWon(_) => {
+                    fighting_game::GameStatus::Draw => {
                         println!("round ended");
                         self.state = VersusGameState::RoundWon {
                             frames: ROUND_END_FRAMES,
-                        }
+                        };
+                    }
+                    fighting_game::GameStatus::RoundWon(p) => {
+                        self.ui.incr_wins(p == 0);
+                        println!("round ended");
+                        self.state = VersusGameState::RoundWon {
+                            frames: ROUND_END_FRAMES,
+                        };
                     }
                     fighting_game::GameStatus::Running { frames_left } => {
                         seconds_left = Some(frames_left / 60);
                     }
                     fighting_game::GameStatus::GameWon(winner) => {
+                        self.ui.incr_wins(winner == 0);
                         println!("round ended");
                         self.state = VersusGameState::GameWon {
                             frames: WIN_FRAMES,

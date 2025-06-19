@@ -15,8 +15,8 @@ pub struct PlayerUi {
 impl PlayerUi {
     pub fn new(assets: &asset_manager::AssetManager) -> Self {
         Self {
-            player_1: PlayerSpecificUI::new(),
-            player_2: PlayerSpecificUI::new(),
+            player_1: PlayerSpecificUI::new(assets),
+            player_2: PlayerSpecificUI::new(assets),
             timer: Timer::new(Vector2::new(0.0, 48.0), 60, assets),
         }
     }
@@ -33,14 +33,23 @@ impl PlayerUi {
             self.timer.update(seconds_left);
         }
     }
+    pub fn incr_wins(&mut self, is_player_1: bool) {
+        match is_player_1 {
+            true => self.player_1.incr_wins(),
+            false => self.player_2.incr_wins(),
+        }
+    }
     pub fn get_render_info(
         &self,
     ) -> (
-        impl Iterator<Item = renderer::Sprite>,
-        impl Iterator<Item = renderer::Primative>,
+        impl Iterator<Item = renderer::Sprite> + use<'_>,
+        impl Iterator<Item = renderer::Primative> + use<'_>,
     ) {
         (
-            self.timer.get_render_info(),
+            self.timer
+                .get_render_info()
+                .chain(self.player_1.get_render_sprites())
+                .chain(self.player_2.get_render_sprites()),
             self.player_1
                 .get_render_info()
                 .chain(self.player_2.get_render_info()),
@@ -53,10 +62,11 @@ struct PlayerSpecificUI<const IS_PLAYER_1: bool> {
     burst_meter: ProgressBar,
     meter: PlayerMeter,
     scaling_bar: ScalingBar,
+    wins: WinIndicator,
 }
 
 impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
-    fn new() -> Self {
+    fn new(assets: &asset_manager::AssetManager) -> Self {
         PlayerSpecificUI {
             health_bar: HealthBar {
                 position: Vector2::new(
@@ -110,6 +120,10 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 ),
                 value: 0.0,
             },
+            wins: WinIndicator::new(
+                Vector2::new(if IS_PLAYER_1 { 25.0 } else { -25.0 }, 54.0),
+                assets,
+            ),
         }
     }
 
@@ -135,6 +149,13 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             .chain(self.meter.get_render_info(!IS_PLAYER_1))
             .chain(vec![self.burst_meter.get_render_info(!IS_PLAYER_1)].into_iter())
             .chain(self.scaling_bar.get_render_info(!IS_PLAYER_1))
+    }
+    fn get_render_sprites(&self) -> impl Iterator<Item = renderer::Sprite> + use<'_, IS_PLAYER_1> {
+        self.wins.get_render_info(!IS_PLAYER_1)
+    }
+
+    fn incr_wins(&mut self) {
+        self.wins.incr_wins();
     }
 
     fn get_player_ui_background_ui(
@@ -500,6 +521,47 @@ impl ScalingBar {
             }]
             .into_iter()
         }
+    }
+}
+
+struct WinIndicator {
+    position: Vector2,
+    wins: u32,
+    on_sprite: asset_manager::SpriteHandle,
+    off_sprite: asset_manager::SpriteHandle,
+}
+impl WinIndicator {
+    fn new(position: Vector2, assets: &asset_manager::AssetManager) -> Self {
+        Self {
+            position,
+            wins: 0,
+            on_sprite: assets.get_sprite_handle("ui/wins/win_on.png").unwrap(),
+            off_sprite: assets.get_sprite_handle("ui/wins/win_off.png").unwrap(),
+        }
+    }
+    fn incr_wins(&mut self) {
+        self.wins += 1;
+    }
+    fn get_render_info<'a>(
+        &'a self,
+        flipped: bool,
+    ) -> impl Iterator<Item = renderer::Sprite> + use<'a> {
+        (0..2).map(move |i| renderer::Sprite {
+            position: self.position
+                + if flipped {
+                    Vector2::new(5.0 * i as f32, 0.0)
+                } else {
+                    Vector2::new(-5.0 * i as f32, 0.0)
+                },
+            facing_left: flipped,
+            scale: (6.0, 6.0),
+            depth: 0.5,
+            sprite: if self.wins >= i + 1 {
+                self.on_sprite
+            } else {
+                self.off_sprite
+            },
+        })
     }
 }
 
