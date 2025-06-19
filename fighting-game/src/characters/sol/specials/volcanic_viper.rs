@@ -247,24 +247,32 @@ impl Player for Sol<VolcanicViper> {
         const START_FRAME: usize = VOLCANIC_VIPER_STARTUP - 2;
         const ACTIVE_FRAME_2: usize = VOLCANIC_VIPER_STARTUP + VOLCANIC_VIPER_ACTIVE_1;
         const RECOVERY_FRAME: usize = ACTIVE_FRAME_2 + VOLCANIC_VIPER_ACTIVE_2;
+        const FLAME_END_FRAME: usize = RECOVERY_FRAME + 4;
 
         const OFFSET: Vector2 = BASE_SPRITE_OFFSET;
 
         Some(match self.frame as usize {
             0..START_FRAME => (
                 "sol/specials/volcanic_viper/volcanic_viper1".into(),
-                OFFSET + Vector2::DOWN * 8.0,
+                OFFSET + Vector2::UP * 0.0,
             ),
             START_FRAME..ACTIVE_FRAME_2 => (
                 "sol/specials/volcanic_viper/volcanic_viper2".into(),
-                OFFSET + Vector2::DOWN * 1.0,
+                OFFSET + Vector2::UP * 7.0,
             ),
             ACTIVE_FRAME_2..RECOVERY_FRAME => (
                 "sol/specials/volcanic_viper/volcanic_viper3".into(),
-                OFFSET + Vector2::UP * 5.0,
+                OFFSET + Vector2::UP * 8.0,
+            ),
+            RECOVERY_FRAME..FLAME_END_FRAME => (
+                "sol/specials/volcanic_viper/volcanic_viper4".into(),
+                OFFSET + Vector2::UP * 8.0,
             ),
             _ if self.grounded => ("sol/run/run_stop".into(), BASE_SPRITE_OFFSET),
-            _ => ("sol/specials/volcanic_viper/volcanic_viper4".into(), OFFSET),
+            _ => (
+                "sol/specials/volcanic_viper/volcanic_viper5".into(),
+                OFFSET + Vector2::UP * 8.0,
+            ),
         })
     }
     fn moveable(&self) -> bool {

@@ -16,6 +16,7 @@ macro_rules! try_transition {
 }
 
 pub mod sol;
+mod sprite_entity;
 mod wrapper_state;
 
 #[allow(unused_imports)]
