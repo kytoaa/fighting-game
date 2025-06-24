@@ -484,6 +484,15 @@ where
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
+        match self.cancel_options_from_grounded_normal(input) {
+            Ok(state) => return Ok(state),
+            Err(s) => self = s,
+        }
+        match self.grounded_command_normal_cancel(input) {
+            Ok(state) => return Ok(state),
+            Err(s) => self = s,
+        }
+
         // NOTE: ground throw forward
         if input.get_state(Button::Utility) == ButtonState::Down
             && input.has_action(&Action::Pressed(
@@ -512,15 +521,6 @@ where
                 },
                 true,
             )));
-        }
-
-        match self.cancel_options_from_grounded_normal(input) {
-            Ok(state) => return Ok(state),
-            Err(s) => self = s,
-        }
-        match self.grounded_command_normal_cancel(input) {
-            Ok(state) => return Ok(state),
-            Err(s) => self = s,
         }
 
         if input.input_dir().is_down() {

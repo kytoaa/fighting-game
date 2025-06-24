@@ -1,4 +1,4 @@
-use super::{EntityID, World};
+use super::World;
 use crate::collision::HitLevel;
 
 impl World {

@@ -17,7 +17,7 @@ impl PlayerUi {
         Self {
             player_1: PlayerSpecificUI::new(assets),
             player_2: PlayerSpecificUI::new(assets),
-            timer: Timer::new(Vector2::new(0.0, 48.0), 60, assets),
+            timer: Timer::new(Vector2::new(0.0, 48.0), 99, assets),
         }
     }
     pub fn update(
@@ -604,14 +604,22 @@ impl Timer {
         vec![
             renderer::Sprite {
                 position: self.0 + Vector2::LEFT * 1.5,
-                sprite: self.2[self.1 / 10],
+                sprite: if self.1 > 99 {
+                    self.2[9]
+                } else {
+                    self.2[self.1 / 10]
+                },
                 facing_left: false,
                 depth: 0.6,
                 scale: (6.0, 6.0),
             },
             renderer::Sprite {
                 position: self.0 + Vector2::RIGHT * 1.5,
-                sprite: self.2[self.1 % 10],
+                sprite: if self.1 > 99 {
+                    self.2[9]
+                } else {
+                    self.2[self.1 % 10]
+                },
                 facing_left: false,
                 depth: 0.6,
                 scale: (6.0, 6.0),

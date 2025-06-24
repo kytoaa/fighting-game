@@ -10,7 +10,7 @@ mod players;
 use damaging::ComboInfo;
 use players::TrackedPlayerData;
 
-const MAX_GAME_FRAMES: usize = 60 * 60;
+const MAX_GAME_FRAMES: usize = 60 * 100;
 
 const DELTA: f32 = 1.0 / 60.0;
 const BORDER_X: f32 = 100.0;
@@ -267,13 +267,13 @@ impl World {
         shape.get_bounding_box().min.y <= 0.01
     }
 
-    pub fn get_players(&self) -> Box<[&dyn crate::characters::Player; 2]> {
+    pub(crate) fn get_players(&self) -> Box<[&dyn crate::characters::Player; 2]> {
         Box::new([
             self.players[0].as_ref().unwrap().as_ref(),
             self.players[1].as_ref().unwrap().as_ref(),
         ])
     }
-    pub fn get_non_player_entities(
+    pub(crate) fn get_non_player_entities(
         &self,
     ) -> impl Iterator<Item = &dyn crate::characters::NonPlayerEntity> {
         self.non_player_entities
@@ -282,13 +282,13 @@ impl World {
             .values()
             .map(|e| e.as_ref())
     }
-    pub fn get_hurtboxes(&self) -> impl Iterator<Item = &Hurtbox> {
+    pub(crate) fn get_hurtboxes(&self) -> impl Iterator<Item = &Hurtbox> {
         self.hurtboxes.iter().map(|s| &s.0)
     }
-    pub fn get_hitboxes(&self) -> impl Iterator<Item = &Hitbox> {
+    pub(crate) fn get_hitboxes(&self) -> impl Iterator<Item = &Hitbox> {
         self.hitboxes.iter().map(|s| &s.0)
     }
-    pub fn get_throwboxes(&self) -> impl Iterator<Item = &ThrowBox> {
+    pub(crate) fn get_throwboxes(&self) -> impl Iterator<Item = &ThrowBox> {
         self.throwboxes.iter().map(|s| s)
     }
 
@@ -409,7 +409,7 @@ impl World {
             Vector2::ZERO
         }
     }
-    pub fn get_player_state(&self, player: EntityID) -> crate::PlayerState {
+    pub(crate) fn get_player_state(&self, player: EntityID) -> crate::PlayerState {
         if !player.is_player() {
             panic!()
         }
@@ -436,7 +436,7 @@ impl World {
                 .flatten(),
         }
     }
-    pub fn get_combo_hits(&self) -> Option<usize> {
+    pub(crate) fn get_combo_hits(&self) -> Option<usize> {
         self.combo.as_ref().map(|c| c.hits())
     }
 }

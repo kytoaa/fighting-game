@@ -70,7 +70,7 @@ impl Game {
                 }
 
                 let fighting_game::GameState { player_1, player_2 } = self.game.get_gamestate();
-                self.ui.update(&player_1, &player_2, Some(60));
+                self.ui.update(&player_1, &player_2, Some(99));
 
                 let timer_index = (frames + 45) / 60;
 
