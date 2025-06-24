@@ -443,7 +443,5 @@ impl World {
 
 fn check_for_burst(input: &InputHandler) -> bool {
     input.has_action(&Action::Pressed(Button::Utility, None))
-        && (input.has_action(&Action::Pressed(Button::Light, None))
-            || input.has_action(&Action::Pressed(Button::Mid, None))
-            || input.has_action(&Action::Pressed(Button::Heavy, None)))
+        && input.has_action(&Action::Pressed(Button::Heavy, None))
 }

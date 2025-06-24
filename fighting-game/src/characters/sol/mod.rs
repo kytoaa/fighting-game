@@ -10,7 +10,7 @@ use crate::collision::{
 use crate::datatypes::*;
 use crate::input::{
     directions::{InputDir, Motion},
-    Action, Button, InputHandler,
+    Action, Button, ButtonState, InputHandler,
 };
 use crate::world::{EntityID, World};
 
@@ -441,12 +441,10 @@ where
         self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
-        if input.has_action(&Action::DoublePress(self.forward_dir()))
-            && input.move_dir().x == self.dir()
-        {
+        if has_dash_input(input, self.forward_dir(), false) {
             return Ok(Box::new(self.transition(RunStartState::new(), true)));
         }
-        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+        if has_dash_input(input, self.backward_dir(), false) {
             return Ok(Box::new(self.transition(Backdash, true)));
         }
         let move_dir = input.move_dir();
@@ -465,12 +463,10 @@ where
         input: &InputHandler,
         dash_cancel_state: RunStartState<FRAMES>,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
-        if input.has_action(&Action::DoublePress(self.forward_dir()))
-            && input.move_dir().x == self.dir()
-        {
+        if has_dash_input(input, self.forward_dir(), false) {
             return Ok(Box::new(self.transition(dash_cancel_state, true)));
         }
-        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+        if has_dash_input(input, self.backward_dir(), false) {
             return Ok(Box::new(self.transition(Backdash, true)));
         }
         let move_dir = input.move_dir();
@@ -488,6 +484,36 @@ where
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
+        // NOTE: ground throw forward
+        if input.get_state(Button::Utility) == ButtonState::Down
+            && input.has_action(&Action::Pressed(
+                Button::Light,
+                Some(InputDir::Dir6.dir(self.direction)),
+            ))
+        {
+            return Ok(Box::new(self.transition(
+                GroundThrow::<true> {
+                    success: std::cell::Cell::new(true).into(),
+                },
+                true,
+            )));
+        }
+        // NOTE: ground throw backward
+        if input.get_state(Button::Utility) == ButtonState::Down
+            && input.get_state(Button::Light) == ButtonState::Down
+            && input.has_action(&Action::Pressed(
+                Button::Light,
+                Some(InputDir::Dir4.dir(self.direction)),
+            ))
+        {
+            return Ok(Box::new(self.transition(
+                GroundThrow::<false> {
+                    success: std::cell::Cell::new(true).into(),
+                },
+                true,
+            )));
+        }
+
         match self.cancel_options_from_grounded_normal(input) {
             Ok(state) => return Ok(state),
             Err(s) => self = s,
@@ -531,31 +557,6 @@ where
         // NOTE: 5h
         if input.has_action(&Action::Pressed(Button::Heavy, None)) {
             return Ok(Box::new(self.transition(StandHeavy, true)));
-        }
-
-        // NOTE: ground throw forward
-        if input.has_action(&Action::Pressed(
-            Button::Utility,
-            Some(InputDir::Dir6.dir(self.direction)),
-        )) {
-            return Ok(Box::new(self.transition(
-                GroundThrow::<true> {
-                    success: std::cell::Cell::new(true).into(),
-                },
-                true,
-            )));
-        }
-        // NOTE: ground throw backward
-        if input.has_action(&Action::Pressed(
-            Button::Utility,
-            Some(InputDir::Dir4.dir(self.direction)),
-        )) {
-            return Ok(Box::new(self.transition(
-                GroundThrow::<false> {
-                    success: std::cell::Cell::new(true).into(),
-                },
-                true,
-            )));
         }
 
         Err(self)
@@ -636,13 +637,11 @@ where
         if !self.has_air_action {
             return Err(self);
         }
-        if input.has_action(&Action::DoublePress(self.forward_dir()))
-            && input.move_dir().x == self.dir()
-        {
+        if has_dash_input(input, self.forward_dir(), true) {
             self.has_air_action = false;
             return Ok(Box::new(self.transition(Airdash, true)));
         }
-        if input.has_action(&Action::DoublePress(self.backward_dir())) {
+        if has_dash_input(input, self.backward_dir(), true) {
             self.has_air_action = false;
             return Ok(Box::new(self.transition(Backdash, true)));
         }
@@ -825,7 +824,10 @@ where
             self.position,
         );
 
-        if input.move_dir() == Vector2::new(self.dir(), 0.0) {
+        if (input.move_dir().x == self.dir()
+            || input.get_state(Button::Utility) == ButtonState::Down)
+            && input.move_dir().y <= 0.0
+        {
             self.velocity = Vector2::RIGHT * RUN_SPEED * self.dir();
             self.grounded_attack_options(input).unwrap_or_else(|s| s)
         } else {
@@ -858,6 +860,24 @@ where
     Sol<RunStartState<FRAMES>>: Damageable,
 {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        const THROW_FRAMES: usize = 2;
+        if self.frame < THROW_FRAMES {
+            if input.get_state(Button::Utility) == ButtonState::Down
+                && input.get_state(Button::Light) == ButtonState::Down
+                && input.has_action(&Action::Pressed(
+                    Button::Light,
+                    Some(InputDir::Dir4.dir(self.direction)),
+                ))
+            {
+                return Box::new(self.transition(
+                    GroundThrow::<false> {
+                        success: std::cell::Cell::new(true).into(),
+                    },
+                    true,
+                ));
+            }
+        }
+
         // NOTE: stops instantly cancelling dash into something, adds a little commitment and stops
         // dash cancel cancels
         self.frame += 1;
@@ -897,6 +917,24 @@ const BACKDASH_VULNERABLE: usize = 9;
 struct Backdash;
 impl Player for Sol<Backdash> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
+        const BACKTHROW_FRAMES: usize = 2;
+        if self.frame < BACKTHROW_FRAMES {
+            if input.get_state(Button::Utility) == ButtonState::Down
+                && input.get_state(Button::Light) == ButtonState::Down
+                && input.has_action(&Action::Pressed(
+                    Button::Light,
+                    Some(InputDir::Dir4.dir(self.direction)),
+                ))
+            {
+                return Box::new(self.transition(
+                    GroundThrow::<false> {
+                        success: std::cell::Cell::new(true).into(),
+                    },
+                    true,
+                ));
+            }
+        }
+
         self.velocity = Vector2::new(-self.dir() * BACKDASH_VELOCITY, 0.0);
         self.frame += 1;
         if self.frame > BACKDASH_FRAMES {
@@ -1747,4 +1785,13 @@ impl Damageable for Sol<DeadState> {
     fn hit(self: Box<Self>, _: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus) {
         (self, HitConnectionStatus::Invuln)
     }
+}
+
+fn has_dash_input(input: &InputHandler, dir: InputDir, allow_up_inputs: bool) -> bool {
+    let move_dir = input.move_dir();
+    let dir_v = dir.into_vector2();
+    (input.has_action(&Action::Pressed(Button::Utility, None))
+        || input.has_action(&Action::DoublePress(dir)))
+        && move_dir.x == dir_v.x
+        && (allow_up_inputs || move_dir.y <= 0.0)
 }

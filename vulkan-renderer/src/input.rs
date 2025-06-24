@@ -1,5 +1,7 @@
-use fighting_game::{datatypes::Vector2, input::Button};
-use gilrs::{self, Gamepad, Gilrs};
+#![allow(dead_code)]
+
+use fighting_game::datatypes::Vector2;
+use gilrs::{self, Gilrs};
 
 #[derive(Debug)]
 enum InputDevice {
@@ -56,7 +58,7 @@ pub struct GameInputManager {
 
 impl CharacterSelectInputManager {
     pub fn new() -> Self {
-        let gilrs = Gilrs::new().unwrap();
+        let gilrs = gilrs::GilrsBuilder::new().build().unwrap();
 
         Self {
             gilrs,
@@ -69,8 +71,63 @@ impl CharacterSelectInputManager {
                 gilrs::EventType::ButtonPressed(button, _) => match button {
                     gilrs::Button::South => self.try_add_input_device(InputDevice::Gamepad(id)),
                     gilrs::Button::East => self.try_remove_input_device(InputDevice::Gamepad(id)),
-                    _ => (),
+                    _ => {}
                 },
+                gilrs::EventType::Connected => {
+                    let gamepad = self.gilrs.gamepad(id);
+
+                    // BUG: windows interacting differently to linux with switch pro controller,
+                    // might be an issue with my device specifically
+                    #[cfg(windows)]
+                    if let Some(0x057e) = gamepad.vendor_id() {
+                        println!("nintendo controller, rebinding buttons");
+
+                        let mut mapping = gilrs::Mapping::new();
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::South).unwrap(),
+                            gilrs::Button::East,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::East).unwrap(),
+                            gilrs::Button::South,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::North).unwrap(),
+                            gilrs::Button::West,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::West).unwrap(),
+                            gilrs::Button::North,
+                        );
+
+                        gamepad
+                            .axis_code(gilrs::Axis::LeftStickX)
+                            .map(|c| Some((c, gamepad.axis_code(gilrs::Axis::LeftStickY)?)))
+                            .flatten()
+                            .map(|(x, y)| {
+                                mapping.insert_axis(x, gilrs::Axis::LeftStickX);
+                                mapping.insert_axis(y, gilrs::Axis::LeftStickY)
+                            });
+
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::DPadUp).unwrap(),
+                            gilrs::Button::DPadUp,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::DPadDown).unwrap(),
+                            gilrs::Button::DPadDown,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::DPadLeft).unwrap(),
+                            gilrs::Button::DPadLeft,
+                        );
+                        mapping.insert_btn(
+                            gamepad.button_code(gilrs::Button::DPadRight).unwrap(),
+                            gilrs::Button::DPadRight,
+                        );
+                        self.gilrs.set_mapping(id.into(), &mapping, None).unwrap();
+                    }
+                }
                 _ => continue,
             }
         }
@@ -240,36 +297,45 @@ impl InputDevice {
 
                 let state = gamepad.state();
 
-                let dir = Vector2::new(
-                    (gamepad
-                        .button_code(gilrs::Button::DPadRight)
-                        .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
-                        .unwrap_or_default()
-                        - gamepad
-                            .button_code(gilrs::Button::DPadLeft)
+                let dir = {
+                    let dpad_dir = Vector2::new(
+                        gamepad
+                            .button_code(gilrs::Button::DPadRight)
                             .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
                             .unwrap_or_default()
-                        + gamepad
+                            - gamepad
+                                .button_code(gilrs::Button::DPadLeft)
+                                .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
+                                .unwrap_or_default(),
+                        gamepad
+                            .button_code(gilrs::Button::DPadUp)
+                            .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
+                            .unwrap_or_default()
+                            - gamepad
+                                .button_code(gilrs::Button::DPadDown)
+                                .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
+                                .unwrap_or_default(),
+                    );
+
+                    let stick_dir = Vector2::new(
+                        gamepad
                             .axis_data(gilrs::Axis::LeftStickX)
                             .map(|a| a.value())
-                            .unwrap_or_default())
-                    .clamp(-1.0, 1.0)
-                    .round(),
-                    (gamepad
-                        .button_code(gilrs::Button::DPadUp)
-                        .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
-                        .unwrap_or_default()
-                        - gamepad
-                            .button_code(gilrs::Button::DPadDown)
-                            .map(|code| if state.is_pressed(code) { 1.0 } else { 0.0 })
-                            .unwrap_or_default()
-                        + gamepad
+                            .unwrap_or_default(),
+                        gamepad
                             .axis_data(gilrs::Axis::LeftStickY)
                             .map(|a| a.value())
-                            .unwrap_or_default())
-                    .clamp(-1.0, 1.0)
-                    .round(),
-                )
+                            .unwrap_or_default(),
+                    );
+
+                    let stick_dir = if stick_dir != Vector2::ZERO {
+                        stick_dir.normalized().rounded()
+                    } else {
+                        Vector2::ZERO
+                    };
+
+                    ((dpad_dir + stick_dir) / 2.0).rounded()
+                }
                 .into();
 
                 Ok(fighting_game::input::InputState {
