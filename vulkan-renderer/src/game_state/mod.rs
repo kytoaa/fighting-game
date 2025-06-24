@@ -98,10 +98,12 @@ impl GameState {
             GameStateInner::Game(mut game) => {
                 let (mut r, reset) = game.update(&self.asset_manager);
                 if reset {
+                    let mut input = game.take_input_manager();
+                    input.update();
                     _ = self
                         .state
                         .insert(GameStateInner::CharacterSelect(CharacterSelect {
-                            input_manager: crate::input::CharacterSelectInputManager::new(),
+                            input_manager: crate::input::CharacterSelectInputManager::from(input),
                         }));
                     r = self.update();
                 } else {

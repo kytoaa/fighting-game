@@ -56,6 +56,19 @@ pub struct GameInputManager {
     active_input_sources: [InputDevice; 2],
 }
 
+impl From<GameInputManager> for CharacterSelectInputManager {
+    fn from(value: GameInputManager) -> Self {
+        Self {
+            gilrs: value.gilrs,
+            active_input_sources: value.active_input_sources.map(|source| match source {
+                InputDevice::None => InputDevice::None,
+                g @ InputDevice::Gamepad(_) => g,
+                InputDevice::Keyboard(_) => InputDevice::Keyboard(KeyboardState::new()),
+            }),
+        }
+    }
+}
+
 impl CharacterSelectInputManager {
     pub fn new() -> Self {
         let gilrs = gilrs::GilrsBuilder::new().build().unwrap();

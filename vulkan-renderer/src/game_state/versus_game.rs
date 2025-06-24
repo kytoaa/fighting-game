@@ -224,4 +224,8 @@ impl Game {
 
         ((sprites, primatives), false)
     }
+
+    pub(super) fn take_input_manager(self) -> crate::input::GameInputManager {
+        self.input_manager
+    }
 }
