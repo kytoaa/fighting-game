@@ -96,7 +96,7 @@ impl Game {
                     Some((sprite_name, offset)) => Some(EntityRenderInfo {
                         position: player.position() + offset,
                         flipped: !player.get_direction(),
-                        depth: 0.5, // TODO: set based on last hit
+                        depth: 0.6, // TODO: set based on last hit
                         sprite_name,
                     }),
                     None => None,

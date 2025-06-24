@@ -90,6 +90,16 @@ impl BoundingBox {
             0.0f32.max(self.max.y.min(other.max.y) - self.min.y.max(other.min.y)),
         )
     }
+    pub fn overlap_bb(&self, other: &BoundingBox) -> BoundingBox {
+        if self.overlap(other) != Vector2::ZERO {
+            BoundingBox::new(
+                Vector2::new(self.min.x.max(other.min.x), self.min.y.max(other.min.y)),
+                Vector2::new(self.max.x.min(other.max.x), self.max.y.min(other.max.y)),
+            )
+        } else {
+            BoundingBox::new(Vector2::ZERO, Vector2::ZERO)
+        }
+    }
 }
 
 impl BoundingShape<Point> for BoundingBox {

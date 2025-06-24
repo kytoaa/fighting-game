@@ -1,5 +1,6 @@
 use super::World;
 use crate::collision::HitLevel;
+use crate::datatypes::Vector2;
 
 impl World {
     pub(super) fn update_hitbox_hurtboxes(&mut self) {
@@ -58,18 +59,79 @@ impl World {
                 self.combo = None;
             }
 
-            let hitbox = &mut self.hitboxes[hitbox_index];
-            let hurtbox = &mut self.hurtboxes[hurtbox_index];
+            let hit_effect_id = self.create_new_entity_id(crate::world::EntityType::Unique);
 
-            let hit_status = super::damaging::hit_player(
-                &mut self.players[hurtbox.0.owner.id()],
-                &mut self.player_data,
-                &mut self.combo,
-                &hitbox.0.attack_data.attack,
-                hitbox.0.attack_data.attack_id,
-            );
+            let hit_status = {
+                let hitbox = &mut self.hitboxes[hitbox_index];
+                let hurtbox = &mut self.hurtboxes[hurtbox_index];
+
+                super::damaging::hit_player(
+                    &mut self.players[hurtbox.0.owner.id()],
+                    &mut self.player_data,
+                    &mut self.combo,
+                    &hitbox.0.attack_data.attack,
+                    hitbox.0.attack_data.attack_id,
+                )
+            };
 
             println!("{:?}", hit_status);
+
+            {
+                let overlap = self.hitboxes[hitbox_index]
+                    .0
+                    .shape
+                    .get_bounding_box()
+                    .overlap_bb(&self.hurtboxes[hurtbox_index].0.shape.get_bounding_box());
+
+                match hit_status {
+                    crate::collision::HitConnectionStatus::Hit => {
+                        self.spawn_non_player_entity(Box::new(
+                            match self.hitboxes[hitbox_index].0.attack_data.hit_level {
+                                HitLevel::Light => {
+                                    crate::characters::sprite_entity::SpriteEntity::new(
+                                        [
+                                            ("effects/light_hit_effect1".into(), 0, Vector2::ZERO),
+                                            ("effects/light_hit_effect2".into(), 3, Vector2::ZERO),
+                                        ],
+                                        overlap.position(),
+                                        hit_effect_id,
+                                        true,
+                                        Vector2::ZERO,
+                                    )
+                                }
+                                _ => crate::characters::sprite_entity::SpriteEntity::new(
+                                    [
+                                        ("effects/default_hit_effect1".into(), 0, Vector2::ZERO),
+                                        ("effects/default_hit_effect2".into(), 3, Vector2::ZERO),
+                                    ],
+                                    overlap.position(),
+                                    hit_effect_id,
+                                    true,
+                                    Vector2::ZERO,
+                                ),
+                            },
+                        ));
+                    }
+                    crate::collision::HitConnectionStatus::Blocked
+                    | crate::collision::HitConnectionStatus::Invuln => {
+                        self.spawn_non_player_entity(Box::new(
+                            crate::characters::sprite_entity::SpriteEntity::new(
+                                [
+                                    ("effects/block_hit_effect1".into(), 3, Vector2::ZERO),
+                                    ("effects/block_hit_effect2".into(), 3, Vector2::ZERO),
+                                ],
+                                overlap.position(),
+                                hit_effect_id,
+                                true,
+                                Vector2::ZERO,
+                            ),
+                        ));
+                    }
+                }
+            }
+
+            let hitbox = &self.hitboxes[hitbox_index];
+            let hurtbox = &self.hurtboxes[hurtbox_index];
 
             if hitbox.0.owner.is_player() {
                 self.players
