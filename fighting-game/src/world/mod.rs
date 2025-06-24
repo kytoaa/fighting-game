@@ -155,7 +155,10 @@ impl World {
 
         self.frame += 1;
 
-        let non_player_entities = self
+        let mut non_player_entities: std::collections::HashMap<
+            usize,
+            Box<dyn crate::characters::NonPlayerEntity>,
+        > = self
             .non_player_entities
             .take()
             .unwrap()
@@ -177,6 +180,11 @@ impl World {
             })
             .collect();
 
+        if let Some(e) = self.non_player_entities.take() {
+            e.into_iter().for_each(|(id, entity)| {
+                non_player_entities.insert(id, entity);
+            });
+        }
         _ = self.non_player_entities.insert(non_player_entities);
 
         for i in 0..2 {
@@ -258,10 +266,15 @@ impl World {
         &mut self,
         entity: Box<dyn crate::characters::NonPlayerEntity>,
     ) {
-        self.non_player_entities
-            .as_mut()
-            .unwrap()
-            .insert(entity.id().id(), entity);
+        match self.non_player_entities.as_mut() {
+            Some(e) => _ = e.insert(entity.id().id(), entity),
+            None => {
+                self.non_player_entities = Some(std::collections::HashMap::from([(
+                    entity.id().id(),
+                    entity,
+                )]))
+            }
+        }
     }
     const fn is_grounded(&self, shape: &CollisionShape) -> bool {
         shape.get_bounding_box().min.y <= 0.01

@@ -1,7 +1,7 @@
 use super::*;
 
 pub const TOTAL_FRAMES: usize = ACTIVE_FRAMES_PER_PILLAR * TOTAL_FLAME_PILLARS;
-const ACTIVE_FRAMES_PER_PILLAR: usize = 8;
+const ACTIVE_FRAMES_PER_PILLAR: usize = 12;
 const TOTAL_FLAME_PILLARS: usize = 4;
 
 const GUNFLAME_DAMAGE: u32 = 20;
@@ -26,6 +26,46 @@ impl NonPlayerEntity for GunFlameProjectile {
 
         let position =
             self.position + Vector2::RIGHT * OFFSET_PER_PILLAR * pillar_number as f32 * self.dir;
+
+        if self.frame % ACTIVE_FRAMES_PER_PILLAR == 0 {
+            let id =
+                world.create_new_entity_id(crate::world::EntityType::Owned(self.id.get_owner()));
+            world.spawn_non_player_entity(Box::new(
+                crate::characters::sprite_entity::SpriteEntity::new(
+                    [
+                        (
+                            "sol/effects/gun_flame/gun_flame_pillar1".into(),
+                            3,
+                            Vector2::UP * 5.0,
+                        ),
+                        (
+                            "sol/effects/gun_flame/gun_flame_pillar2".into(),
+                            6,
+                            Vector2::UP * 5.0,
+                        ),
+                        (
+                            "sol/effects/gun_flame/gun_flame_pillar3".into(),
+                            8,
+                            Vector2::UP * 5.0,
+                        ),
+                        (
+                            "sol/effects/gun_flame/gun_flame_pillar4".into(),
+                            8,
+                            Vector2::UP * 5.0,
+                        ),
+                        (
+                            "sol/effects/gun_flame/gun_flame_pillar5".into(),
+                            6,
+                            Vector2::UP * 5.0,
+                        ),
+                    ],
+                    position,
+                    id,
+                    self.dir == 1.0,
+                    Vector2::ZERO,
+                ),
+            ));
+        }
 
         if !self.has_hit {
             world.spawn_hitbox(
