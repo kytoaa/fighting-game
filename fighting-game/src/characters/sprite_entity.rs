@@ -8,6 +8,7 @@ pub struct SpriteEntity<const FRAMES: usize> {
     velocity: Vector2,
     frame: usize,
     frames: [(Box<str>, usize, Vector2); FRAMES],
+    draw_behind_players: bool,
 }
 
 impl<const FRAMES: usize> SpriteEntity<FRAMES> {
@@ -26,6 +27,13 @@ impl<const FRAMES: usize> SpriteEntity<FRAMES> {
             velocity,
             frame: 0,
             frames,
+            draw_behind_players: false,
+        }
+    }
+    pub fn draw_behind_players(self) -> Self {
+        Self {
+            draw_behind_players: true,
+            ..self
         }
     }
 }
@@ -55,6 +63,9 @@ impl<const FRAMES: usize> NonPlayerEntity for SpriteEntity<FRAMES> {
             }
         }
         None
+    }
+    fn draw_behind_players(&self) -> bool {
+        self.draw_behind_players
     }
 }
 

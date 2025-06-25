@@ -452,6 +452,12 @@ impl World {
     pub(crate) fn get_combo_hits(&self) -> Option<usize> {
         self.combo.as_ref().map(|c| c.hits())
     }
+    pub(crate) fn in_combo(&self, entity: EntityID) -> bool {
+        self.combo
+            .as_ref()
+            .map(|c| *c.target() == entity)
+            .unwrap_or(false)
+    }
 }
 
 fn check_for_burst(input: &InputHandler) -> bool {

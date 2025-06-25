@@ -54,6 +54,9 @@ pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny {
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         None
     }
+    fn draw_behind_players(&self) -> bool {
+        false
+    }
 }
 
 pub trait Player:

@@ -96,7 +96,11 @@ impl Game {
                     Some((sprite_name, offset)) => Some(EntityRenderInfo {
                         position: player.position() + offset,
                         flipped: !player.get_direction(),
-                        depth: 0.6, // TODO: set based on last hit
+                        depth: if self.world.in_combo(player.id()) {
+                            0.61
+                        } else {
+                            0.6
+                        },
                         sprite_name,
                     }),
                     None => None,
@@ -107,7 +111,11 @@ impl Game {
                     Some((sprite_name, offset)) => Some(EntityRenderInfo {
                         position: entity.position() + offset,
                         flipped: !entity.dir(),
-                        depth: 0.5,
+                        depth: if entity.draw_behind_players() {
+                            0.7
+                        } else {
+                            0.5
+                        },
                         sprite_name,
                     }),
                     None => None,
