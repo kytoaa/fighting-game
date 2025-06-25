@@ -70,7 +70,7 @@ impl Game {
                 }
 
                 let fighting_game::GameState { player_1, player_2 } = self.game.get_gamestate();
-                self.ui.update(&player_1, &player_2, Some(99));
+                self.ui.update(&player_1, &player_2, Some(99), (0, false));
 
                 let timer_index = (frames + 45) / 60;
 
@@ -137,7 +137,12 @@ impl Game {
                 }
 
                 let fighting_game::GameState { player_1, player_2 } = self.game.get_gamestate();
-                self.ui.update(&player_1, &player_2, seconds_left);
+                self.ui.update(
+                    &player_1,
+                    &player_2,
+                    seconds_left,
+                    self.game.get_combo_hits().unwrap_or_default(),
+                );
 
                 (vec![].into_iter(), vec![].into_iter())
             }

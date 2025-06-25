@@ -449,8 +449,10 @@ impl World {
                 .flatten(),
         }
     }
-    pub(crate) fn get_combo_hits(&self) -> Option<usize> {
-        self.combo.as_ref().map(|c| c.hits())
+    pub(crate) fn get_combo_hits(&self) -> Option<(usize, bool)> {
+        self.combo
+            .as_ref()
+            .map(|c| (c.hits(), *c.target() == EntityID::PLAYER_2_ID))
     }
     pub(crate) fn in_combo(&self, entity: EntityID) -> bool {
         self.combo

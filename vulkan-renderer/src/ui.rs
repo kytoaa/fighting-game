@@ -10,6 +10,7 @@ type Color = (f32, f32, f32, f32);
 pub struct PlayerUi {
     player_1: PlayerSpecificUI<true>,
     player_2: PlayerSpecificUI<false>,
+    combo_counter: ComboCounter,
     timer: Timer,
 }
 impl PlayerUi {
@@ -17,6 +18,7 @@ impl PlayerUi {
         Self {
             player_1: PlayerSpecificUI::new(assets),
             player_2: PlayerSpecificUI::new(assets),
+            combo_counter: ComboCounter::new(assets),
             timer: Timer::new(Vector2::new(0.0, 48.0), 99, assets),
         }
     }
@@ -25,6 +27,7 @@ impl PlayerUi {
         player_1_state: &fighting_game::PlayerState,
         player_2_state: &fighting_game::PlayerState,
         seconds_left: Option<usize>,
+        (hits, is_player_1): (usize, bool),
     ) {
         self.player_1.update(player_1_state);
         self.player_2.update(player_2_state);
@@ -32,6 +35,7 @@ impl PlayerUi {
         if let Some(seconds_left) = seconds_left {
             self.timer.update(seconds_left);
         }
+        self.combo_counter.update(hits, is_player_1);
     }
     pub fn incr_wins(&mut self, is_player_1: bool) {
         match is_player_1 {
@@ -49,7 +53,8 @@ impl PlayerUi {
             self.timer
                 .get_render_info()
                 .chain(self.player_1.get_render_sprites())
-                .chain(self.player_2.get_render_sprites()),
+                .chain(self.player_2.get_render_sprites())
+                .chain(self.combo_counter.get_render_info()),
             self.player_1
                 .get_render_info()
                 .chain(self.player_2.get_render_info()),
@@ -565,35 +570,13 @@ impl WinIndicator {
     }
 }
 
-struct Timer(
-    Vector2,
-    usize,
-    Vec<asset_manager::SpriteHandle>,
-    asset_manager::SpriteHandle,
-);
+struct Timer(Vector2, usize, Counter, asset_manager::SpriteHandle);
 impl Timer {
     fn new(position: Vector2, time: usize, assets: &asset_manager::AssetManager) -> Self {
-        // macro instead of const so concat can be used
-        macro_rules! path {
-            () => {
-                "ui/text/numbers_accessible/"
-            };
-        }
         Self(
             position,
             time,
-            vec![
-                assets.get_sprite_handle(concat!(path!(), "0.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "1.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "2.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "3.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "4.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "5.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "6.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "7.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "8.png")).unwrap(),
-                assets.get_sprite_handle(concat!(path!(), "9.png")).unwrap(),
-            ],
+            Counter::new(assets),
             assets.get_sprite_handle("ui/timer_ui.png").unwrap(),
         )
     }
@@ -601,32 +584,81 @@ impl Timer {
         self.1 = time;
     }
     fn get_render_info(&self) -> impl Iterator<Item = renderer::Sprite> {
-        vec![
-            renderer::Sprite {
-                position: self.0 + Vector2::LEFT * 1.5,
-                sprite: if self.1 > 99 {
-                    self.2[9]
-                } else {
-                    self.2[self.1 / 10]
-                },
-                facing_left: false,
-                depth: 0.6,
-                scale: (6.0, 6.0),
-            },
-            renderer::Sprite {
-                position: self.0 + Vector2::RIGHT * 1.5,
-                sprite: if self.1 > 99 {
-                    self.2[9]
-                } else {
-                    self.2[self.1 % 10]
-                },
-                facing_left: false,
-                depth: 0.6,
-                scale: (6.0, 6.0),
-            },
-            renderer::Sprite {
+        self.2.get_render_info(self.0, self.1).chain(
+            [renderer::Sprite {
                 position: self.0,
                 sprite: self.3,
+                facing_left: false,
+                depth: 0.5,
+                scale: (6.0, 6.0),
+            }]
+            .into_iter(),
+        )
+    }
+}
+
+struct ComboCounter(usize, bool, Counter);
+impl ComboCounter {
+    fn new(assets: &asset_manager::AssetManager) -> Self {
+        Self(0, false, Counter::new(assets))
+    }
+    fn update(&mut self, hits: usize, is_player_1: bool) {
+        self.0 = hits;
+        self.1 = is_player_1;
+    }
+    fn get_render_info(&self) -> impl Iterator<Item = renderer::Sprite> {
+        if self.0 > 0 {
+            Some(self.2.get_render_info(
+                Vector2::new(if self.1 { -85.0 } else { 85.0 }, 28.0),
+                self.0,
+            ))
+        } else {
+            None
+        }
+        .into_iter()
+        .flatten()
+    }
+}
+
+struct Counter([asset_manager::SpriteHandle; 10]);
+
+impl Counter {
+    fn new(assets: &asset_manager::AssetManager) -> Self {
+        // macro instead of const so concat can be used
+        macro_rules! path {
+            () => {
+                "ui/text/numbers_accessible/"
+            };
+        }
+        Self([
+            assets.get_sprite_handle(concat!(path!(), "0.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "1.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "2.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "3.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "4.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "5.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "6.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "7.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "8.png")).unwrap(),
+            assets.get_sprite_handle(concat!(path!(), "9.png")).unwrap(),
+        ])
+    }
+    fn get_render_info(
+        &self,
+        position: Vector2,
+        n: usize,
+    ) -> impl Iterator<Item = renderer::Sprite> {
+        vec![
+            renderer::Sprite {
+                position: position + Vector2::LEFT * 2.0,
+                sprite: if n > 99 { self.0[9] } else { self.0[n / 10] },
+                facing_left: false,
+                depth: 0.6,
+                scale: (6.0, 6.0),
+            },
+            renderer::Sprite {
+                position: position + Vector2::RIGHT * 2.0,
+                sprite: if n > 99 { self.0[9] } else { self.0[n % 10] },
                 facing_left: false,
                 depth: 0.6,
                 scale: (6.0, 6.0),

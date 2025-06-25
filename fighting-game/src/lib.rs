@@ -142,7 +142,7 @@ impl Game {
                     .map(|p| SpawnedCollider::Collider(p.get_collider_world_space())),
             )
     }
-    pub fn get_combo_hits(&self) -> Option<usize> {
+    pub fn get_combo_hits(&self) -> Option<(usize, bool)> {
         self.world.get_combo_hits()
     }
 }

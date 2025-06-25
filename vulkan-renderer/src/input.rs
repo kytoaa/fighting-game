@@ -341,7 +341,7 @@ impl InputDevice {
                             .unwrap_or_default(),
                     );
 
-                    let stick_dir = if stick_dir != Vector2::ZERO {
+                    let stick_dir = if stick_dir.magnitude() >= 0.3 {
                         stick_dir.normalized().rounded()
                     } else {
                         Vector2::ZERO
