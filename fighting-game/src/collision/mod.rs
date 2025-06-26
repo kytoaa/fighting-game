@@ -72,18 +72,18 @@ pub enum HitConnectionStatus {
 }
 
 #[derive(Debug)]
-pub struct Hurtbox {
+pub(crate) struct Hurtbox {
     pub shape: CollisionShape,
     pub owner: EntityID,
 }
 #[derive(Debug)]
-pub struct Hitbox {
+pub(crate) struct Hitbox {
     pub shape: CollisionShape,
     pub attack_data: AttackData,
     pub owner: EntityID,
 }
 
-pub struct ThrowBox {
+pub(crate) struct ThrowBox {
     pub shape: CollisionShape,
     pub owner: EntityID,
     pub throw_success: Box<dyn FnOnce() -> Box<dyn crate::characters::Player>>,
@@ -97,7 +97,9 @@ impl CollisionShape {
         CollisionShape(self.0.transformed(position))
     }
 }
+
 impl Hitbox {
+    #[allow(dead_code)]
     pub const fn new(owner: EntityID, shape: CollisionShape, attack_data: AttackData) -> Self {
         Self {
             owner,
@@ -111,6 +113,7 @@ impl Hitbox {
     }
 }
 impl Hurtbox {
+    #[allow(dead_code)]
     pub const fn new(owner: EntityID, shape: CollisionShape) -> Self {
         Self { owner, shape }
     }

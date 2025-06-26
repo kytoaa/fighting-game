@@ -39,6 +39,7 @@ pub(crate) struct CharacterInitInfo {
     pub(crate) burst: u32,
 }
 
+#[allow(dead_code)]
 pub enum EntityUpdateResult {
     Continue,
     Remove,
@@ -59,7 +60,7 @@ pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny {
     }
 }
 
-pub trait Player:
+pub(crate) trait Player:
     HasID
     + Damageable
     + OnHit
@@ -85,6 +86,7 @@ pub trait Player:
     fn counterhit(&self) -> bool {
         false
     }
+    #[allow(dead_code)]
     fn should_wall_bounce(&self) -> bool {
         false
     }
@@ -166,6 +168,7 @@ pub trait HasID {
 
 impl<T> ColliderWorldSpace for T where T: Position + HasCollider {}
 
+#[allow(dead_code)]
 pub trait AsAny {
     fn as_any(&self) -> &dyn std::any::Any;
 }

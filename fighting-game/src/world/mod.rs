@@ -276,6 +276,7 @@ impl World {
             }
         }
     }
+    #[allow(dead_code)]
     const fn is_grounded(&self, shape: &CollisionShape) -> bool {
         shape.get_bounding_box().min.y <= 0.01
     }
@@ -315,6 +316,7 @@ impl World {
     pub(crate) const fn in_hitstop(&self) -> bool {
         self.hitstop_frames_left > 0
     }
+    #[allow(dead_code)]
     pub(crate) const fn in_superfreeze(&self) -> bool {
         self.superfreeze_frames_left > 0
     }
@@ -415,6 +417,7 @@ impl World {
                 .set_velocity(velocity)
         }
     }
+    #[allow(dead_code)]
     pub(crate) fn get_entity_velocity(&self, entity: EntityID) -> Vector2 {
         if entity.is_player() {
             self.players[entity.id()].as_ref().unwrap().velocity()
