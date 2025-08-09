@@ -14,8 +14,8 @@ pub(crate) fn create_world(world_builder: WorldBuilder) -> world::World {
     } = world_builder;
 
     world::World::new((
-        |id| get_character(player_1, Vector2::new(-30.0, 0.0), id, player_1_burst),
-        |id| get_character(player_2, Vector2::new(30.0, 0.0), id, player_2_burst),
+        |id| get_character(player_1, Vector2::new(-15.0, 0.0), id, player_1_burst),
+        |id| get_character(player_2, Vector2::new(15.0, 0.0), id, player_2_burst),
     ))
 }
 

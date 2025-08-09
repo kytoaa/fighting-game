@@ -83,6 +83,14 @@ impl World {
                     .get_bounding_box()
                     .overlap_bb(&self.hurtboxes[hurtbox_index].0.shape.get_bounding_box());
 
+                let dir = (overlap.position()
+                    - self.hitboxes[hitbox_index]
+                        .0
+                        .shape
+                        .get_bounding_box()
+                        .position())
+                .x > 0.0;
+
                 match hit_status {
                     crate::collision::HitConnectionStatus::Hit => {
                         match self.hitboxes[hitbox_index].0.attack_data.hit_level {
@@ -109,7 +117,7 @@ impl World {
                                         ],
                                         overlap.position(),
                                         hit_effect_id,
-                                        true,
+                                        dir,
                                         Vector2::ZERO,
                                     ),
                                 ));
@@ -139,7 +147,7 @@ impl World {
                                         ],
                                         overlap.position(),
                                         hit_effect_id,
-                                        true,
+                                        dir,
                                         Vector2::ZERO,
                                     ),
                                 ));

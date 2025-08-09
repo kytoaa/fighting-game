@@ -99,7 +99,7 @@ pub struct Backdash;
 impl Player for Sol<Backdash> {
     fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
         const BACKTHROW_FRAMES: usize = 2;
-        if self.frame < BACKTHROW_FRAMES {
+        if self.is_grounded() && self.frame < BACKTHROW_FRAMES {
             if input.get_state(Button::Utility) == ButtonState::Down
                 && input.get_state(Button::Light) == ButtonState::Down
                 && input.has_action(&Action::Pressed(

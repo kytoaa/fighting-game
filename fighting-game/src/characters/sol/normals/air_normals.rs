@@ -320,10 +320,12 @@ impl Player for Sol<AirHeavy> {
                                 attack: HitData::air(
                                     AIR_HEAVY_DAMAGE,
                                     HitEffect::launcher(
-                                        Vector2::new(70.0 * self.dir(), 120.0),
+                                        Vector2::new(70.0 * self.dir(), 80.0),
                                         KnockdownType::Soft,
                                     )
-                                    .wall_bounce(BounceInfo::new(Vector2::new(50.0, 40.0)))
+                                    .wall_bounce(
+                                        BounceInfo::new(Vector2::new(35.0, 50.0)).gravity(6.0),
+                                    )
                                     .build(),
                                     18 + active_frames_extra_hitstun,
                                     Proration::percent(80),
@@ -331,7 +333,7 @@ impl Player for Sol<AirHeavy> {
                                 )
                                 .grounded_from_air(|mut air| {
                                     if let HitEffect::Launcher { knockback, .. } = &mut air {
-                                        knockback.y = 120.0;
+                                        knockback.y = 150.0;
                                         air
                                     } else {
                                         unreachable!()
