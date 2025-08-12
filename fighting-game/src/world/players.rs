@@ -111,10 +111,6 @@ impl World {
 
             player_data.add_meter_gain(player_vel.clamp(-3.0, 1.0) as i32);
 
-            if i == 0 {
-                println!("{} meter gain", player_data.meter_gain);
-            }
-
             player_data.add_burst(calculate_burst_gain(&player_data));
             if player_data.burst_meter % 1000 == 0 && player_data.burst_meter != 10000 {
                 println!("player {} burst: {}", i, player_data.burst_meter);
