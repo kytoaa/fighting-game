@@ -188,6 +188,7 @@ impl Player for Sol<FarMid> {
         const RECOVERY_FRAME: usize = FAR_MID_STARTUP + FAR_MID_ACTIVE;
         const END_FRAME: usize = RECOVERY_FRAME + FAR_MID_RECOVERY;
         const ADVANCE_VELOCITY: f32 = 140.0;
+        const KARA_ADVANCE_VELOCITY: f32 = 70.0;
         const DECEL: f32 = ADVANCE_VELOCITY / FAR_MID_ACTIVE as f32;
 
         if self.frame == 0 {
@@ -195,6 +196,22 @@ impl Player for Sol<FarMid> {
         }
 
         self.frame += 1;
+
+        if self.frame < 10 {
+            self = match self.grounded_special_cancel_options(input) {
+                Ok(mut state) => {
+                    println!("kara!");
+
+                    state.set_velocity(
+                        Vector2::RIGHT
+                            * if state.get_direction() { 1.0 } else { -1.0 }
+                            * KARA_ADVANCE_VELOCITY,
+                    );
+                    return state;
+                }
+                Err(s) => s,
+            };
+        }
 
         world.spawn_hurtbox(
             self.create_hurtbox(CollisionShape::new(STANDING_HURTBOX)),
