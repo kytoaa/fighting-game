@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use super::*;
 
 const DOUBLE_JUMP_FORCE: f32 = 150.0;
@@ -70,10 +72,6 @@ where
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         match self.cancel_options_from_grounded_normal(input) {
-            Ok(state) => return Ok(state),
-            Err(s) => self = s,
-        }
-        match self.grounded_command_normal_cancel(input) {
             Ok(state) => return Ok(state),
             Err(s) => self = s,
         }
@@ -284,11 +282,7 @@ where
         mut self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
-        self = match self.grounded_special_cancel_options(input) {
-            Ok(state) => return Ok(state),
-            Err(s) => s,
-        };
-        self.grounded_command_normal_cancel(input)
+        self.grounded_special_cancel_options(input)
     }
     pub fn grounded_special_cancel_options(
         self: Box<Sol<S>>,

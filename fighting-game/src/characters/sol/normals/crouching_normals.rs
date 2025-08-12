@@ -166,9 +166,9 @@ impl Player for Sol<CrouchLight> {
 impl SolDamageableState for CrouchLight {}
 
 const CROUCH_MID_STARTUP: usize = 10;
-const CROUCH_MID_ACTIVE: usize = 6;
-const CROUCH_MID_RECOVERY: usize = 12;
-const CROUCH_MID_DAMAGE: u32 = 17;
+const CROUCH_MID_ACTIVE: usize = 5;
+const CROUCH_MID_RECOVERY: usize = 8;
+const CROUCH_MID_DAMAGE: u32 = 15;
 
 pub struct CrouchMid;
 impl Player for Sol<CrouchMid> {

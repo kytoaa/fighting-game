@@ -32,13 +32,24 @@ impl TrackedPlayerData {
             max_health,
             health: max_health,
             meter: 0,
-            meter_gain: 1200,
+            meter_gain: 1000,
             burst_meter,
             scaling: 0,
             damage_boost: 0,
             defense_boost: 0,
             frames_since_scaling_set: 0,
         }
+    }
+    pub fn add_meter_gain(&mut self, meter_gain: i32) {
+        self.meter_gain = if self.meter_gain < 1000 && meter_gain > 0 {
+            self.meter_gain as i32 + meter_gain * 3
+        } else {
+            self.meter_gain as i32 + meter_gain
+        }
+        .clamp(0, 3000) as u32;
+    }
+    pub fn set_meter_gain(&mut self, meter_gain: u32) {
+        self.meter_gain = meter_gain
     }
     pub fn add_meter(&mut self, meter: u32) {
         self.meter += meter * self.meter_gain / 1000;
@@ -89,7 +100,20 @@ impl World {
             }
             player_data.frames_since_scaling_set += 1;
 
-            player_data.add_meter(1);
+            let player_vel = self.players[i].as_ref().unwrap().velocity().x
+                * if self.players[i].as_ref().unwrap().get_direction() {
+                    1.0
+                } else {
+                    -1.0
+                };
+
+            player_data.add_meter(1 + (player_vel / 30.0).clamp(0.0, 5.0).floor() as u32);
+
+            player_data.add_meter_gain(player_vel.clamp(-3.0, 1.0) as i32);
+
+            if i == 0 {
+                println!("{} meter gain", player_data.meter_gain);
+            }
 
             player_data.add_burst(calculate_burst_gain(&player_data));
             if player_data.burst_meter % 1000 == 0 && player_data.burst_meter != 10000 {

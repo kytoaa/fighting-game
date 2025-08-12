@@ -196,6 +196,7 @@ impl World {
                     println!("CANCEL");
                     println!("{} meter remaining", self.player_data[i].meter);
                     self.trigger_superfreeze(20);
+                    self.player_data[player.id().id()].set_meter_gain(400);
 
                     player.cancel_state()
                 } else {

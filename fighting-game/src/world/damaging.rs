@@ -151,9 +151,8 @@ pub(super) fn hit_player(
             player_data[hit_player_id.id()]
                 .add_burst(super::players::burst_gain(hit_data.damage, combo_info.hits));
 
-            player_data[hit_player_id.other_player().id()].meter_gain =
-                (player_data[hit_player_id.id()].meter_gain as i32 + hit_data.meter_gain_modifier)
-                    as u32;
+            player_data[hit_player_id.other_player().id()]
+                .add_meter_gain(hit_data.meter_gain_modifier);
 
             player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain);
 
