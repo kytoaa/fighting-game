@@ -80,8 +80,10 @@ impl Player for Sol<GunFlame> {
 
         self.frame += 1;
 
+        const TOTAL: usize = TOTAL_FRAMES - 6;
+
         match self.frame {
-            0..TOTAL_FRAMES => self,
+            0..TOTAL => self,
             _ => self.grounded_actionable_state(input),
         }
     }

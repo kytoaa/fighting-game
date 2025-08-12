@@ -178,6 +178,9 @@ pub(super) fn hit_player(
             player_data[hit_player_id.other_player().id()].add_meter(hit_data.meter_gain / 2);
             player_data[hit_player_id.id()].add_scaling(-block_scaling);
 
+            player_data[hit_player_id.other_player().id()]
+                .add_meter_gain(hit_data.meter_gain_modifier);
+
             None
         }
         crate::collision::HitConnectionStatus::Invuln => None,
