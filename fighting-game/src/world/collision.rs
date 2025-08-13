@@ -59,7 +59,7 @@ impl World {
                 self.combo = None;
             }
 
-            let hit_status = {
+            let (hit_status, hit_level) = {
                 let hitbox = &mut self.hitboxes[hitbox_index];
                 let hurtbox = &mut self.hurtboxes[hurtbox_index];
 
@@ -72,6 +72,9 @@ impl World {
                 )
             };
 
+            let hit_level =
+                hit_level.unwrap_or_else(|| self.hitboxes[hitbox_index].0.attack_data.hit_level);
+
             println!("{:?}", hit_status);
 
             {
@@ -83,99 +86,84 @@ impl World {
                     .get_bounding_box()
                     .overlap_bb(&self.hurtboxes[hurtbox_index].0.shape.get_bounding_box());
 
-                let dir = (overlap.position()
-                    - self.hitboxes[hitbox_index]
-                        .0
-                        .shape
-                        .get_bounding_box()
-                        .position())
-                .x > 0.0;
+                let dir = self.hitboxes[hitbox_index]
+                    .0
+                    .attack_data
+                    .attack
+                    .block_pushback
+                    > 0.0;
 
                 match hit_status {
-                    crate::collision::HitConnectionStatus::Hit => {
-                        match self.hitboxes[hitbox_index].0.attack_data.hit_level {
-                            HitLevel::Light => {
-                                self.spawn_non_player_entity(Box::new(
-                                    crate::characters::sprite_entity::SpriteEntity::new(
-                                        [
-                                            ("effects/light_hit_effect1".into(), 0, Vector2::ZERO),
-                                            ("effects/light_hit_effect2".into(), 3, Vector2::ZERO),
-                                        ],
-                                        overlap.position(),
-                                        hit_effect_id,
-                                        true,
-                                        Vector2::ZERO,
-                                    ),
-                                ));
-                            }
-                            HitLevel::Heavy => {
-                                self.spawn_non_player_entity(Box::new(
-                                    crate::characters::sprite_entity::SpriteEntity::new(
-                                        [
-                                            ("effects/heavy_hit_effect1".into(), 0, Vector2::ZERO),
-                                            ("effects/heavy_hit_effect2".into(), 3, Vector2::ZERO),
-                                        ],
-                                        overlap.position(),
-                                        hit_effect_id,
-                                        dir,
-                                        Vector2::ZERO,
-                                    ),
-                                ));
-                            }
-                            HitLevel::SuperHeavy => {
-                                let hit_effect_id_2 =
-                                    self.create_new_entity_id(crate::world::EntityType::Unique);
-                                self.spawn_non_player_entity(Box::new(
-                                    crate::characters::sprite_entity::SpriteEntity::new(
-                                        [(
-                                            "effects/super_heavy_hit_effect".into(),
-                                            0,
-                                            Vector2::ZERO,
-                                        )],
-                                        overlap.position() + Vector2::UP * 8.0,
-                                        hit_effect_id_2,
-                                        (hit_effect_id_2.id() / 4) % 2 == 0,
-                                        Vector2::ZERO,
-                                    )
-                                    .draw_behind_players(),
-                                ));
-                                self.spawn_non_player_entity(Box::new(
-                                    crate::characters::sprite_entity::SpriteEntity::new(
-                                        [
-                                            ("effects/heavy_hit_effect1".into(), 0, Vector2::ZERO),
-                                            ("effects/heavy_hit_effect2".into(), 3, Vector2::ZERO),
-                                        ],
-                                        overlap.position(),
-                                        hit_effect_id,
-                                        dir,
-                                        Vector2::ZERO,
-                                    ),
-                                ));
-                            }
-                            _ => {
-                                self.spawn_non_player_entity(Box::new(
-                                    crate::characters::sprite_entity::SpriteEntity::new(
-                                        [
-                                            (
-                                                "effects/default_hit_effect1".into(),
-                                                0,
-                                                Vector2::ZERO,
-                                            ),
-                                            (
-                                                "effects/default_hit_effect2".into(),
-                                                3,
-                                                Vector2::ZERO,
-                                            ),
-                                        ],
-                                        overlap.position(),
-                                        hit_effect_id,
-                                        true,
-                                        Vector2::ZERO,
-                                    ),
-                                ));
-                            }
+                    crate::collision::HitConnectionStatus::Hit => match hit_level {
+                        HitLevel::Light => {
+                            self.spawn_non_player_entity(Box::new(
+                                crate::characters::sprite_entity::SpriteEntity::new(
+                                    [
+                                        ("effects/light_hit_effect1".into(), 0, Vector2::ZERO),
+                                        ("effects/light_hit_effect2".into(), 3, Vector2::ZERO),
+                                    ],
+                                    overlap.position(),
+                                    hit_effect_id,
+                                    true,
+                                    Vector2::ZERO,
+                                ),
+                            ));
                         }
-                    }
+                        HitLevel::Heavy => {
+                            self.spawn_non_player_entity(Box::new(
+                                crate::characters::sprite_entity::SpriteEntity::new(
+                                    [
+                                        ("effects/heavy_hit_effect1".into(), 0, Vector2::ZERO),
+                                        ("effects/heavy_hit_effect2".into(), 3, Vector2::ZERO),
+                                    ],
+                                    overlap.position(),
+                                    hit_effect_id,
+                                    dir,
+                                    Vector2::ZERO,
+                                ),
+                            ));
+                        }
+                        HitLevel::SuperHeavy => {
+                            let hit_effect_id_2 =
+                                self.create_new_entity_id(crate::world::EntityType::Unique);
+                            self.spawn_non_player_entity(Box::new(
+                                crate::characters::sprite_entity::SpriteEntity::new(
+                                    [("effects/super_heavy_hit_effect".into(), 0, Vector2::ZERO)],
+                                    overlap.position() + Vector2::UP * 8.0,
+                                    hit_effect_id_2,
+                                    (hit_effect_id_2.id() / 4) % 2 == 0,
+                                    Vector2::ZERO,
+                                )
+                                .draw_behind_players(),
+                            ));
+                            self.spawn_non_player_entity(Box::new(
+                                crate::characters::sprite_entity::SpriteEntity::new(
+                                    [
+                                        ("effects/heavy_hit_effect1".into(), 0, Vector2::ZERO),
+                                        ("effects/heavy_hit_effect2".into(), 3, Vector2::ZERO),
+                                    ],
+                                    overlap.position(),
+                                    hit_effect_id,
+                                    dir,
+                                    Vector2::ZERO,
+                                ),
+                            ));
+                        }
+                        _ => {
+                            self.spawn_non_player_entity(Box::new(
+                                crate::characters::sprite_entity::SpriteEntity::new(
+                                    [
+                                        ("effects/default_hit_effect1".into(), 0, Vector2::ZERO),
+                                        ("effects/default_hit_effect2".into(), 3, Vector2::ZERO),
+                                    ],
+                                    overlap.position(),
+                                    hit_effect_id,
+                                    true,
+                                    Vector2::ZERO,
+                                ),
+                            ));
+                        }
+                    },
                     crate::collision::HitConnectionStatus::Blocked
                     | crate::collision::HitConnectionStatus::Invuln => {
                         if let HitLevel::Light = self.hitboxes[hitbox_index].0.attack_data.hit_level
@@ -238,9 +226,7 @@ impl World {
             }
 
             let hitstop_frames = match hit_status {
-                crate::collision::HitConnectionStatus::Hit => {
-                    hitbox.0.attack_data.hit_level.get_hitstop_frames()
-                }
+                crate::collision::HitConnectionStatus::Hit => hit_level.get_hitstop_frames(),
                 crate::collision::HitConnectionStatus::Blocked => HitLevel::BLOCKED_HITSTOP_FRAMES,
                 crate::collision::HitConnectionStatus::Invuln => 0,
             };

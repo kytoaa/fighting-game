@@ -1,5 +1,7 @@
 use super::EntityID;
-use crate::collision::{AttackID, HitConnectionStatus, HitData, HitDataExtension, Proration};
+use crate::collision::{
+    AttackID, HitConnectionStatus, HitData, HitDataExtension, HitLevel, Proration,
+};
 use crate::datatypes::BoundingShape;
 
 #[derive(Debug)]
@@ -38,9 +40,11 @@ pub(super) fn hit_player(
     combo: &mut Option<ComboInfo>,
     hit_data: &HitData,
     attack_id: AttackID,
-) -> HitConnectionStatus {
+) -> (HitConnectionStatus, Option<HitLevel>) {
     let player = hit_player.take().unwrap();
     let hit_player_id = player.id();
+
+    let mut hit_level = None;
 
     let mut combo_info = combo.take();
     if combo_info
@@ -91,6 +95,7 @@ pub(super) fn hit_player(
             if let HitDataExtension::CleanHit(bb, effect) = extension {
                 if bb.intersects(&player.position()) {
                     println!("clean hit");
+                    hit_level = Some(HitLevel::SuperHeavy);
                     Some(effect.clone())
                 } else {
                     None
@@ -190,7 +195,7 @@ pub(super) fn hit_player(
 
     _ = hit_player.insert(player);
 
-    hit_status
+    (hit_status, hit_level)
 }
 
 pub fn total_damage_scaling(
