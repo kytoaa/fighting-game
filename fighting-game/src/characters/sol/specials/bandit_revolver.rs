@@ -267,9 +267,9 @@ impl Player for Sol<BanditRevolverGroundedSecondHit> {
 }
 impl SolDamageableState for BanditRevolverGroundedSecondHit {}
 
-const BANDIT_REVOLVER_AIR_STARTUP: usize = 10;
+const BANDIT_REVOLVER_AIR_STARTUP: usize = 6;
 const BANDIT_REVOLVER_AIR_ACTIVE_1: usize = 3;
-const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 5;
+const BANDIT_REVOLVER_AIR_STARTUP_2: usize = 3;
 const BANDIT_REVOLVER_AIR_ACTIVE_2: usize = 2;
 const BANDIT_REVOLVER_AIR_RECOVERY: usize = 10;
 const BANDIT_REVOLVER_AIR_DAMAGE_1: u32 = BANDIT_REVOLVER_GROUNDED_1_DAMAGE;
@@ -299,7 +299,7 @@ impl Player for Sol<BanditRevolverAir> {
 
         match self.frame {
             0..BANDIT_REVOLVER_AIR_STARTUP => {
-                self.velocity = Vector2::new(90.0 * self.dir(), 55.0);
+                self.velocity = Vector2::new(100.0 * self.dir(), 60.0);
                 self
             }
             BANDIT_REVOLVER_AIR_STARTUP..STARTUP_2 => {
