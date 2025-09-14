@@ -22,6 +22,31 @@ impl Renderer {
         }
         .expect("failed to begin command buffer");
 
+        unsafe {
+            self.core.device.cmd_pipeline_barrier(
+                *command_buffer,
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[vk::ImageMemoryBarrier::default()
+                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .old_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                    .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                    .image(self.core.present_images[image_index as usize].0)
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )],
+            )
+        };
+
         let clear_values = [
             vk::ClearValue {
                 color: vk::ClearColorValue {
@@ -177,8 +202,10 @@ impl Renderer {
 
             {
                 let (width, height) = (
-                    self.core.swapchain_info.extent.width as f32 / 2.0,
-                    self.core.swapchain_info.extent.height as f32 / 2.0,
+                    320.0,
+                    180.0,
+                    //self.core.swapchain_info.extent.width as f32 / 2.0,
+                    //self.core.swapchain_info.extent.height as f32 / 2.0,
                 );
                 let ubo = uniforms::UniformMatrix::orthographic_projection(
                     -width, width, -height, height, 0.0, 1.0,
@@ -212,6 +239,69 @@ impl Renderer {
             );
 
             self.core.device.cmd_end_render_pass(*command_buffer);
+
+            self.core.device.cmd_blit_image(
+                *command_buffer,
+                self.core.resolve_image.0 .0,
+                vk::ImageLayout::PRESENT_SRC_KHR,
+                self.core.present_images[image_index as usize].0,
+                vk::ImageLayout::PRESENT_SRC_KHR,
+                &[vk::ImageBlit::default()
+                    .src_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .mip_level(0)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )
+                    .dst_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .mip_level(0)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )
+                    .src_offsets([
+                        vk::Offset3D::default().x(0).y(0).z(0),
+                        vk::Offset3D::default()
+                            .x(RENDER_WIDTH as i32)
+                            .y(RENDER_HEIGHT as i32)
+                            .z(1),
+                    ])
+                    .dst_offsets([
+                        vk::Offset3D::default().x(0).y(0).z(0),
+                        vk::Offset3D::default()
+                            .x(self.core.swapchain_info.extent.width as i32)
+                            .y(self.core.swapchain_info.extent.height as i32)
+                            .z(1),
+                    ])],
+                vk::Filter::NEAREST,
+            );
+
+            unsafe {
+                self.core.device.cmd_pipeline_barrier(
+                    *command_buffer,
+                    vk::PipelineStageFlags::TOP_OF_PIPE,
+                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                    vk::DependencyFlags::empty(),
+                    &[],
+                    &[],
+                    &[vk::ImageMemoryBarrier::default()
+                        .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                        .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                        .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                        .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                        .image(self.core.present_images[image_index as usize].0)
+                        .subresource_range(
+                            vk::ImageSubresourceRange::default()
+                                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                                .base_mip_level(0)
+                                .level_count(1)
+                                .base_array_layer(0)
+                                .layer_count(1),
+                        )],
+                )
+            };
 
             self.core
                 .device

@@ -19,6 +19,9 @@ mod vertices;
 use super::Vector2;
 use asset_manager::SpriteHandle;
 
+const RENDER_WIDTH: u32 = 640;
+const RENDER_HEIGHT: u32 = 360;
+
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
 const SAMPLES: vk::SampleCountFlags = vk::SampleCountFlags::TYPE_4;
 
@@ -43,9 +46,9 @@ impl Primative {
     pub fn rect(pos: Vector2, size: Vector2, color: (f32, f32, f32, f32)) -> Self {
         Self {
             top_l: pos,
-            top_r: pos + size.y(0.0),
-            bottom_l: pos - size.x(0.0),
-            bottom_r: pos + size.flip_y(),
+            top_r: pos + size.y(0.0) / 2.0,
+            bottom_l: pos - size.x(0.0) / 2.0,
+            bottom_r: pos + size.flip_y() / 2.0,
             colors: Box::new([color; 4]),
         }
     }
@@ -96,6 +99,7 @@ struct CoreRenderData {
 
     color_image: VulkanObject<VulkanImage>,
     depth_image: VulkanObject<VulkanImage>,
+    resolve_image: VulkanObject<VulkanImage>,
 
     debug_callback: vk::DebugUtilsMessengerEXT,
     debug_utils_instance: ash::ext::debug_utils::Instance,

@@ -19,7 +19,7 @@ impl PlayerUi {
             player_1: PlayerSpecificUI::new(assets),
             player_2: PlayerSpecificUI::new(assets),
             combo_counter: ComboCounter::new(assets),
-            timer: Timer::new(Vector2::new(0.0, 48.0), 99, assets),
+            timer: Timer::new(Vector2::new(0.0, 36.0), 99, assets),
         }
     }
     pub fn update(
@@ -76,11 +76,11 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             health_bar: HealthBar {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 550.0
+                        BORDER_L + 520.0 / 2.0
                     } else {
-                        BORDER_R - 550.0
+                        BORDER_R - 520.0 / 2.0
                     },
-                    BORDER_T - 60.0,
+                    BORDER_T - 60.0 / 2.0,
                 ),
                 value: 1.0,
                 display_value: 1.0,
@@ -90,11 +90,11 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             burst_meter: ProgressBar {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 110.0
+                        BORDER_L + 110.0 / 2.0
                     } else {
-                        BORDER_R - 110.0
+                        BORDER_R - 110.0 / 2.0
                     },
-                    BORDER_T - 100.0,
+                    BORDER_T - 100.0 / 2.0,
                 ),
                 color: (0.251, 0.8627, 1.0, 1.0),
                 height: 30.0,
@@ -105,11 +105,11 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             meter: PlayerMeter {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 370.0
+                        BORDER_L + 370.0 / 2.0
                     } else {
-                        BORDER_R - 370.0
+                        BORDER_R - 370.0 / 2.0
                     },
-                    BORDER_B + 70.0,
+                    BORDER_B + 70.0 / 2.0,
                 ),
                 value: 0.0,
                 display_value: 0.0,
@@ -117,11 +117,11 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
             scaling_bar: ScalingBar {
                 position: Vector2::new(
                     if IS_PLAYER_1 {
-                        BORDER_L + 450.0
+                        BORDER_L + 450.0 / 2.0
                     } else {
-                        BORDER_R - 450.0
+                        BORDER_R - 450.0 / 2.0
                     },
-                    BORDER_T - 85.0,
+                    BORDER_T - 85.0 / 2.0,
                 ),
                 value: 0.0,
             },
@@ -169,10 +169,10 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
     ) -> impl Iterator<Item = renderer::Primative> {
         vec![
             {
-                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0);
-                const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
-                const TOP: Vector2 = Vector2::new(-400.0, 12.0).mul(1.01);
-                const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0).mul(1.01);
+                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -5.0).div(2.0);
+                const OFFSET: Vector2 = Vector2::new(8.0, -10.0).div(2.0);
+                const TOP: Vector2 = Vector2::new(-400.0, 12.0).mul(1.01).div(2.0);
+                const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0).mul(1.01).div(2.0);
                 if !flipped {
                     renderer::Primative {
                         top_r: self.health_bar.position + OVERALL_OFFSET,
@@ -197,10 +197,10 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 }
             },
             {
-                const OVERALL_OFFSET: Vector2 = Vector2::new(2.0, -4.0);
-                const OFFSET: Vector2 = Vector2::new(-4.0, -12.0);
-                const TOP: Vector2 = Vector2::new(-300.0, 8.0).mul(1.05);
-                const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0).mul(1.05);
+                const OVERALL_OFFSET: Vector2 = Vector2::new(2.0, -4.0).div(2.0);
+                const OFFSET: Vector2 = Vector2::new(-4.0, -12.0).div(2.0);
+                const TOP: Vector2 = Vector2::new(-300.0, 8.0).mul(1.05).div(2.0);
+                const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0).mul(1.05).div(2.0);
                 if !flipped {
                     renderer::Primative {
                         top_r: self.meter.position + OVERALL_OFFSET,
@@ -223,10 +223,10 @@ impl<const IS_PLAYER_1: bool> PlayerSpecificUI<IS_PLAYER_1> {
                 }
             },
             {
-                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -4.0);
-                const OFFSET: Vector2 = Vector2::new(4.0, -8.0);
-                const TOP: Vector2 = Vector2::new(-140.0, -2.0).mul(1.02);
-                const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).mul(1.02);
+                const OVERALL_OFFSET: Vector2 = Vector2::new(0.0, -4.0).div(2.0);
+                const OFFSET: Vector2 = Vector2::new(4.0, -8.0).div(2.0);
+                const TOP: Vector2 = Vector2::new(-140.0, -2.0).mul(1.02).div(2.0);
+                const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).mul(1.02).div(2.0);
 
                 if !flipped {
                     renderer::Primative {
@@ -334,9 +334,9 @@ impl HealthBar {
         }
     }
     fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
-        const OFFSET: Vector2 = Vector2::new(8.0, -10.0);
-        const TOP: Vector2 = Vector2::new(-400.0, 12.0);
-        const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0);
+        const OFFSET: Vector2 = Vector2::new(8.0, -10.0).div(2.0);
+        const TOP: Vector2 = Vector2::new(-400.0, 12.0).div(2.0);
+        const BOTTOM: Vector2 = Vector2::new(-395.0, -4.0).div(2.0);
 
         let progress = self.display_value;
 
@@ -420,9 +420,9 @@ impl PlayerMeter {
         }
     }
     fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
-        const OFFSET: Vector2 = Vector2::new(-4.0, -12.0);
-        const TOP: Vector2 = Vector2::new(-300.0, 8.0);
-        const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0);
+        const OFFSET: Vector2 = Vector2::new(-4.0, -12.0).div(2.0);
+        const TOP: Vector2 = Vector2::new(-300.0, 8.0).div(2.0);
+        const BOTTOM: Vector2 = Vector2::new(-320.0, -12.0).div(2.0);
 
         let progress = self.display_value;
         let full_count = (progress * 3.0).ceil() as u32;
@@ -483,9 +483,9 @@ impl ScalingBar {
     }
     fn update(&mut self) {}
     fn get_render_info(&self, flipped: bool) -> impl Iterator<Item = renderer::Primative> {
-        const OFFSET: Vector2 = Vector2::new(4.0, -8.0);
-        const TOP: Vector2 = Vector2::new(-140.0, -2.0);
-        const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0);
+        const OFFSET: Vector2 = Vector2::new(4.0, -8.0).div(2.0);
+        const TOP: Vector2 = Vector2::new(-140.0, -2.0).div(2.0);
+        const BOTTOM: Vector2 = Vector2::new(-135.0, -6.0).div(2.0);
 
         let progress = self.value;
 
@@ -559,7 +559,7 @@ impl WinIndicator {
                     Vector2::new(-5.0 * i as f32, 0.0)
                 },
             facing_left: flipped,
-            scale: (6.0, 6.0),
+            scale: (3.0, 3.0),
             depth: 0.5,
             sprite: if self.wins >= i + 1 {
                 self.on_sprite
@@ -590,7 +590,7 @@ impl Timer {
                 sprite: self.3,
                 facing_left: false,
                 depth: 0.5,
-                scale: (6.0, 6.0),
+                scale: (4.0, 4.0),
             }]
             .into_iter(),
         )
@@ -654,14 +654,14 @@ impl Counter {
                 sprite: if n > 99 { self.0[9] } else { self.0[n / 10] },
                 facing_left: false,
                 depth: 0.6,
-                scale: (6.0, 6.0),
+                scale: (4.0, 4.0),
             },
             renderer::Sprite {
                 position: position + Vector2::RIGHT * 2.0,
                 sprite: if n > 99 { self.0[9] } else { self.0[n % 10] },
                 facing_left: false,
                 depth: 0.6,
-                scale: (6.0, 6.0),
+                scale: (4.0, 4.0),
             },
         ]
         .into_iter()

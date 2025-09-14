@@ -89,7 +89,7 @@ impl Game {
                                 position: Vector2::ZERO,
                                 facing_left: false,
                                 depth: 0.5,
-                                scale: (6.0, 6.0),
+                                scale: (3.0, 3.0),
                             }]
                             .into_iter()
                         }
@@ -167,7 +167,7 @@ impl Game {
                             position: Vector2::ZERO,
                             facing_left: false,
                             depth: 0.2,
-                            scale: (2.0, 2.0),
+                            scale: (1.0, 1.0),
                         }]
                         .into_iter(),
                         _ => vec![].into_iter(),
@@ -193,7 +193,7 @@ impl Game {
                             position: Vector2::ZERO,
                             facing_left: false,
                             depth: 0.2,
-                            scale: (2.0, 2.0),
+                            scale: (1.0, 1.0),
                         }]
                         .into_iter(),
                         _ => vec![].into_iter(),
@@ -218,7 +218,7 @@ impl Game {
                     position: e.position + Vector2::DOWN * 30.0,
                     depth: e.depth,
                     facing_left: e.flipped,
-                    scale: (6.0, 6.0),
+                    scale: (3.0, 3.0),
                 }
             })
             .chain(ui_sprites)

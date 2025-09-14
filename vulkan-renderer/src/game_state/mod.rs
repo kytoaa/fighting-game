@@ -59,7 +59,7 @@ impl GameState {
                             ),
                             facing_left: false,
                             depth: 0.5,
-                            scale: (4.0, 4.0),
+                            scale: (2.0, 2.0),
                         }
                     })
                     .chain(

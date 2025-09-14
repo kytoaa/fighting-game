@@ -8,8 +8,8 @@ mod ui;
 
 use game_state::GameState;
 
-const WINDOW_WIDTH: u32 = 1280;
-const WINDOW_HEIGHT: u32 = 720;
+const WINDOW_WIDTH: u32 = 640;
+const WINDOW_HEIGHT: u32 = 360;
 
 static STATIC_ASSETS: asset_manager::static_data::StaticAssets =
     asset_manager_macros::generate_static_asset_manager_from_dir!("./assets/");

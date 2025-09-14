@@ -10,14 +10,18 @@ pub fn create_framebuffers(
         .present_images
         .iter()
         .map(|image| image.1)
-        .map(|image| {
-            let attachments = [core.color_image.0 .1, core.depth_image.0 .1, image];
+        .map(|_| {
+            let attachments = [
+                core.color_image.0 .1,
+                core.depth_image.0 .1,
+                core.resolve_image.0 .1,
+            ];
 
             let framebuffer_create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(*render_pass)
                 .attachments(&attachments)
-                .width(core.swapchain_info.extent.width)
-                .height(core.swapchain_info.extent.height)
+                .width(RENDER_HEIGHT)
+                .height(RENDER_WIDTH)
                 .layers(1);
 
             unsafe {
@@ -217,7 +221,9 @@ impl CoreRenderData {
                     .image_color_space(surface_format.color_space)
                     .image_format(surface_format.format)
                     .image_extent(surface_resolution)
-                    .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+                    .image_usage(
+                        vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST,
+                    )
                     .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                     .pre_transform(pre_transform)
                     .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
@@ -255,6 +261,7 @@ impl CoreRenderData {
                         device.create_image_view(&create_view_info, None).unwrap()
                     })
                     .collect();
+                println!("{:?}", surface_format.format);
 
                 (
                     swapchain,
@@ -288,11 +295,16 @@ impl CoreRenderData {
             let device_memory_properties =
                 instance.get_physical_device_memory_properties(physical_device);
 
-            let (color_image, color_image_memory, color_image_view) = {
+            let [(color_image, color_image_memory, color_image_view), (resolve_image, resolve_image_memory, resolve_image_view)] = {
                 let color_image_create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
                     .format(swapchain_info.format)
-                    .extent(surface_resolution.into())
+                    .extent(
+                        vk::Extent3D::default()
+                            .width(RENDER_WIDTH)
+                            .height(RENDER_HEIGHT)
+                            .depth(1),
+                    )
                     .mip_levels(1)
                     .array_layers(1)
                     .samples(SAMPLES)
@@ -304,6 +316,15 @@ impl CoreRenderData {
                     .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
                 let color_image = device.create_image(&color_image_create_info, None).unwrap();
+                let resolve_image = device
+                    .create_image(
+                        &color_image_create_info.usage(
+                            vk::ImageUsageFlags::COLOR_ATTACHMENT
+                                | vk::ImageUsageFlags::TRANSFER_SRC,
+                        ),
+                        None,
+                    )
+                    .unwrap();
 
                 let color_image_memory_reqs = device.get_image_memory_requirements(color_image);
                 let color_image_memory_index = find_memorytype_index(
@@ -320,10 +341,16 @@ impl CoreRenderData {
                 let color_image_memory = device
                     .allocate_memory(&color_image_allocate_info, None)
                     .unwrap();
+                let resolve_image_memory = device
+                    .allocate_memory(&color_image_allocate_info, None)
+                    .unwrap();
 
                 device
                     .bind_image_memory(color_image, color_image_memory, 0)
                     .expect("failed to bind memory to color image");
+                device
+                    .bind_image_memory(resolve_image, resolve_image_memory, 0)
+                    .expect("failed to bind memory to resolve image");
 
                 let color_image_view_create_info = vk::ImageViewCreateInfo::default()
                     .subresource_range(
@@ -339,15 +366,26 @@ impl CoreRenderData {
                 let color_image_view = device
                     .create_image_view(&color_image_view_create_info, None)
                     .unwrap();
+                let resolve_image_view = device
+                    .create_image_view(&color_image_view_create_info.image(resolve_image), None)
+                    .unwrap();
 
-                (color_image, color_image_memory, color_image_view)
+                [
+                    (color_image, color_image_memory, color_image_view),
+                    (resolve_image, resolve_image_memory, resolve_image_view),
+                ]
             };
 
             let (depth_image, depth_image_memory, depth_image_view) = {
                 let depth_image_create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
                     .format(find_render_pass_depth_format(&instance, &physical_device))
-                    .extent(surface_resolution.into())
+                    .extent(
+                        vk::Extent3D::default()
+                            .width(RENDER_WIDTH)
+                            .height(RENDER_HEIGHT)
+                            .depth(1),
+                    )
                     .mip_levels(1)
                     .array_layers(1)
                     .samples(SAMPLES)
@@ -440,6 +478,10 @@ impl CoreRenderData {
                 depth_image: VulkanObject(
                     VulkanImage(depth_image, depth_image_view),
                     depth_image_memory,
+                ),
+                resolve_image: VulkanObject(
+                    VulkanImage(resolve_image, resolve_image_view),
+                    resolve_image_memory,
                 ),
 
                 debug_callback,
