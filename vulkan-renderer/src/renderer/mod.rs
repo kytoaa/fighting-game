@@ -1,3 +1,5 @@
+use std::mem::swap;
+
 use ash::{vk, Device, Instance};
 
 mod deinitialization;
@@ -19,8 +21,8 @@ mod vertices;
 use super::Vector2;
 use asset_manager::SpriteHandle;
 
-const RENDER_WIDTH: u32 = 640;
-const RENDER_HEIGHT: u32 = 360;
+pub const RENDER_WIDTH: u32 = 640;
+pub const RENDER_HEIGHT: u32 = 360;
 
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
 const SAMPLES: vk::SampleCountFlags = vk::SampleCountFlags::TYPE_4;
@@ -182,9 +184,6 @@ impl Renderer {
             let semaphore_create_info = vk::SemaphoreCreateInfo::default();
             let fence_create_info =
                 vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
-            let mut timeline_semaphore_create_info = vk::SemaphoreTypeCreateInfo::default()
-                .semaphore_type(vk::SemaphoreType::TIMELINE)
-                .initial_value(0);
 
             (
                 [(); MAX_FRAMES_IN_FLIGHT].map(|_| {

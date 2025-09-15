@@ -98,10 +98,11 @@ impl Renderer {
             );
 
             {
-                let (width, height) = (
+                /*let (width, height) = (
                     self.core.swapchain_info.extent.width as f32 / 2.0,
                     self.core.swapchain_info.extent.height as f32 / 2.0,
-                );
+                );*/
+                let (width, height) = (RENDER_WIDTH as f32 / 2.0, RENDER_HEIGHT as f32 / 2.0);
                 let ubo = uniforms::UniformMatrix::orthographic_projection(
                     -width, width, -height, height, 0.0, 1.0,
                 );

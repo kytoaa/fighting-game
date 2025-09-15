@@ -8,8 +8,31 @@ mod ui;
 
 use game_state::GameState;
 
-const WINDOW_WIDTH: u32 = 640;
-const WINDOW_HEIGHT: u32 = 360;
+const WINDOW_WIDTH: u32 = 640 * 2;
+const WINDOW_HEIGHT: u32 = 360 * 2;
+
+#[derive(Clone, Copy)]
+enum WindowSize {
+    Size720p,
+    Size1080p,
+    Size360p,
+}
+impl WindowSize {
+    pub const fn size(self) -> (u32, u32) {
+        match self {
+            Self::Size720p => (1280, 720),
+            Self::Size1080p => (1920, 1080),
+            Self::Size360p => (640, 360),
+        }
+    }
+    pub const fn cycle(self) -> Self {
+        match self {
+            Self::Size720p => Self::Size1080p,
+            Self::Size1080p => Self::Size360p,
+            Self::Size360p => Self::Size720p,
+        }
+    }
+}
 
 static STATIC_ASSETS: asset_manager::static_data::StaticAssets =
     asset_manager_macros::generate_static_asset_manager_from_dir!("./assets/");
@@ -21,6 +44,7 @@ pub struct App {
     game_state: GameState,
 
     previous_time: std::time::SystemTime,
+    size: WindowSize,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -29,7 +53,10 @@ impl winit::application::ApplicationHandler for App {
             event_loop
                 .create_window(
                     winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
+                        .with_inner_size(winit::dpi::PhysicalSize::new(
+                            self.size.size().0,
+                            self.size.size().1,
+                        ))
                         .with_resizable(false),
                 )
                 .unwrap(),
@@ -56,6 +83,12 @@ impl winit::application::ApplicationHandler for App {
                 is_synthetic: _,
             } => {
                 let keycode = match event.physical_key {
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit0)
+                        if event.state == winit::event::ElementState::Pressed =>
+                    {
+                        self.cycle_size();
+                        return;
+                    }
                     winit::keyboard::PhysicalKey::Code(k) => k,
                     _ => return,
                 };
@@ -104,7 +137,27 @@ impl App {
                 game_state: GameState::new(asset_manager),
 
                 previous_time: std::time::SystemTime::now(),
+                size: WindowSize::Size720p,
             })
             .unwrap();
+    }
+    fn cycle_size(&mut self) {
+        self.size = self.size.cycle();
+        let size = self.size.size();
+        println!("new size {:?}", size);
+
+        if let WindowSize::Size1080p = self.size {
+            let window = self.window.as_mut().unwrap();
+            window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(
+                window.current_monitor(),
+            )));
+        } else {
+            self.window.as_mut().unwrap().set_fullscreen(None);
+        }
+        _ = self
+            .window
+            .as_mut()
+            .unwrap()
+            .request_inner_size(winit::dpi::PhysicalSize::new(size.0, size.1));
     }
 }

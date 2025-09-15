@@ -1,9 +1,9 @@
-use super::{renderer, Vector2, WINDOW_HEIGHT, WINDOW_WIDTH};
+use super::{renderer, Vector2};
 
-const BORDER_L: f32 = -(WINDOW_WIDTH as f32) / 2.0;
-const BORDER_R: f32 = WINDOW_WIDTH as f32 / 2.0;
-const BORDER_T: f32 = WINDOW_HEIGHT as f32 / 2.0;
-const BORDER_B: f32 = -(WINDOW_HEIGHT as f32) / 2.0;
+const BORDER_L: f32 = -(renderer::RENDER_WIDTH as f32) / 2.0;
+const BORDER_R: f32 = renderer::RENDER_WIDTH as f32 / 2.0;
+const BORDER_T: f32 = renderer::RENDER_HEIGHT as f32 / 2.0;
+const BORDER_B: f32 = -(renderer::RENDER_HEIGHT as f32) / 2.0;
 
 type Color = (f32, f32, f32, f32);
 
