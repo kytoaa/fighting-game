@@ -20,8 +20,8 @@ pub fn create_framebuffers(
             let framebuffer_create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(*render_pass)
                 .attachments(&attachments)
-                .width(RENDER_HEIGHT)
-                .height(RENDER_WIDTH)
+                .width(RENDER_WIDTH)
+                .height(RENDER_HEIGHT)
                 .layers(1);
 
             unsafe {
@@ -261,7 +261,6 @@ impl CoreRenderData {
                         device.create_image_view(&create_view_info, None).unwrap()
                     })
                     .collect();
-                println!("{:?}", surface_format.format);
 
                 (
                     swapchain,
@@ -316,12 +315,27 @@ impl CoreRenderData {
                     .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
                 let color_image = device.create_image(&color_image_create_info, None).unwrap();
+
+                let queue_families = [queue_family_index, transfer_queue_family_index];
                 let resolve_image = device
                     .create_image(
-                        &color_image_create_info.usage(
-                            vk::ImageUsageFlags::COLOR_ATTACHMENT
-                                | vk::ImageUsageFlags::TRANSFER_SRC,
-                        ),
+                        &if queue_family_index == transfer_queue_family_index {
+                            color_image_create_info
+                                .usage(
+                                    vk::ImageUsageFlags::COLOR_ATTACHMENT
+                                        | vk::ImageUsageFlags::TRANSFER_SRC,
+                                )
+                                .samples(vk::SampleCountFlags::TYPE_1)
+                        } else {
+                            color_image_create_info
+                                .usage(
+                                    vk::ImageUsageFlags::COLOR_ATTACHMENT
+                                        | vk::ImageUsageFlags::TRANSFER_SRC,
+                                )
+                                .samples(vk::SampleCountFlags::TYPE_1)
+                                .sharing_mode(vk::SharingMode::CONCURRENT)
+                                .queue_family_indices(&queue_families)
+                        },
                         None,
                     )
                     .unwrap();
@@ -338,11 +352,23 @@ impl CoreRenderData {
                     .allocation_size(color_image_memory_reqs.size)
                     .memory_type_index(color_image_memory_index);
 
+                let resolve_image_memory_reqs = device.get_image_memory_requirements(resolve_image);
+                let resolve_image_memory_index = find_memorytype_index(
+                    &resolve_image_memory_reqs,
+                    &device_memory_properties,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                )
+                .expect("unable to find suitable memory index for resolve image");
+
+                let resolve_image_allocate_info = vk::MemoryAllocateInfo::default()
+                    .allocation_size(resolve_image_memory_reqs.size)
+                    .memory_type_index(resolve_image_memory_index);
+
                 let color_image_memory = device
                     .allocate_memory(&color_image_allocate_info, None)
                     .unwrap();
                 let resolve_image_memory = device
-                    .allocate_memory(&color_image_allocate_info, None)
+                    .allocate_memory(&resolve_image_allocate_info, None)
                     .unwrap();
 
                 device

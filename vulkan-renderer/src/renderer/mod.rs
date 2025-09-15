@@ -182,6 +182,9 @@ impl Renderer {
             let semaphore_create_info = vk::SemaphoreCreateInfo::default();
             let fence_create_info =
                 vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
+            let mut timeline_semaphore_create_info = vk::SemaphoreTypeCreateInfo::default()
+                .semaphore_type(vk::SemaphoreType::TIMELINE)
+                .initial_value(0);
 
             (
                 [(); MAX_FRAMES_IN_FLIGHT].map(|_| {
@@ -342,7 +345,6 @@ impl Renderer {
                 )
                 .unwrap();
 
-            //println!("{} images, {} objects", images.len(), objects.len());
             self.record_command_buffer(
                 &self.core.command_buffers[frame],
                 image_index,
@@ -353,10 +355,9 @@ impl Renderer {
 
             let signal_semaphores = [self.render_finished_semaphores[frame]];
             let wait_semaphores = [self.image_available_semaphores[frame]];
-
-            let submit_info = vk::SubmitInfo::default()
+            let render_submit_info = vk::SubmitInfo::default()
                 .wait_semaphores(&wait_semaphores)
-                .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
+                .wait_dst_stage_mask(&[vk::PipelineStageFlags::TOP_OF_PIPE])
                 .command_buffers(std::slice::from_ref(&self.core.command_buffers[frame]))
                 .signal_semaphores(&signal_semaphores);
 
@@ -364,7 +365,7 @@ impl Renderer {
                 .device
                 .queue_submit(
                     self.core.queues.graphics,
-                    &[submit_info],
+                    &[render_submit_info],
                     self.in_flight_fences[frame],
                 )
                 .expect("failed to submit draw command buffer");

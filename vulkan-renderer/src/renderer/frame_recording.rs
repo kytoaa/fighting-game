@@ -22,29 +22,9 @@ impl Renderer {
         }
         .expect("failed to begin command buffer");
 
-        unsafe {
-            self.core.device.cmd_pipeline_barrier(
-                *command_buffer,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[vk::ImageMemoryBarrier::default()
-                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                    .old_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                    .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                    .image(self.core.present_images[image_index as usize].0)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .base_mip_level(0)
-                            .level_count(1)
-                            .base_array_layer(0)
-                            .layer_count(1),
-                    )],
-            )
+        const EXTENT: vk::Extent2D = vk::Extent2D {
+            width: RENDER_WIDTH,
+            height: RENDER_HEIGHT,
         };
 
         let clear_values = [
@@ -63,7 +43,7 @@ impl Renderer {
             .render_area(
                 vk::Rect2D::default()
                     .offset(vk::Offset2D::default())
-                    .extent(self.core.swapchain_info.extent),
+                    .extent(EXTENT),
             )
             .clear_values(&clear_values);
 
@@ -87,8 +67,8 @@ impl Renderer {
                     &vk::Viewport::default()
                         .x(0.0)
                         .y(0.0)
-                        .width(self.core.swapchain_info.extent.width as f32)
-                        .height(self.core.swapchain_info.extent.height as f32)
+                        .width(RENDER_WIDTH as f32)
+                        .height(RENDER_HEIGHT as f32)
                         .min_depth(0.0)
                         .max_depth(1.0),
                 ),
@@ -100,7 +80,7 @@ impl Renderer {
                 std::slice::from_ref(
                     &vk::Rect2D::default()
                         .offset(vk::Offset2D::default().x(0).y(0))
-                        .extent(self.core.swapchain_info.extent),
+                        .extent(EXTENT),
                 ),
             );
 
@@ -170,8 +150,8 @@ impl Renderer {
                     &vk::Viewport::default()
                         .x(0.0)
                         .y(0.0)
-                        .width(self.core.swapchain_info.extent.width as f32)
-                        .height(self.core.swapchain_info.extent.height as f32)
+                        .width(RENDER_WIDTH as f32)
+                        .height(RENDER_HEIGHT as f32)
                         .min_depth(0.0)
                         .max_depth(1.0),
                 ),
@@ -183,7 +163,7 @@ impl Renderer {
                 std::slice::from_ref(
                     &vk::Rect2D::default()
                         .offset(vk::Offset2D::default().x(0).y(0))
-                        .extent(self.core.swapchain_info.extent),
+                        .extent(EXTENT),
                 ),
             );
 
@@ -201,12 +181,7 @@ impl Renderer {
             );
 
             {
-                let (width, height) = (
-                    320.0,
-                    180.0,
-                    //self.core.swapchain_info.extent.width as f32 / 2.0,
-                    //self.core.swapchain_info.extent.height as f32 / 2.0,
-                );
+                let (width, height) = (RENDER_WIDTH as f32 / 2.0, RENDER_HEIGHT as f32 / 2.0);
                 let ubo = uniforms::UniformMatrix::orthographic_projection(
                     -width, width, -height, height, 0.0, 1.0,
                 );
@@ -240,12 +215,35 @@ impl Renderer {
 
             self.core.device.cmd_end_render_pass(*command_buffer);
 
+            self.core.device.cmd_pipeline_barrier(
+                *command_buffer,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[vk::ImageMemoryBarrier::default()
+                    .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
+                    .dst_access_mask(vk::AccessFlags::MEMORY_WRITE | vk::AccessFlags::MEMORY_READ)
+                    .old_layout(vk::ImageLayout::UNDEFINED)
+                    .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                    .image(self.core.present_images[image_index as usize].0)
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )],
+            );
+
             self.core.device.cmd_blit_image(
                 *command_buffer,
                 self.core.resolve_image.0 .0,
-                vk::ImageLayout::PRESENT_SRC_KHR,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                 self.core.present_images[image_index as usize].0,
-                vk::ImageLayout::PRESENT_SRC_KHR,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 &[vk::ImageBlit::default()
                     .src_subresource(
                         vk::ImageSubresourceLayers::default()
@@ -278,30 +276,28 @@ impl Renderer {
                 vk::Filter::NEAREST,
             );
 
-            unsafe {
-                self.core.device.cmd_pipeline_barrier(
-                    *command_buffer,
-                    vk::PipelineStageFlags::TOP_OF_PIPE,
-                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[vk::ImageMemoryBarrier::default()
-                        .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                        .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                        .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-                        .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-                        .image(self.core.present_images[image_index as usize].0)
-                        .subresource_range(
-                            vk::ImageSubresourceRange::default()
-                                .aspect_mask(vk::ImageAspectFlags::COLOR)
-                                .base_mip_level(0)
-                                .level_count(1)
-                                .base_array_layer(0)
-                                .layer_count(1),
-                        )],
-                )
-            };
+            self.core.device.cmd_pipeline_barrier(
+                *command_buffer,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[vk::ImageMemoryBarrier::default()
+                    .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
+                    .dst_access_mask(vk::AccessFlags::MEMORY_READ)
+                    .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                    .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                    .image(self.core.present_images[image_index as usize].0)
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )],
+            );
 
             self.core
                 .device
