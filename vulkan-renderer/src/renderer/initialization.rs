@@ -5,17 +5,14 @@ use super::*;
 pub fn create_framebuffers(
     core: &CoreRenderData,
     render_pass: &vk::RenderPass,
-) -> Vec<vk::Framebuffer> {
+    depthless_render_pass: &vk::RenderPass,
+) -> [Vec<vk::Framebuffer>; 2] {
     let framebuffers: Vec<_> = core
         .present_images
         .iter()
         .map(|image| image.1)
         .map(|_| {
-            let attachments = [
-                core.color_image.0 .1,
-                core.depth_image.0 .1,
-                core.resolve_image.0 .1,
-            ];
+            let attachments = [core.color_image.0 .1, core.depth_image.0 .1];
 
             let framebuffer_create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(*render_pass)
@@ -32,7 +29,29 @@ pub fn create_framebuffers(
         })
         .collect();
 
-    framebuffers
+    let depthless_framebuffers: Vec<_> = core
+        .present_images
+        .iter()
+        .map(|image| image.1)
+        .map(|image| {
+            let attachments = [image];
+
+            let framebuffer_create_info = vk::FramebufferCreateInfo::default()
+                .render_pass(*depthless_render_pass)
+                .attachments(&attachments)
+                .width(core.swapchain_info.extent.width)
+                .height(core.swapchain_info.extent.height)
+                .layers(1);
+
+            unsafe {
+                core.device
+                    .create_framebuffer(&framebuffer_create_info, None)
+            }
+            .expect("failed to create framebuffer")
+        })
+        .collect();
+
+    [framebuffers, depthless_framebuffers]
 }
 
 impl CoreRenderData {
@@ -294,7 +313,7 @@ impl CoreRenderData {
             let device_memory_properties =
                 instance.get_physical_device_memory_properties(physical_device);
 
-            let [(color_image, color_image_memory, color_image_view), (resolve_image, resolve_image_memory, resolve_image_view)] = {
+            let (color_image, color_image_memory, color_image_view) = {
                 let color_image_create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
                     .format(swapchain_info.format)
@@ -309,37 +328,11 @@ impl CoreRenderData {
                     .samples(SAMPLES)
                     .tiling(vk::ImageTiling::OPTIMAL)
                     .usage(
-                        vk::ImageUsageFlags::TRANSIENT_ATTACHMENT
-                            | vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                        vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC,
                     )
                     .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
                 let color_image = device.create_image(&color_image_create_info, None).unwrap();
-
-                let queue_families = [queue_family_index, transfer_queue_family_index];
-                let resolve_image = device
-                    .create_image(
-                        &if queue_family_index == transfer_queue_family_index {
-                            color_image_create_info
-                                .usage(
-                                    vk::ImageUsageFlags::COLOR_ATTACHMENT
-                                        | vk::ImageUsageFlags::TRANSFER_SRC,
-                                )
-                                .samples(vk::SampleCountFlags::TYPE_1)
-                        } else {
-                            color_image_create_info
-                                .usage(
-                                    vk::ImageUsageFlags::COLOR_ATTACHMENT
-                                        | vk::ImageUsageFlags::TRANSFER_SRC,
-                                )
-                                .samples(vk::SampleCountFlags::TYPE_1)
-                                .sharing_mode(vk::SharingMode::CONCURRENT)
-                                .queue_family_indices(&queue_families)
-                        },
-                        None,
-                    )
-                    .unwrap();
-
                 let color_image_memory_reqs = device.get_image_memory_requirements(color_image);
                 let color_image_memory_index = find_memorytype_index(
                     &color_image_memory_reqs,
@@ -351,32 +344,13 @@ impl CoreRenderData {
                 let color_image_allocate_info = vk::MemoryAllocateInfo::default()
                     .allocation_size(color_image_memory_reqs.size)
                     .memory_type_index(color_image_memory_index);
-
-                let resolve_image_memory_reqs = device.get_image_memory_requirements(resolve_image);
-                let resolve_image_memory_index = find_memorytype_index(
-                    &resolve_image_memory_reqs,
-                    &device_memory_properties,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                )
-                .expect("unable to find suitable memory index for resolve image");
-
-                let resolve_image_allocate_info = vk::MemoryAllocateInfo::default()
-                    .allocation_size(resolve_image_memory_reqs.size)
-                    .memory_type_index(resolve_image_memory_index);
-
                 let color_image_memory = device
                     .allocate_memory(&color_image_allocate_info, None)
-                    .unwrap();
-                let resolve_image_memory = device
-                    .allocate_memory(&resolve_image_allocate_info, None)
                     .unwrap();
 
                 device
                     .bind_image_memory(color_image, color_image_memory, 0)
                     .expect("failed to bind memory to color image");
-                device
-                    .bind_image_memory(resolve_image, resolve_image_memory, 0)
-                    .expect("failed to bind memory to resolve image");
 
                 let color_image_view_create_info = vk::ImageViewCreateInfo::default()
                     .subresource_range(
@@ -392,14 +366,8 @@ impl CoreRenderData {
                 let color_image_view = device
                     .create_image_view(&color_image_view_create_info, None)
                     .unwrap();
-                let resolve_image_view = device
-                    .create_image_view(&color_image_view_create_info.image(resolve_image), None)
-                    .unwrap();
 
-                [
-                    (color_image, color_image_memory, color_image_view),
-                    (resolve_image, resolve_image_memory, resolve_image_view),
-                ]
+                (color_image, color_image_memory, color_image_view)
             };
 
             let (depth_image, depth_image_memory, depth_image_view) = {
@@ -416,7 +384,10 @@ impl CoreRenderData {
                     .array_layers(1)
                     .samples(SAMPLES)
                     .tiling(vk::ImageTiling::OPTIMAL)
-                    .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+                    .usage(
+                        vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
+                            | vk::ImageUsageFlags::TRANSIENT_ATTACHMENT,
+                    )
                     .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
                 let depth_image = device.create_image(&depth_image_create_info, None).unwrap();
@@ -504,10 +475,6 @@ impl CoreRenderData {
                 depth_image: VulkanObject(
                     VulkanImage(depth_image, depth_image_view),
                     depth_image_memory,
-                ),
-                resolve_image: VulkanObject(
-                    VulkanImage(resolve_image, resolve_image_view),
-                    resolve_image_memory,
                 ),
 
                 debug_callback,

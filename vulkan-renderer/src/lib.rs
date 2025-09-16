@@ -159,5 +159,14 @@ impl App {
             .as_mut()
             .unwrap()
             .request_inner_size(winit::dpi::PhysicalSize::new(size.0, size.1));
+
+        self.renderer.replace(
+            renderer::Renderer::init(
+                &self.window.as_ref().unwrap(),
+                &self.window.as_ref().unwrap(),
+                (size.0, size.1),
+            )
+            .unwrap(),
+        );
     }
 }

@@ -609,7 +609,7 @@ impl ComboCounter {
     fn get_render_info(&self) -> impl Iterator<Item = renderer::Sprite> {
         if self.0 > 1 {
             Some(self.2.get_render_info(
-                Vector2::new(if self.1 { -85.0 } else { 85.0 }, 28.0),
+                Vector2::new(if self.1 { -66.0 } else { 66.0 }, 14.0),
                 self.0,
             ))
         } else {

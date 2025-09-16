@@ -13,15 +13,9 @@ impl Drop for CoreRenderData {
             self.device.destroy_image(self.color_image.0 .0, None);
             self.device.free_memory(self.color_image.1, None);
 
-            self.device
-                .destroy_image_view(self.resolve_image.0 .1, None);
-            self.device.destroy_image(self.resolve_image.0 .0, None);
-            self.device.free_memory(self.resolve_image.1, None);
-
             self.present_images.iter().for_each(|image| {
                 // NOTE: image views get destroyed but not the images
                 self.device.destroy_image_view(image.1, None);
-                //self.device.destroy_image(image.0, None);
             });
             self.swapchain_device
                 .destroy_swapchain(self.swapchain, None);
@@ -83,9 +77,13 @@ impl Drop for Renderer {
 
             self.framebuffers
                 .iter()
+                .chain(self.depthless_framebuffers.iter())
                 .for_each(|framebuffer| self.core.device.destroy_framebuffer(*framebuffer, None));
 
             self.core.device.destroy_render_pass(self.render_pass, None);
+            self.core
+                .device
+                .destroy_render_pass(self.depthless_render_pass, None);
             self.core
                 .device
                 .destroy_pipeline_layout(self.pipeline_layout, None);

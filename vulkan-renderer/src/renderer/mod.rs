@@ -1,5 +1,3 @@
-use std::mem::swap;
-
 use ash::{vk, Device, Instance};
 
 mod deinitialization;
@@ -25,7 +23,7 @@ pub const RENDER_WIDTH: u32 = 640;
 pub const RENDER_HEIGHT: u32 = 360;
 
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
-const SAMPLES: vk::SampleCountFlags = vk::SampleCountFlags::TYPE_4;
+const SAMPLES: vk::SampleCountFlags = vk::SampleCountFlags::TYPE_1;
 
 struct VulkanImage(vk::Image, vk::ImageView);
 struct VulkanObject<T>(T, vk::DeviceMemory);
@@ -101,7 +99,6 @@ struct CoreRenderData {
 
     color_image: VulkanObject<VulkanImage>,
     depth_image: VulkanObject<VulkanImage>,
-    resolve_image: VulkanObject<VulkanImage>,
 
     debug_callback: vk::DebugUtilsMessengerEXT,
     debug_utils_instance: ash::ext::debug_utils::Instance,
@@ -111,7 +108,9 @@ pub struct Renderer {
     core: CoreRenderData,
 
     render_pass: vk::RenderPass,
+    depthless_render_pass: vk::RenderPass,
     framebuffers: Vec<vk::Framebuffer>,
+    depthless_framebuffers: Vec<vk::Framebuffer>,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
     primative_pipeline: vk::Pipeline,
@@ -147,9 +146,10 @@ impl Renderer {
     ) -> Result<Renderer, Box<dyn std::error::Error>> {
         let core = CoreRenderData::init(display_handle, window_handle, window_size);
 
-        let render_pass = render_pass::create_render_pass(&core);
+        let [render_pass, depthless_render_pass] = render_pass::create_render_passes(&core);
 
-        let framebuffers = initialization::create_framebuffers(&core, &render_pass);
+        let [framebuffers, depthless_framebuffers] =
+            initialization::create_framebuffers(&core, &render_pass, &depthless_render_pass);
 
         let vertex_buffers = vertices::create_vertex_buffer(&core);
         let uniform_buffers = uniforms::create_uniform_buffer(&core);
@@ -176,7 +176,7 @@ impl Renderer {
         let (primative_pipeline, primative_pipeline_layout) =
             graphics_pipeline::create_primative_pipeline(
                 &core,
-                &render_pass,
+                &depthless_render_pass,
                 &[descriptor_set_layout, sampler_descriptor_set_layout],
             );
 
@@ -204,12 +204,14 @@ impl Renderer {
         Ok(Renderer {
             core,
             render_pass,
+            depthless_render_pass,
             pipeline,
             pipeline_layout,
             primative_pipeline,
             primative_pipeline_layout,
 
             framebuffers,
+            depthless_framebuffers,
 
             image_available_semaphores,
             render_finished_semaphores,

@@ -259,7 +259,7 @@ pub fn create_primative_pipeline(
         .depth_stencil_state(&depth_stencil_state)
         .layout(pipeline_layout)
         .render_pass(*render_pass)
-        .subpass(1)
+        .subpass(0)
         .base_pipeline_handle(vk::Pipeline::null())
         .base_pipeline_index(-1);
 
