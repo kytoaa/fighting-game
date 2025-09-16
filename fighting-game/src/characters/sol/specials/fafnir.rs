@@ -132,16 +132,22 @@ impl Player for Sol<Fafnir> {
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
         const START_FRAME: usize = 4;
         const RECOVERY_FRAME: usize = FAFNIR_STARTUP + FAFNIR_ACTIVE + FAFNIR_RECOVERY / 2;
+        const FLAME_END_FRAME: usize = RECOVERY_FRAME - 4;
 
         Some(match self.frame {
             0..START_FRAME => ("sol/specials/fafnir/fafnir1".into(), BASE_SPRITE_OFFSET),
-            START_FRAME..FAFNIR_STARTUP => {
-                ("sol/specials/fafnir/fafnir2".into(), BASE_SPRITE_OFFSET)
-            }
-            FAFNIR_STARTUP..RECOVERY_FRAME => {
-                ("sol/specials/fafnir/fafnir3".into(), BASE_SPRITE_OFFSET)
-            }
-            RECOVERY_FRAME.. => ("sol/specials/fafnir/fafnir4".into(), BASE_SPRITE_OFFSET),
+            START_FRAME..FAFNIR_STARTUP => (
+                "sol/specials/fafnir/fafnir2".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 8.0 * self.dir(),
+            ),
+            FAFNIR_STARTUP..RECOVERY_FRAME => (
+                "sol/specials/fafnir/fafnir3".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 8.0 * self.dir(),
+            ),
+            RECOVERY_FRAME.. => (
+                "sol/specials/fafnir/fafnir5".into(),
+                BASE_SPRITE_OFFSET + Vector2::LEFT * 8.0 * self.dir(),
+            ),
         })
     }
 }
