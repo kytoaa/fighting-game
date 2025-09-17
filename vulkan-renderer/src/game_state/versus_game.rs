@@ -10,6 +10,7 @@ pub struct Game {
     ui: crate::ui::PlayerUi,
     input_manager: crate::input::GameInputManager,
     state: VersusGameState,
+    show_hitboxes: bool,
 }
 enum VersusGameState {
     RoundStart { frames: usize },
@@ -31,6 +32,7 @@ impl Game {
             state: VersusGameState::RoundStart {
                 frames: ROUND_START_FRAMES,
             },
+            show_hitboxes: false,
         }
     }
 
@@ -39,6 +41,11 @@ impl Game {
         key: winit::keyboard::KeyCode,
         state: winit::event::ElementState,
     ) {
+        if let (winit::keyboard::KeyCode::Digit9, winit::event::ElementState::Pressed) =
+            (key, state)
+        {
+            self.show_hitboxes = !self.show_hitboxes;
+        }
         self.input_manager.set_keyboard_key_state(key, state);
     }
 
@@ -225,7 +232,37 @@ impl Game {
             .chain(sprites)
             .collect();
 
-        let primatives = ui_primatives.chain(primatives).collect();
+        let primatives = if self.show_hitboxes {
+            ui_primatives
+                .chain(primatives)
+                .chain(self.game.get_hitboxes().flat_map(|hitbox| match hitbox {
+                    fighting_game::SpawnedCollider::Hitbox(b) => {
+                        Some(crate::renderer::Primative::rect(
+                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            b.size() * 6.0,
+                            (1.0, 0.0, 0.0, 0.4),
+                        ))
+                    }
+                    fighting_game::SpawnedCollider::Hurtbox(b) => {
+                        Some(crate::renderer::Primative::rect(
+                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            b.size() * 6.0,
+                            (0.0, 1.0, 0.0, 0.4),
+                        ))
+                    }
+                    fighting_game::SpawnedCollider::Throwbox(b) => {
+                        Some(crate::renderer::Primative::rect(
+                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            b.size() * 6.0,
+                            (1.0, 1.0, 0.0, 0.4),
+                        ))
+                    }
+                    fighting_game::SpawnedCollider::Collider(b) => None,
+                }))
+                .collect()
+        } else {
+            ui_primatives.chain(primatives).collect()
+        };
 
         ((sprites, primatives), false)
     }

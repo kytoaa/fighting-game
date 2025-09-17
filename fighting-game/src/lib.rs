@@ -152,6 +152,13 @@ pub enum SpawnedCollider {
     Throwbox(crate::datatypes::BoundingBox),
     Collider(crate::datatypes::BoundingBox),
 }
+impl SpawnedCollider {
+    pub fn bounding_box(&self) -> crate::datatypes::BoundingBox {
+        match self {
+            Self::Hitbox(b) | Self::Hurtbox(b) | Self::Throwbox(b) | Self::Collider(b) => b.clone(),
+        }
+    }
+}
 
 pub struct EntityRenderInfo {
     pub position: datatypes::Vector2,
