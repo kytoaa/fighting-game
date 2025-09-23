@@ -388,9 +388,10 @@ impl Player for Sol<AirHeavy> {
 
         Some(match self.frame as usize {
             0..AIR_HEAVY_STARTUP => ("sol/normals/j.h/j.h1".into(), LARGE_SPRITE_BASE_OFFSET),
-            AIR_HEAVY_STARTUP..RECOVERY_FRAME => {
-                ("sol/normals/j.h/j.h2".into(), LARGE_SPRITE_BASE_OFFSET)
-            }
+            AIR_HEAVY_STARTUP..RECOVERY_FRAME => (
+                "sol/normals/j.h/j.h2".into(),
+                LARGE_SPRITE_BASE_OFFSET + Vector2::LEFT * 4.0,
+            ),
             RECOVERY_FRAME.. => ("sol/normals/j.h/j.h1".into(), LARGE_SPRITE_BASE_OFFSET),
         })
     }

@@ -238,21 +238,21 @@ impl Game {
                 .chain(self.game.get_hitboxes().flat_map(|hitbox| match hitbox {
                     fighting_game::SpawnedCollider::Hitbox(b) => {
                         Some(crate::renderer::Primative::rect(
-                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
                             b.size() * 6.0,
                             (1.0, 0.0, 0.0, 0.4),
                         ))
                     }
                     fighting_game::SpawnedCollider::Hurtbox(b) => {
                         Some(crate::renderer::Primative::rect(
-                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
                             b.size() * 6.0,
                             (0.0, 1.0, 0.0, 0.4),
                         ))
                     }
                     fighting_game::SpawnedCollider::Throwbox(b) => {
                         Some(crate::renderer::Primative::rect(
-                            b.position() * 3.0 + Vector2::new(-18.0, -54.0),
+                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
                             b.size() * 6.0,
                             (1.0, 1.0, 0.0, 0.4),
                         ))
