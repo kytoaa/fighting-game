@@ -100,7 +100,9 @@ struct CoreRenderData {
     color_image: VulkanObject<VulkanImage>,
     depth_image: VulkanObject<VulkanImage>,
 
+    #[cfg(debug_assertions)]
     debug_callback: vk::DebugUtilsMessengerEXT,
+    #[cfg(debug_assertions)]
     debug_utils_instance: ash::ext::debug_utils::Instance,
 }
 

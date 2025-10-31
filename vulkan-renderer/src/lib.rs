@@ -61,6 +61,7 @@ impl winit::application::ApplicationHandler for App {
                 )
                 .unwrap(),
         );
+
         self.renderer = Some(
             renderer::Renderer::init(
                 &self.window.as_ref().unwrap(),
@@ -69,6 +70,8 @@ impl winit::application::ApplicationHandler for App {
             )
             .unwrap(),
         );
+
+        self.cycle_size();
     }
     fn window_event(
         &mut self,

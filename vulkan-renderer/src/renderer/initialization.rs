@@ -64,7 +64,16 @@ impl CoreRenderData {
             let entry = Entry::linked();
             let app_name = c"FightingGame";
 
-            let layer_names = [c"VK_LAYER_KHRONOS_validation"];
+            let layer_names: [&std::ffi::CStr; const {
+                if cfg!(debug_assertions) {
+                    1
+                } else {
+                    0
+                }
+            }] = [
+                #[cfg(debug_assertions)]
+                c"VK_LAYER_KHRONOS_validation",
+            ];
             let layers_names_raw: Vec<*const std::ffi::c_char> = layer_names
                 .iter()
                 .map(|raw_name| raw_name.as_ptr())
@@ -78,7 +87,9 @@ impl CoreRenderData {
             )
             .unwrap()
             .to_vec();
-            extension_names.push(ash::ext::debug_utils::NAME.as_ptr());
+            if cfg!(debug_assertions) {
+                extension_names.push(ash::ext::debug_utils::NAME.as_ptr());
+            }
 
             let instance: Instance = {
                 let appinfo = vk::ApplicationInfo::default()
@@ -101,8 +112,10 @@ impl CoreRenderData {
                     .expect("Instance creation error")
             };
 
+            #[cfg(debug_assertions)]
             let debug_utils_instance = ash::ext::debug_utils::Instance::new(&entry, &instance);
             // NOTE: debug info setup
+            #[cfg(debug_assertions)]
             let debug_callback = {
                 let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::default()
                     .message_severity(
@@ -477,7 +490,9 @@ impl CoreRenderData {
                     depth_image_memory,
                 ),
 
+                #[cfg(debug_assertions)]
                 debug_callback,
+                #[cfg(debug_assertions)]
                 debug_utils_instance,
             }
         }

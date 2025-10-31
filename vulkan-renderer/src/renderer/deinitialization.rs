@@ -30,6 +30,7 @@ impl Drop for CoreRenderData {
 
             self.device.destroy_device(None);
 
+            #[cfg(debug_assertions)]
             self.debug_utils_instance
                 .destroy_debug_utils_messenger(self.debug_callback, None);
 
