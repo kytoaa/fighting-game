@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
 members = [ "fighting-game", "fighting-game/macros", "fighting-game/macros/derive_macros", "vulkan-renderer", "vulkan-renderer/asset-manager-macros", "vulkan-renderer/asset-manager" ]
-default-members = [ "fighting-game", "vulkan-renderer"]
+default-members = [ "fighting-game", "vulkan-renderer" ]
