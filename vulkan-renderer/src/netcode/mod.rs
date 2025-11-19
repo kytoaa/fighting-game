@@ -1,14 +1,71 @@
+use std::io::prelude::*;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 
 mod connection;
 mod rollback;
 
-pub use rollback::{FrameState, GamePacket, InputHistory, PacketInputState, Rollback};
+pub use rollback::{FrameState, GamePacket, InputHistory, Rollback};
+
+pub fn ask_connection_type() -> ConnectionType {
+    print!("[0] offline (default)\n[1] host\n[2] join\n> ");
+    _ = std::io::stdout().flush();
+
+    let mut buf = String::new();
+    loop {
+        std::io::stdin()
+            .read_line(&mut buf)
+            .expect("failed to get input");
+
+        return match buf.trim() {
+            "0" | "" => ConnectionType::Offline,
+            "1" => {
+                print!("\n[HOST] -- enter address\n> ");
+                _ = std::io::stdout().flush();
+                buf.clear();
+
+                std::io::stdin()
+                    .read_line(&mut buf)
+                    .expect("failed to get input");
+
+                ConnectionType::Host(
+                    buf.trim()
+                        .to_socket_addrs()
+                        .map(|mut a| a.next())
+                        .ok()
+                        .flatten()
+                        .expect("invalid address"),
+                )
+            }
+            "2" => {
+                print!("\n[JOIN] -- enter address\n> ");
+                _ = std::io::stdout().flush();
+                buf.clear();
+
+                std::io::stdin()
+                    .read_line(&mut buf)
+                    .expect("failed to get input");
+
+                ConnectionType::Client(
+                    buf.trim()
+                        .to_socket_addrs()
+                        .map(|mut a| a.next())
+                        .ok()
+                        .flatten()
+                        .expect("invalid address"),
+                )
+            }
+            _ => {
+                buf.clear();
+                continue;
+            }
+        };
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionType {
-    Host,
-    Client,
+    Host(SocketAddr),
+    Client(SocketAddr),
     Offline,
 }
 

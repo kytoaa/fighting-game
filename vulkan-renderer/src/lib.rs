@@ -129,6 +129,8 @@ impl winit::application::ApplicationHandler for App {
 
 impl App {
     pub fn init() {
+        netcode::ask_connection_type();
+
         let event_loop = winit::event_loop::EventLoop::new().unwrap();
 
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);

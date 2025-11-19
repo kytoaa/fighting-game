@@ -22,11 +22,11 @@ impl GameState {
                     input_manager: crate::input::CharacterSelectInputManager::offline(),
                     connection: None,
                 },
-                crate::netcode::ConnectionType::Host => CharacterSelect {
+                crate::netcode::ConnectionType::Host(_) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::host(),
                     connection: None,
                 },
-                crate::netcode::ConnectionType::Client => CharacterSelect {
+                crate::netcode::ConnectionType::Client(_) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::client(),
                     connection: None,
                 },

@@ -7,12 +7,14 @@ use directions::Motion;
 
 pub use directions::InputDir;
 
+const INPUT_DELAY: usize = 4;
 const BUFFER_LENGTH: usize = 3;
 const INPUT_HISTORY_LENGTH: usize = 60;
 const DOUBLE_PRESS_FRAMES: usize = 14;
 
 #[derive(Clone)]
 pub struct InputHandler {
+    buffer: VecDeque<InputState>,
     direction_queue: VecDeque<InputDir>,
     button_states: ButtonStates,
     buffered_actions: Option<Vec<BufferedAction>>,
@@ -22,6 +24,7 @@ pub struct InputHandler {
 impl InputHandler {
     pub fn new() -> InputHandler {
         InputHandler {
+            buffer: VecDeque::new(),
             direction_queue: std::iter::repeat(InputDir::Dir5)
                 .take(INPUT_HISTORY_LENGTH)
                 .collect(),
@@ -109,6 +112,14 @@ impl InputHandler {
     }
 
     pub fn update(&mut self, input_state: &InputState) {
+        let input_state = if self.buffer.len() > INPUT_DELAY {
+            let state = self.buffer.pop_back();
+            self.buffer.push_front(input_state.clone());
+            state.unwrap()
+        } else {
+            input_state.clone()
+        };
+
         if self.decrement_action_buffers {
             self.buffered_actions = Some(
                 self.buffered_actions
