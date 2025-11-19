@@ -4,7 +4,7 @@ use crate::collision::{
 };
 use crate::datatypes::BoundingShape;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct ComboInfo {
     hits: usize,
     total_damage: u32,

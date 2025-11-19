@@ -42,8 +42,40 @@ pub(crate) struct World {
 
     frame: usize,
 }
+impl Clone for World {
+    fn clone(&self) -> Self {
+        Self {
+            players: [
+                self.players[0]
+                    .as_ref()
+                    .map(|player| player.as_ref().clone()),
+                self.players[1]
+                    .as_ref()
+                    .map(|player| player.as_ref().clone()),
+            ],
+            player_data: self.player_data.clone(),
+            combo: self.combo.clone(),
+            non_player_entities: self.non_player_entities.as_ref().map(|map| {
+                std::collections::HashMap::from_iter(
+                    map.keys().copied().zip(
+                        map.values().map(|entity| {
+                            crate::characters::NonPlayerClone::clone(entity.as_ref())
+                        }),
+                    ),
+                )
+            }),
+            hurtboxes: self.hurtboxes.clone(),
+            hitboxes: self.hitboxes.clone(),
+            throwboxes: self.throwboxes.clone(),
+            id_counter: self.id_counter,
+            hitstop_frames_left: self.hitstop_frames_left,
+            superfreeze_frames_left: self.superfreeze_frames_left,
+            frame: self.frame,
+        }
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Spawn<T>(T, usize);
 
 #[derive(PartialEq, Clone, Copy, Debug)]

@@ -2,6 +2,7 @@ use super::super::*;
 
 const BLOCKSTUN_DRAG: f32 = 2.0;
 
+#[derive(Clone)]
 pub struct BlockStun<const CROUCHING: bool> {
     pub length: usize,
 }
@@ -58,6 +59,7 @@ impl<const CROUCHING: bool> Player for Sol<BlockStun<CROUCHING>> {
         })
     }
 }
+#[derive(Clone)]
 pub struct AirBlockStun {
     pub length: usize,
 }
@@ -95,6 +97,7 @@ const BACKDASH_VELOCITY: f32 = 70.0;
 const BACKDASH_FRAMES: usize = 6;
 const BACKDASH_VULNERABLE: usize = 9;
 
+#[derive(Clone)]
 pub struct Backdash;
 impl Player for Sol<Backdash> {
     fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -107,12 +110,7 @@ impl Player for Sol<Backdash> {
                     Some(InputDir::Dir4.dir(self.direction)),
                 ))
             {
-                return Box::new(self.transition(
-                    GroundThrow::<false> {
-                        success: std::cell::Cell::new(true).into(),
-                    },
-                    true,
-                ));
+                return Box::new(self.transition(GroundThrow::<false>, true));
             }
         }
 
@@ -131,6 +129,7 @@ impl Player for Sol<Backdash> {
         Some(("sol/backdash/backdash1".into(), BASE_SPRITE_OFFSET))
     }
 }
+#[derive(Clone)]
 pub struct BackdashVulnerable;
 impl Player for Sol<BackdashVulnerable> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

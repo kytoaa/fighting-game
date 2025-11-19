@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone)]
 pub struct SpriteEntity<const FRAMES: usize> {
     position: Vector2,
     facing_right: bool,
@@ -89,4 +90,10 @@ impl<const FRAMES: usize> HasID for SpriteEntity<FRAMES> {
 
 impl<const FRAMES: usize> OnHit for SpriteEntity<FRAMES> {
     fn on_hit(&mut self, _: HitConnectionStatus) {}
+}
+
+impl<const FRAMES: usize> NonPlayerClone for SpriteEntity<FRAMES> {
+    fn clone(&self) -> Box<dyn NonPlayerEntity> {
+        Box::new(Clone::clone(self))
+    }
 }

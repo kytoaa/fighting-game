@@ -296,7 +296,7 @@ impl World {
                 let p = self.players[hurtbox.0.owner.id()].as_ref().unwrap();
                 p.is_grounded() && !p.in_hitstun() && p.throwable()
             } {
-                _ = self.players[throw_box.owner.id()].insert((throw_box.throw_success)());
+                _ = self.players[throw_box.owner.id()].insert(throw_box.throw_success);
 
                 let other_player = self.players[hurtbox.0.owner.id()].take().unwrap();
                 _ = self.players[hurtbox.0.owner.id()].insert(other_player.thrown());

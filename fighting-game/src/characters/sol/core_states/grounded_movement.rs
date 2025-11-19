@@ -4,6 +4,7 @@ pub const WALK_SPEED: f32 = 30.0;
 const RUN_SPEED: f32 = 90.0;
 const DECEL_RATE: f32 = 12.0;
 
+#[derive(Clone)]
 pub struct Stand;
 impl Player for Sol<Stand> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -29,6 +30,7 @@ impl Player for Sol<Stand> {
 }
 impl SolDamageableState for Stand {}
 
+#[derive(Clone)]
 pub struct Crouch<const BLOCKING: bool>;
 impl<const BLOCKING: bool> Player for Sol<Crouch<BLOCKING>>
 where
@@ -62,6 +64,7 @@ impl SolDamageableState for Crouch<false> {}
 pub const WALK_ANIM_LENGTH: usize = 4;
 pub const FRAMES_PER_WALK_ANIM_FRAME: usize = 10;
 
+#[derive(Clone)]
 pub struct WalkState<const BLOCKING: bool>;
 
 impl<const BLOCKING: bool> Player for Sol<WalkState<BLOCKING>>
@@ -102,6 +105,7 @@ impl SolDamageableState for WalkState<false> {}
 
 const RUN_ANIM_LENGTH: usize = 6;
 const FRAMES_PER_RUN_ANIM_FRAME: usize = 5;
+#[derive(Clone)]
 pub struct RunState;
 impl Player for Sol<RunState>
 where
@@ -140,6 +144,7 @@ where
 }
 impl SolDamageableState for RunState {}
 
+#[derive(Clone)]
 pub struct RunStartState<const FRAMES: usize = MIN_RUN_FRAMES_BEFORE_CANCEL>;
 impl RunStartState {
     pub const fn dash_cancel() -> RunStartState<10> {
@@ -163,12 +168,7 @@ where
                     Some(InputDir::Dir4.dir(self.direction)),
                 ))
             {
-                return Box::new(self.transition(
-                    GroundThrow::<false> {
-                        success: std::cell::Cell::new(true).into(),
-                    },
-                    true,
-                ));
+                return Box::new(self.transition(GroundThrow::<false>, true));
             }
         }
 

@@ -1,6 +1,7 @@
 use super::*;
 
 const GUNFLAME_FEINT_HOLD_LENGTH: usize = 9;
+#[derive(Clone)]
 pub struct GunFlameFeint;
 impl Player for Sol<GunFlameFeint> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

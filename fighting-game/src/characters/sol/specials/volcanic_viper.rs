@@ -14,6 +14,7 @@ const KNOCKDOWN_ACTIVE: usize = 3;
 const KNOCKDOWN_LANDING_LAG: usize = 16;
 const KNOCKDOWN_DAMAGE: u32 = 12;
 
+#[derive(Clone)]
 pub struct VolcanicViper;
 impl Player for Sol<VolcanicViper> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -281,6 +282,7 @@ impl Player for Sol<VolcanicViper> {
 }
 impl SolDamageableState for VolcanicViper {}
 
+#[derive(Clone)]
 struct Knockdown;
 impl Player for Sol<Knockdown> {
     fn update(mut self: Box<Self>, world: &mut World, _input: &InputHandler) -> Box<dyn Player> {

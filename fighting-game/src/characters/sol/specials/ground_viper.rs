@@ -8,7 +8,7 @@ const GROUND_VIPER_RECOVERY: usize = 30;
 const GROUND_VIPER_DAMAGE: u32 = 20;
 const GROUND_VIPER_CHARGED_DAMAGE: u32 = 25;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GroundViper {
     frames_sliding: usize,
     released: bool,

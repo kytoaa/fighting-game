@@ -1,13 +1,10 @@
 use super::*;
 
-pub struct WildThrow {
-    success: std::rc::Rc<std::cell::Cell<bool>>,
-}
+#[derive(Clone)]
+pub struct WildThrow;
 impl WildThrow {
     pub fn new() -> Self {
-        Self {
-            success: std::cell::Cell::new(false).into(),
-        }
+        Self
     }
 }
 impl Player for Sol<WildThrow> {
@@ -28,27 +25,19 @@ impl Player for Sol<WildThrow> {
                         Vector2::new(10.0, 20.0),
                     )),
                     owner: self.player_id,
-                    throw_success: {
-                        let success = self.state.success.clone();
-                        let success_state = Box::new(Sol {
-                            player_id: self.player_id,
-                            position: self.position,
-                            velocity: Vector2::ZERO,
-                            collider: self.collider.clone(),
-                            direction: self.direction,
-                            has_hit: false,
-                            grounded: true,
-                            has_air_action: true,
-                            distance_from_other_player: self.distance_from_other_player,
-                            frame: 0,
-                            state: WildThrowSuccess,
-                        });
-                        Box::new(move || {
-                            success.set(true);
-                            println!("successful throw");
-                            success_state
-                        })
-                    },
+                    throw_success: Box::new(Sol {
+                        player_id: self.player_id,
+                        position: self.position,
+                        velocity: Vector2::ZERO,
+                        collider: self.collider.clone(),
+                        direction: self.direction,
+                        has_hit: false,
+                        grounded: true,
+                        has_air_action: true,
+                        distance_from_other_player: self.distance_from_other_player,
+                        frame: 0,
+                        state: WildThrowSuccess,
+                    }),
                 },
                 self.position + Vector2::new(9.0 * self.dir(), 6.0),
             );
@@ -80,6 +69,7 @@ impl SolDamageableState for WildThrow {}
 
 const GROUND_THROW_DAMAGE: u32 = 30;
 
+#[derive(Clone)]
 struct WildThrowSuccess;
 impl Player for Sol<WildThrowSuccess> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

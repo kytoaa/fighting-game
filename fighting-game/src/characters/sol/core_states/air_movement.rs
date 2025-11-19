@@ -3,6 +3,7 @@ use super::super::*;
 const JUMPSQUAT_FRAMES: usize = 4;
 const JUMP_FORCE: f32 = 175.0;
 
+#[derive(Clone)]
 pub struct JumpSquat {
     pub direction: f32,
 }
@@ -41,6 +42,7 @@ impl Player for Sol<JumpSquat> {
     }
 }
 
+#[derive(Clone)]
 pub struct Air<const BLOCKING: bool>;
 impl<const B: bool> Player for Sol<Air<B>>
 where
@@ -76,6 +78,7 @@ const AIRDASH_LENGTH: usize = 12;
 const AIRDASH_SPEED: f32 = 140.0;
 const AIRDASH_ACTIONABLE_FRAME: usize = 4;
 
+#[derive(Clone)]
 pub struct Airdash;
 impl Player for Sol<Airdash> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

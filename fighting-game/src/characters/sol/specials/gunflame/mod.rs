@@ -10,6 +10,7 @@ const GUNFLAME_STARTUP: usize = 14;
 const GUNFLAME_DECEL: f32 = 3.0;
 
 /// bool is feint
+#[derive(Clone)]
 pub struct GunFlameStartup<const FEINT: bool = false>;
 impl GunFlameStartup {
     pub const fn feint() -> GunFlameStartup<true> {
@@ -55,6 +56,7 @@ impl<const FEINT: bool> Player for Sol<GunFlameStartup<FEINT>> {
 }
 impl<const FEINT: bool> SolDamageableState for GunFlameStartup<FEINT> {}
 
+#[derive(Clone)]
 struct GunFlame;
 impl Player for Sol<GunFlame> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

@@ -13,6 +13,7 @@ const HEAVY_3_ACTIVE: usize = 3;
 const HEAVY_3_RECOVERY: usize = 18;
 const HEAVY_3_DAMAGE: u32 = 14;
 
+#[derive(Clone)]
 pub struct Heavy3;
 impl Player for Sol<Heavy3> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -125,6 +126,7 @@ mod heavy_6 {
     const HEAVY_6_RECOVERY: usize = 20;
     const HEAVY_6_DAMAGE: u32 = 30;
 
+    #[derive(Clone)]
     pub struct Heavy6;
     impl Player for Sol<Heavy6> {
         fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

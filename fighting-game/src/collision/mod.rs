@@ -4,7 +4,7 @@ use crate::world::EntityID;
 mod hit_data;
 pub use hit_data::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CollisionShape(BoundingBox);
 
 impl CollisionShape {
@@ -71,12 +71,12 @@ pub enum HitConnectionStatus {
     Invuln,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Hurtbox {
     pub shape: CollisionShape,
     pub owner: EntityID,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Hitbox {
     pub shape: CollisionShape,
     pub attack_data: AttackData,
@@ -86,8 +86,18 @@ pub(crate) struct Hitbox {
 pub(crate) struct ThrowBox {
     pub shape: CollisionShape,
     pub owner: EntityID,
-    pub throw_success: Box<dyn FnOnce() -> Box<dyn crate::characters::Player>>,
+    pub throw_success: Box<dyn crate::characters::Player>,
 }
+impl Clone for ThrowBox {
+    fn clone(&self) -> Self {
+        Self {
+            shape: self.shape.clone(),
+            owner: self.owner.clone(),
+            throw_success: self.throw_success.clone(),
+        }
+    }
+}
+pub struct ThrowSuccess {}
 
 impl CollisionShape {
     pub fn overlaps(&self, other: &CollisionShape) -> bool {

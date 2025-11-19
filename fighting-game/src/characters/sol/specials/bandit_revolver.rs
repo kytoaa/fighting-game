@@ -6,6 +6,7 @@ const BANDIT_REVOLVER_GROUNDED_1_RECOVERY: usize = 16;
 const BANDIT_REVOLVER_GROUNDED_1_LANDING_LAG: usize = 7;
 const BANDIT_REVOLVER_GROUNDED_1_DAMAGE: u32 = 11;
 
+#[derive(Clone)]
 pub struct BanditRevolverGrounded;
 impl Player for Sol<BanditRevolverGrounded> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -132,6 +133,7 @@ impl Player for Sol<BanditRevolverGrounded> {
 }
 impl SolDamageableState for BanditRevolverGrounded {}
 
+#[derive(Clone)]
 pub(super) struct BanditRevolverGroundedRecovery<const FRAMES: usize>;
 impl<const FRAMES: usize> Player for Sol<BanditRevolverGroundedRecovery<FRAMES>> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -173,6 +175,7 @@ const BANDIT_REVOLVER_GROUNDED_2_RECOVERY: usize = 8;
 const BANDIT_REVOLVER_GROUNDED_2_LANDING_LAG: usize = 15;
 const BANDIT_REVOLVER_GROUNDED_2_DAMAGE: u32 = 14;
 
+#[derive(Clone)]
 struct BanditRevolverGroundedSecondHit;
 impl Player for Sol<BanditRevolverGroundedSecondHit> {
     fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
@@ -276,6 +279,7 @@ const BANDIT_REVOLVER_AIR_DAMAGE_1: u32 = BANDIT_REVOLVER_GROUNDED_1_DAMAGE;
 const BANDIT_REVOLVER_AIR_DAMAGE_2: u32 = BANDIT_REVOLVER_GROUNDED_2_DAMAGE;
 const BANDIT_REVOLVER_AIR_LANDING_LAG: usize = 10;
 
+#[derive(Clone)]
 pub struct BanditRevolverAir;
 impl Player for Sol<BanditRevolverAir> {
     fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {

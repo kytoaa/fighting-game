@@ -5,6 +5,7 @@ const FAFNIR_ACTIVE: usize = 4;
 const FAFNIR_RECOVERY: usize = 18;
 const FAFNIR_DAMAGE: u32 = 35;
 
+#[derive(Clone)]
 pub struct Fafnir;
 impl Player for Sol<Fafnir> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

@@ -16,6 +16,7 @@ const CROUCH_LIGHT_ACTIVE: usize = 3;
 const CROUCH_LIGHT_RECOVERY: usize = 11;
 const CROUCH_LIGHT_DAMAGE: u32 = 13;
 
+#[derive(Clone)]
 pub struct CrouchLight;
 impl Player for Sol<CrouchLight> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -170,6 +171,7 @@ const CROUCH_MID_ACTIVE: usize = 5;
 const CROUCH_MID_RECOVERY: usize = 8;
 const CROUCH_MID_DAMAGE: u32 = 15;
 
+#[derive(Clone)]
 pub struct CrouchMid;
 impl Player for Sol<CrouchMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -304,6 +306,7 @@ const CROUCH_HEAVY_ACTIVE: usize = 3;
 const CROUCH_HEAVY_RECOVERY: usize = 25;
 const CROUCH_HEAVY_DAMAGE: u32 = 23;
 
+#[derive(Clone)]
 pub struct CrouchHeavy;
 impl Player for Sol<CrouchHeavy> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

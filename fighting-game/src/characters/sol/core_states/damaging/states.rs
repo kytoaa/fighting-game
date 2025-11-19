@@ -1,5 +1,6 @@
 use super::super::super::*;
 
+#[derive(Clone)]
 pub struct BasicHitstun {
     pub length: usize,
     pub wall_pushback_mult: f32,
@@ -41,6 +42,7 @@ impl Player for Sol<BasicHitstun> {
 }
 impl SolDamageableState for BasicHitstun {}
 
+#[derive(Clone)]
 pub struct Tumble {
     pub gravity: f32,
     pub knockdown: KnockdownType,
@@ -174,6 +176,7 @@ impl Player for Sol<Tumble> {
 }
 impl SolDamageableState for Tumble {}
 
+#[derive(Clone)]
 pub struct FloatingCrumple {
     pub gravity: f32,
     pub landing_frames: usize,
@@ -227,6 +230,7 @@ impl SolDamageableState for FloatingCrumple {}
 const HARD_KNOCKDOWN_FRAMES: usize = 50;
 const SOFT_KNOCKDOWN_FRAMES: usize = 25;
 
+#[derive(Clone)]
 pub struct SoftKnockdown;
 impl Player for Sol<SoftKnockdown> {
     fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -274,6 +278,7 @@ impl Damageable for Sol<SoftKnockdown> {
     }
 }
 
+#[derive(Clone)]
 pub struct HardKnockdown;
 impl Player for Sol<HardKnockdown> {
     fn update(mut self: Box<Self>, _world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -312,6 +317,7 @@ impl Damageable for Sol<HardKnockdown> {
         (self, HitConnectionStatus::Invuln)
     }
 }
+#[derive(Clone)]
 pub struct ThrownState;
 impl Player for Sol<ThrownState> {
     fn update(mut self: Box<Self>, world: &mut World, _: &InputHandler) -> Box<dyn Player> {
@@ -336,6 +342,7 @@ impl Player for Sol<ThrownState> {
 }
 impl SolDamageableState for ThrownState {}
 
+#[derive(Clone)]
 pub struct DeadState;
 impl Player for Sol<DeadState> {
     fn update(mut self: Box<Self>, _: &mut World, _: &InputHandler) -> Box<dyn Player> {

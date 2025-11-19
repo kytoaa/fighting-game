@@ -1,3 +1,5 @@
+use crate::characters::NonPlayerClone;
+
 use super::*;
 
 pub const TOTAL_FRAMES: usize = ACTIVE_FRAMES_PER_PILLAR * TOTAL_FLAME_PILLARS;
@@ -7,6 +9,7 @@ const TOTAL_FLAME_PILLARS: usize = 4;
 const GUNFLAME_DAMAGE: u32 = 20;
 const GUNFLAME_BLOCKSTUN: usize = 20;
 
+#[derive(Clone)]
 pub struct GunFlameProjectile {
     pub(super) frame: usize,
     pub(super) id: EntityID,
@@ -137,5 +140,10 @@ impl Position for GunFlameProjectile {
 impl OnHit for GunFlameProjectile {
     fn on_hit(&mut self, _: crate::collision::HitConnectionStatus) {
         self.has_hit = true;
+    }
+}
+impl NonPlayerClone for GunFlameProjectile {
+    fn clone(&self) -> Box<dyn NonPlayerEntity> {
+        Box::new(Clone::clone(self))
     }
 }

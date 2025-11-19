@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use super::*;
 
 const DOUBLE_JUMP_FORCE: f32 = 150.0;
@@ -83,12 +81,7 @@ where
                 Some(InputDir::Dir6.dir(self.direction)),
             ))
         {
-            return Ok(Box::new(self.transition(
-                GroundThrow::<true> {
-                    success: std::cell::Cell::new(true).into(),
-                },
-                true,
-            )));
+            return Ok(Box::new(self.transition(GroundThrow::<true>, true)));
         }
         // NOTE: ground throw backward
         if input.get_state(Button::Utility) == ButtonState::Down
@@ -98,12 +91,7 @@ where
                 Some(InputDir::Dir4.dir(self.direction)),
             ))
         {
-            return Ok(Box::new(self.transition(
-                GroundThrow::<false> {
-                    success: std::cell::Cell::new(true).into(),
-                },
-                true,
-            )));
+            return Ok(Box::new(self.transition(GroundThrow::<false>, true)));
         }
 
         if input.input_dir().is_down() {
@@ -279,7 +267,7 @@ where
     }
 
     pub fn cancel_options_from_grounded_normal(
-        mut self: Box<Sol<S>>,
+        self: Box<Sol<S>>,
         input: &InputHandler,
     ) -> Result<Box<dyn Player>, Box<Sol<S>>> {
         self.grounded_special_cancel_options(input)

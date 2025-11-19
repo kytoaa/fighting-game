@@ -17,6 +17,7 @@ const CLOSE_MID_ACTIVE: usize = 6;
 const CLOSE_MID_RECOVERY: usize = 10;
 const CLOSE_MID_DAMAGE: u32 = 20;
 
+#[derive(Clone)]
 pub struct CloseMid;
 impl CloseMid {
     pub const MAX_DISTANCE: f32 = 16.0;
@@ -181,6 +182,7 @@ const FAR_MID_ACTIVE: usize = 2;
 const FAR_MID_RECOVERY: usize = 13;
 const FAR_MID_DAMAGE: u32 = 14;
 
+#[derive(Clone)]
 pub struct FarMid;
 impl Player for Sol<FarMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -356,6 +358,7 @@ const STAND_LIGHT_RECOVERY: usize = 15;
 const STAND_LIGHT_FIRST_HIT_DAMAGE: u32 = 8;
 const STAND_LIGHT_SECOND_HIT_DAMAGE: u32 = 14;
 
+#[derive(Clone)]
 pub struct StandLight;
 impl Player for Sol<StandLight> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -596,6 +599,7 @@ const STAND_HEAVY_ACTIVE: usize = 4;
 const STAND_HEAVY_RECOVERY: usize = 20;
 const STAND_HEAVY_DAMAGE: u32 = 25;
 
+#[derive(Clone)]
 pub struct StandHeavy;
 impl Player for Sol<StandHeavy> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {

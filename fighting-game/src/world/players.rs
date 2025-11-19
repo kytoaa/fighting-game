@@ -1,6 +1,7 @@
 use super::World;
 use crate::datatypes::MoveTowards;
 
+#[derive(Clone)]
 pub(super) struct TrackedPlayerData {
     pub(super) max_health: u32,
     pub(super) health: u32,

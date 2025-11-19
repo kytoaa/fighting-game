@@ -1,4 +1,6 @@
-use super::{CharacterSpecificInitInfo, Damageable, Grounded, HasCancelState, HasID, Player};
+use super::{
+    CharacterSpecificInitInfo, Damageable, Grounded, HasCancelState, HasID, Player, PlayerClone,
+};
 use crate::collision::{
     AttackData, BounceInfo, CollisionShape, HitConnectionStatus, HitData, HitEffect, KnockdownType,
     OnHitHitData, Proration,
@@ -128,6 +130,27 @@ impl<S> Sol<S> {
             .velocity
             .x
             .move_towards(0.0, if self.has_hit { BASE_DRAG } else { drag });
+    }
+}
+impl<S> PlayerClone for Sol<S>
+where
+    S: Clone + 'static,
+    Self: Player,
+{
+    fn clone(&self) -> Box<dyn Player> {
+        Box::new(Self {
+            player_id: self.player_id,
+            position: self.position,
+            velocity: self.velocity,
+            collider: self.collider.clone(),
+            direction: self.direction,
+            has_hit: self.has_hit,
+            grounded: self.grounded,
+            has_air_action: self.has_air_action,
+            distance_from_other_player: self.distance_from_other_player,
+            frame: self.frame,
+            state: self.state.clone(),
+        })
     }
 }
 

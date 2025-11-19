@@ -17,10 +17,6 @@ macro_rules! try_transition {
 
 pub mod sol;
 pub(crate) mod sprite_entity;
-mod wrapper_state;
-
-#[allow(unused_imports)]
-pub(crate) use wrapper_state::WrapperState;
 
 pub(crate) struct CharacterSpecificInitInfo {
     pub(crate) max_health: u32,
@@ -46,7 +42,7 @@ pub enum EntityUpdateResult {
     ReplaceWith(Box<dyn NonPlayerEntity>),
 }
 
-pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny {
+pub trait NonPlayerEntity: HasID + OnHit + Position + AsAny + NonPlayerClone {
     fn update(&mut self, world: &mut World, input: Option<&InputHandler>) -> EntityUpdateResult;
 
     fn dir(&self) -> bool {
@@ -75,6 +71,7 @@ pub(crate) trait Player:
     + HasThrownState
     + HasDeadState
     + AsAny
+    + PlayerClone
 {
     fn update(self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player>;
     fn frame_name(&self) -> Option<(Box<str>, Vector2)> {
@@ -102,6 +99,12 @@ pub(crate) trait Player:
     fn moveable(&self) -> bool {
         true
     }
+}
+pub trait PlayerClone {
+    fn clone(&self) -> Box<dyn Player>;
+}
+pub trait NonPlayerClone {
+    fn clone(&self) -> Box<dyn NonPlayerEntity>;
 }
 pub trait Damageable {
     fn hit(self: Box<Self>, info: OnHitHitData) -> (Box<dyn Player>, HitConnectionStatus);

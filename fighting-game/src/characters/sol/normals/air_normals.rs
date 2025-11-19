@@ -16,6 +16,7 @@ const AIR_LIGHT_ACTIVE: usize = 3;
 const AIR_LIGHT_RECOVERY: usize = 23;
 const AIR_LIGHT_DAMAGE: u32 = 12;
 
+#[derive(Clone)]
 pub struct AirLight;
 impl Player for Sol<AirLight> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -156,6 +157,7 @@ const AIR_MID_ACTIVE_1: usize = 4;
 const AIR_MID_ACTIVE_2: usize = 8;
 const AIR_MID_DAMAGE: u32 = 8;
 
+#[derive(Clone)]
 pub struct AirMid;
 impl Player for Sol<AirMid> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
@@ -284,6 +286,7 @@ const AIR_HEAVY_ACTIVE: usize = 3;
 const AIR_HEAVY_RECOVERY: usize = 15;
 const AIR_HEAVY_DAMAGE: u32 = 32;
 
+#[derive(Clone)]
 pub struct AirHeavy;
 impl Player for Sol<AirHeavy> {
     fn update(mut self: Box<Self>, world: &mut World, input: &InputHandler) -> Box<dyn Player> {
