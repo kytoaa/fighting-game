@@ -54,6 +54,12 @@ impl Game {
         }
         self.input_manager.set_keyboard_key_state(key, state);
     }
+    pub fn set_remote_key_state(
+        &mut self,
+        packet: crate::netcode::GamePacket,
+    ) -> Option<crate::netcode::Rollback> {
+        self.input_manager.update_remote_input_state(packet)
+    }
 
     pub fn rollback_and_resimulate(
         &mut self,

@@ -2,10 +2,20 @@ use std::collections::{vec_deque::Iter as VecDequeIter, VecDeque};
 
 use fighting_game::input::{ButtonState, ButtonStates, InputDir, InputState};
 
+#[derive(Debug)]
 pub struct InputHistory {
     player_inputs: VecDeque<FrameState>,
     remote_inputs: VecDeque<FrameState>,
     last_processed_frame: u32,
+}
+impl Default for InputHistory {
+    fn default() -> Self {
+        Self {
+            player_inputs: VecDeque::from_iter(std::iter::repeat_n(FrameState::default(), 60)),
+            remote_inputs: VecDeque::from_iter(std::iter::repeat_n(FrameState::default(), 60)),
+            last_processed_frame: 0,
+        }
+    }
 }
 
 pub struct Rollback<'a> {
@@ -20,9 +30,47 @@ impl Rollback<'_> {
     pub fn remote_inputs(&self) -> impl Iterator<Item = PacketInputState> + use<'_> {
         self.player_inputs.clone().map(|i| i.input_state)
     }
+    pub fn frames(&self) -> usize {
+        self.frames
+    }
 }
 
 impl InputHistory {
+    pub fn most_recent_local(&self) -> Result<InputState, ()> {
+        self.player_inputs
+            .front()
+            .unwrap()
+            .input_state
+            .to_input_state()
+    }
+    pub fn most_recent_remote_real(&self) -> Result<InputState, ()> {
+        self.remote_inputs
+            .iter()
+            .find(|p| p.frame == self.last_processed_frame)
+            .ok_or(())?
+            .input_state
+            .to_input_state()
+    }
+    pub fn remote_inputs(&self) -> impl Iterator<Item = InputState> + use<'_> {
+        self.remote_inputs
+            .iter()
+            .flat_map(|state| state.input_state.to_input_state())
+    }
+    pub fn most_recent_remote(&self) -> Result<InputState, ()> {
+        self.remote_inputs
+            .front()
+            .unwrap()
+            .input_state
+            .to_input_state()
+    }
+    pub fn reset(&mut self) {
+        self.player_inputs
+            .iter_mut()
+            .for_each(|i| *i = FrameState::default());
+        self.remote_inputs
+            .iter_mut()
+            .for_each(|i| *i = FrameState::default());
+    }
     pub fn process_local_input(&mut self, local: FrameState, predicted: FrameState) {
         self.player_inputs.pop_back();
         self.player_inputs.push_front(local);
@@ -68,12 +116,13 @@ impl InputHistory {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct GamePacket {
     states: [FrameState; 60],
 }
 
 #[repr(C)]
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct FrameState {
     frame: u32,
     input_state: PacketInputState,

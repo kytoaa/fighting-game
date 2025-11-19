@@ -11,11 +11,25 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(asset_manager: asset_manager::AssetManager) -> Self {
+    pub fn new(
+        asset_manager: asset_manager::AssetManager,
+        connection_type: crate::netcode::ConnectionType,
+    ) -> Self {
         GameState {
             asset_manager,
-            state: Some(GameStateInner::CharacterSelect(CharacterSelect {
-                input_manager: crate::input::CharacterSelectInputManager::new(),
+            state: Some(GameStateInner::CharacterSelect(match connection_type {
+                crate::netcode::ConnectionType::Offline => CharacterSelect {
+                    input_manager: crate::input::CharacterSelectInputManager::offline(),
+                    connection: None,
+                },
+                crate::netcode::ConnectionType::Host => CharacterSelect {
+                    input_manager: crate::input::CharacterSelectInputManager::host(),
+                    connection: None,
+                },
+                crate::netcode::ConnectionType::Client => CharacterSelect {
+                    input_manager: crate::input::CharacterSelectInputManager::client(),
+                    connection: None,
+                },
             })),
         }
     }
@@ -24,7 +38,7 @@ impl GameState {
     }
     pub fn keyboard_input(&mut self, key: KeyCode, state: ElementState) {
         match self.state.as_mut().unwrap() {
-            GameStateInner::Game(game) => game.set_keyboard_key_state(key, state),
+            GameStateInner::Game(game, _) => game.set_keyboard_key_state(key, state),
             GameStateInner::CharacterSelect(character_select) => {
                 character_select
                     .input_manager
@@ -79,14 +93,19 @@ impl GameState {
 
                 if char_select.input_manager.should_start() {
                     println!("updated");
-                    self.state = Some(GameStateInner::Game(Game::init(
-                        (
-                            fighting_game::initialization::Character::Sol,
-                            fighting_game::initialization::Character::Sol,
+                    self.state = Some(GameStateInner::Game(
+                        Game::init(
+                            (
+                                fighting_game::initialization::Character::Sol,
+                                fighting_game::initialization::Character::Sol,
+                            ),
+                            char_select.input_manager.start_game().unwrap(),
+                            &self.asset_manager,
                         ),
-                        char_select.input_manager.start_game().unwrap(),
-                        &self.asset_manager,
-                    )))
+                        char_select
+                            .connection
+                            .map(|connection| connection.into_game_connection().unwrap()),
+                    ))
                 } else {
                     char_select.input_manager.update();
                     _ = self
@@ -95,7 +114,25 @@ impl GameState {
                 }
                 (connected_text, vec![])
             }
-            GameStateInner::Game(mut game) => {
+            GameStateInner::Game(mut game, connection) => {
+                if let Some(rollback) = connection
+                    .as_ref()
+                    .map(|c| c.get_packet())
+                    .flatten()
+                    .map(|packet| game.set_remote_key_state(packet))
+                    .flatten()
+                {
+                    let inputs: Vec<_> = rollback
+                        .player_inputs()
+                        .zip(rollback.remote_inputs())
+                        .map(|(l, r)| [l.to_input_state().unwrap(), r.to_input_state().unwrap()])
+                        .collect();
+
+                    let frames = rollback.frames();
+
+                    game.rollback_and_resimulate(frames, inputs.into_iter());
+                }
+
                 let (mut r, reset) = game.update(Some(&self.asset_manager));
                 if reset {
                     let mut input = game.take_input_manager();
@@ -104,10 +141,11 @@ impl GameState {
                         .state
                         .insert(GameStateInner::CharacterSelect(CharacterSelect {
                             input_manager: crate::input::CharacterSelectInputManager::from(input),
+                            connection: None,
                         }));
                     r = self.update();
                 } else {
-                    _ = self.state.insert(GameStateInner::Game(game));
+                    _ = self.state.insert(GameStateInner::Game(game, connection));
                 }
                 r
             }
@@ -116,10 +154,11 @@ impl GameState {
 }
 
 enum GameStateInner {
-    Game(Game),
+    Game(Game, Option<crate::netcode::GameConnection>),
     CharacterSelect(CharacterSelect),
 }
 
 struct CharacterSelect {
     input_manager: crate::input::CharacterSelectInputManager,
+    connection: Option<crate::netcode::CharacterSelectConnection>,
 }

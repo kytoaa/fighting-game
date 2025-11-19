@@ -7,7 +7,7 @@ use gilrs::{self, Gilrs};
 enum InputDevice {
     Keyboard(KeyboardState),
     Gamepad(gilrs::GamepadId),
-    Remote(fighting_game::input::InputState),
+    Remote(crate::netcode::InputHistory),
     None,
 }
 impl InputDevice {
@@ -72,12 +72,28 @@ impl From<GameInputManager> for CharacterSelectInputManager {
 }
 
 impl CharacterSelectInputManager {
-    pub fn new() -> Self {
+    pub fn offline() -> Self {
         let gilrs = gilrs::GilrsBuilder::new().build().unwrap();
 
         Self {
             gilrs,
             active_input_sources: [const { InputDevice::None }; 2],
+        }
+    }
+    pub fn host() -> Self {
+        let gilrs = gilrs::GilrsBuilder::new().build().unwrap();
+
+        Self {
+            gilrs,
+            active_input_sources: [InputDevice::None, InputDevice::Remote(Default::default())],
+        }
+    }
+    pub fn client() -> Self {
+        let gilrs = gilrs::GilrsBuilder::new().build().unwrap();
+
+        Self {
+            gilrs,
+            active_input_sources: [InputDevice::Remote(Default::default()), InputDevice::None],
         }
     }
     pub fn update(&mut self) {
@@ -171,6 +187,13 @@ impl CharacterSelectInputManager {
             _ => return,
         }
     }
+    pub fn set_remote_input_state(&mut self, packet: crate::netcode::FrameState) {
+        match &mut self.active_input_sources {
+            [InputDevice::Remote(s), _] => s.process_local_input(Default::default(), packet),
+            [_, InputDevice::Remote(s)] => s.process_local_input(Default::default(), packet),
+            _ => (),
+        }
+    }
     fn try_add_input_device(&mut self, device: InputDevice) {
         println!("requested to add {:?}", device);
         match &mut self.active_input_sources {
@@ -202,7 +225,12 @@ impl CharacterSelectInputManager {
             [Dev::Gamepad(a), Dev::Gamepad(b)] if a == b => unreachable!(),
             _ => Ok(GameInputManager {
                 gilrs: self.gilrs,
-                active_input_sources: self.active_input_sources,
+                active_input_sources: self.active_input_sources.map(|mut source| {
+                    if let Dev::Remote(history) = &mut source {
+                        history.reset();
+                    }
+                    source
+                }),
             }),
         }
     }
@@ -234,6 +262,27 @@ impl GameInputManager {
                 InputDevice::Keyboard(kb_state) => _ = kb_state.keys.insert(key, state),
                 _ => (),
             })
+    }
+    pub fn set_remote_input_state(
+        &mut self,
+        local: crate::netcode::FrameState,
+        predicted: crate::netcode::FrameState,
+    ) {
+        match &mut self.active_input_sources {
+            [InputDevice::Remote(s), _] => s.process_local_input(local, predicted),
+            [_, InputDevice::Remote(s)] => s.process_local_input(local, predicted),
+            _ => (),
+        }
+    }
+    pub fn update_remote_input_state(
+        &mut self,
+        packet: crate::netcode::GamePacket,
+    ) -> Option<crate::netcode::Rollback> {
+        match &mut self.active_input_sources {
+            [InputDevice::Remote(s), _] => s.process_remote_input(packet),
+            [_, InputDevice::Remote(s)] => s.process_remote_input(packet),
+            _ => None,
+        }
     }
     pub fn update(&mut self) {
         while let Some(_) = self.gilrs.next_event() {}
@@ -274,7 +323,9 @@ impl InputDevice {
 
         match self {
             Self::None => Ok(fighting_game::input::InputState::default()),
-            Self::Remote(state) => Ok(state.clone()),
+            Self::Remote(state) => state
+                .most_recent_remote_real()
+                .map_err(|_| InputManagerGetStateError::Remote),
             Self::Keyboard(keyboard_state) => Ok(fighting_game::input::InputState {
                 dir: Vector2::new(
                     0.0 - button_state(KeyCode::KeyD, &keyboard_state.keys)
@@ -383,9 +434,9 @@ impl InputDevice {
                 .flatten()
                 .unwrap_or_default(),
             Self::None => false,
-            Self::Remote(state) => {
-                state.button_states.mid == fighting_game::input::ButtonState::Down
-            }
+            Self::Remote(state) => state
+                .remote_inputs()
+                .any(|state| state.button_states.mid == fighting_game::input::ButtonState::Down),
         }
     }
 }
@@ -397,4 +448,5 @@ pub enum InputManagerGameStartError {
 #[derive(Debug)]
 pub enum InputManagerGetStateError {
     ControllerDisconnected(gilrs::GamepadId),
+    Remote,
 }

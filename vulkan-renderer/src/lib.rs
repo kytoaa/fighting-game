@@ -46,6 +46,8 @@ pub struct App {
 
     previous_time: std::time::SystemTime,
     size: WindowSize,
+
+    connection_type: netcode::ConnectionType,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -133,15 +135,19 @@ impl App {
 
         let asset_manager = STATIC_ASSETS.into_asset_manager();
 
+        let connection_type = netcode::ConnectionType::Offline;
+
         event_loop
             .run_app(&mut App {
                 renderer: None,
                 window: None,
 
-                game_state: GameState::new(asset_manager),
+                game_state: GameState::new(asset_manager, connection_type),
 
                 previous_time: std::time::SystemTime::now(),
                 size: WindowSize::Size720p,
+
+                connection_type,
             })
             .unwrap();
     }

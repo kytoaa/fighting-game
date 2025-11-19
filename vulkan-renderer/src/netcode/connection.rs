@@ -1,7 +1,7 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener, TcpStream};
 
-pub struct Host {
+pub struct Connection {
     stream: TcpStream,
 }
 
@@ -12,7 +12,7 @@ pub enum ConnectionError {
     NotPacket,
 }
 
-pub fn host(port: u16) -> std::io::Result<Host> {
+pub fn host(port: u16) -> std::io::Result<Connection> {
     let listener = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port))?;
 
     let mut stream = None;
@@ -28,7 +28,7 @@ pub fn host(port: u16) -> std::io::Result<Host> {
     }
     let stream = stream.unwrap();
 
-    Ok(Host { stream })
+    Ok(Connection { stream })
 }
 
 fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError> {
@@ -53,11 +53,7 @@ fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError
     Ok(stream)
 }
 
-pub struct Client {
-    stream: TcpStream,
-}
-
-pub fn connect_to<A: std::net::ToSocketAddrs>(addr: A) -> Result<Client, ConnectionError> {
+pub fn connect_to<A: std::net::ToSocketAddrs>(addr: A) -> Result<Connection, ConnectionError> {
     let mut stream = TcpStream::connect(addr).map_err(ConnectionError::IO)?;
     stream
         .write_all(ConnectionPacket::ClientConnection.as_str().as_bytes())
@@ -76,7 +72,7 @@ pub fn connect_to<A: std::net::ToSocketAddrs>(addr: A) -> Result<Client, Connect
         return Err(ConnectionError::NotPacket);
     };
 
-    Ok(Client { stream })
+    Ok(Connection { stream })
 }
 
 enum PacketType {
