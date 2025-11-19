@@ -11,6 +11,7 @@ const BUFFER_LENGTH: usize = 3;
 const INPUT_HISTORY_LENGTH: usize = 60;
 const DOUBLE_PRESS_FRAMES: usize = 14;
 
+#[derive(Clone)]
 pub struct InputHandler {
     direction_queue: VecDeque<InputDir>,
     button_states: ButtonStates,
@@ -205,7 +206,7 @@ pub enum ButtonState {
     Down,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Action {
     Pressed(Button, Option<InputDir>),
     Released(Button),
@@ -214,7 +215,7 @@ pub enum Action {
     MultiplePress(Button, Button),
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct BufferedAction {
     action: Action,
     frames_left: usize,

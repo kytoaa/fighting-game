@@ -5,6 +5,7 @@ pub mod initialization;
 pub mod input;
 pub mod world;
 
+#[derive(Clone)]
 pub struct Game {
     input_providers: [input::InputHandler; 2],
     world: world::World,
