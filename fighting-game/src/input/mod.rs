@@ -229,7 +229,7 @@ impl BufferedAction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ButtonStates {
     pub light: ButtonState,
     pub mid: ButtonState,
@@ -237,7 +237,7 @@ pub struct ButtonStates {
     pub utility: ButtonState,
 }
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct InputState {
     pub dir: InputDir,
     pub button_states: ButtonStates,

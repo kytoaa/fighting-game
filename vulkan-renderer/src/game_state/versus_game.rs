@@ -11,6 +11,8 @@ pub struct Game {
     input_manager: crate::input::GameInputManager,
     state: VersusGameState,
     show_hitboxes: bool,
+
+    previous_game_states: std::collections::VecDeque<fighting_game::Game>,
 }
 enum VersusGameState {
     RoundStart { frames: usize },
@@ -33,6 +35,10 @@ impl Game {
                 frames: ROUND_START_FRAMES,
             },
             show_hitboxes: false,
+
+            previous_game_states: std::collections::VecDeque::with_capacity(
+                crate::netcode::MAX_ROLLBACK_FRAMES,
+            ),
         }
     }
 
@@ -49,9 +55,23 @@ impl Game {
         self.input_manager.set_keyboard_key_state(key, state);
     }
 
+    pub fn rollback_and_resimulate(
+        &mut self,
+        frames_to_rollback: usize,
+        inputs: impl Iterator<Item = [fighting_game::input::InputState; 2]>,
+    ) {
+        for _ in 0..frames_to_rollback {
+            self.previous_game_states.pop_front();
+        }
+        self.game = self.previous_game_states.pop_front().unwrap();
+        for input_state in inputs {
+            _ = self.update_with_input(input_state, None);
+        }
+    }
+
     pub fn update(
         &mut self,
-        asset_manager: &asset_manager::AssetManager,
+        asset_manager: Option<&asset_manager::AssetManager>,
     ) -> (
         (
             Vec<crate::renderer::Sprite>,
@@ -59,7 +79,26 @@ impl Game {
         ),
         bool,
     ) {
-        self.input_manager.update();
+        self.update_with_input(
+            self.input_manager.get_input_state().map(Result::unwrap),
+            asset_manager,
+        )
+    }
+    fn update_with_input(
+        &mut self,
+        input_states: [fighting_game::input::InputState; 2],
+        asset_manager: Option<&asset_manager::AssetManager>,
+    ) -> (
+        (
+            Vec<crate::renderer::Sprite>,
+            Vec<crate::renderer::Primative>,
+        ),
+        bool,
+    ) {
+        if self.previous_game_states.len() >= crate::netcode::MAX_ROLLBACK_FRAMES {
+            _ = self.previous_game_states.pop_back();
+        }
+        self.previous_game_states.push_front(self.game.clone());
 
         let (sprites, primatives) = match &mut self.state {
             VersusGameState::RoundStart { frames } => {
@@ -81,33 +120,35 @@ impl Game {
 
                 let timer_index = (frames + 45) / 60;
 
-                (
-                    match timer_index {
-                        0..=3 => {
-                            let path = match timer_index {
-                                0 => "ui/countdown/go.png",
-                                1 => "ui/countdown/1.png",
-                                2 => "ui/countdown/2.png",
-                                3 => "ui/countdown/3.png",
-                                _ => unreachable!(),
-                            };
-                            vec![crate::renderer::Sprite {
-                                sprite: asset_manager.get_sprite_handle(path).unwrap(),
-                                position: Vector2::ZERO,
-                                facing_left: false,
-                                depth: 0.5,
-                                scale: (3.0, 3.0),
-                            }]
-                            .into_iter()
-                        }
-                        _ => vec![].into_iter(),
-                    },
-                    vec![].into_iter(),
-                )
+                if let Some(asset_manager) = asset_manager {
+                    (
+                        match timer_index {
+                            0..=3 => {
+                                let path = match timer_index {
+                                    0 => "ui/countdown/go.png",
+                                    1 => "ui/countdown/1.png",
+                                    2 => "ui/countdown/2.png",
+                                    3 => "ui/countdown/3.png",
+                                    _ => unreachable!(),
+                                };
+                                vec![crate::renderer::Sprite {
+                                    sprite: asset_manager.get_sprite_handle(path).unwrap(),
+                                    position: Vector2::ZERO,
+                                    facing_left: false,
+                                    depth: 0.5,
+                                    scale: (3.0, 3.0),
+                                }]
+                                .into_iter()
+                            }
+                            _ => vec![].into_iter(),
+                        },
+                        vec![].into_iter(),
+                    )
+                } else {
+                    (vec![].into_iter(), vec![].into_iter())
+                }
             }
             VersusGameState::Game => {
-                let input_states = self.input_manager.get_input_state().map(Result::unwrap);
-
                 let game_status = self.game.update(input_states);
 
                 let mut seconds_left = None;
@@ -165,22 +206,26 @@ impl Game {
                     };
                 }
 
-                (
-                    match frames {
-                        10..50 => vec![crate::renderer::Sprite {
-                            sprite: asset_manager
-                                .get_sprite_handle("ui/countdown/end.png")
-                                .unwrap(),
-                            position: Vector2::ZERO,
-                            facing_left: false,
-                            depth: 0.2,
-                            scale: (1.0, 1.0),
-                        }]
-                        .into_iter(),
-                        _ => vec![].into_iter(),
-                    },
-                    vec![].into_iter(),
-                )
+                if let Some(asset_manager) = asset_manager {
+                    (
+                        match frames {
+                            10..50 => vec![crate::renderer::Sprite {
+                                sprite: asset_manager
+                                    .get_sprite_handle("ui/countdown/end.png")
+                                    .unwrap(),
+                                position: Vector2::ZERO,
+                                facing_left: false,
+                                depth: 0.2,
+                                scale: (1.0, 1.0),
+                            }]
+                            .into_iter(),
+                            _ => vec![].into_iter(),
+                        },
+                        vec![].into_iter(),
+                    )
+                } else {
+                    (vec![].into_iter(), vec![].into_iter())
+                }
             }
             VersusGameState::GameWon { frames, p1_won: _ } => {
                 *frames -= 1;
@@ -191,80 +236,88 @@ impl Game {
                     return ((vec![], vec![]), true);
                 }
 
-                (
-                    match frames {
-                        10..50 => vec![crate::renderer::Sprite {
-                            sprite: asset_manager
-                                .get_sprite_handle("ui/countdown/end.png")
-                                .unwrap(),
-                            position: Vector2::ZERO,
-                            facing_left: false,
-                            depth: 0.2,
-                            scale: (1.0, 1.0),
-                        }]
-                        .into_iter(),
-                        _ => vec![].into_iter(),
-                    },
-                    vec![].into_iter(),
-                )
+                if let Some(asset_manager) = asset_manager {
+                    (
+                        match frames {
+                            10..50 => vec![crate::renderer::Sprite {
+                                sprite: asset_manager
+                                    .get_sprite_handle("ui/countdown/end.png")
+                                    .unwrap(),
+                                position: Vector2::ZERO,
+                                facing_left: false,
+                                depth: 0.2,
+                                scale: (1.0, 1.0),
+                            }]
+                            .into_iter(),
+                            _ => vec![].into_iter(),
+                        },
+                        vec![].into_iter(),
+                    )
+                } else {
+                    (vec![].into_iter(), vec![].into_iter())
+                }
             }
         };
 
-        let (ui_sprites, ui_primatives) = self.ui.get_render_info();
+        if let Some(asset_manager) = asset_manager {
+            let (ui_sprites, ui_primatives) = self.ui.get_render_info();
 
-        let sprites = self
-            .game
-            .render_state()
-            .map(|e| {
-                let mut s = e.sprite_name.into_string();
-                s.push_str(".png");
-                crate::renderer::Sprite {
-                    sprite: asset_manager
-                        .get_sprite_handle(&s)
-                        .expect("failed to find sprite"),
-                    position: e.position + Vector2::DOWN * 30.0,
-                    depth: e.depth,
-                    facing_left: e.flipped,
-                    scale: (3.0, 3.0),
-                }
-            })
-            .chain(ui_sprites)
-            .chain(sprites)
-            .collect();
+            let sprites = self
+                .game
+                .render_state()
+                .map(|e| {
+                    let mut s = e.sprite_name.into_string();
+                    s.push_str(".png");
+                    crate::renderer::Sprite {
+                        sprite: asset_manager
+                            .get_sprite_handle(&s)
+                            .expect("failed to find sprite"),
+                        position: e.position + Vector2::DOWN * 30.0,
+                        depth: e.depth,
+                        facing_left: e.flipped,
+                        scale: (3.0, 3.0),
+                    }
+                })
+                .chain(ui_sprites)
+                .chain(sprites)
+                .collect();
 
-        let primatives = if self.show_hitboxes {
-            ui_primatives
-                .chain(primatives)
-                .chain(self.game.get_hitboxes().flat_map(|hitbox| match hitbox {
-                    fighting_game::SpawnedCollider::Hitbox(b) => {
-                        Some(crate::renderer::Primative::rect(
-                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
-                            b.size() * 6.0,
-                            (1.0, 0.0, 0.0, 0.4),
-                        ))
-                    }
-                    fighting_game::SpawnedCollider::Hurtbox(b) => {
-                        Some(crate::renderer::Primative::rect(
-                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
-                            b.size() * 6.0,
-                            (0.0, 1.0, 0.0, 0.4),
-                        ))
-                    }
-                    fighting_game::SpawnedCollider::Throwbox(b) => {
-                        Some(crate::renderer::Primative::rect(
-                            (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
-                            b.size() * 6.0,
-                            (1.0, 1.0, 0.0, 0.4),
-                        ))
-                    }
-                    fighting_game::SpawnedCollider::Collider(b) => None,
-                }))
-                .collect()
+            let primatives = if self.show_hitboxes {
+                ui_primatives
+                    .chain(primatives)
+                    .chain(self.game.get_hitboxes().flat_map(|hitbox| match hitbox {
+                        fighting_game::SpawnedCollider::Hitbox(b) => {
+                            Some(crate::renderer::Primative::rect(
+                                (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
+                                b.size() * 6.0,
+                                (1.0, 0.0, 0.0, 0.4),
+                            ))
+                        }
+                        fighting_game::SpawnedCollider::Hurtbox(b) => {
+                            Some(crate::renderer::Primative::rect(
+                                (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
+                                b.size() * 6.0,
+                                (0.0, 1.0, 0.0, 0.4),
+                            ))
+                        }
+                        fighting_game::SpawnedCollider::Throwbox(b) => {
+                            Some(crate::renderer::Primative::rect(
+                                (b.position() + Vector2::new(-6.0, -18.0)) * 3.0,
+                                b.size() * 6.0,
+                                (1.0, 1.0, 0.0, 0.4),
+                            ))
+                        }
+                        fighting_game::SpawnedCollider::Collider(b) => None,
+                    }))
+                    .collect()
+            } else {
+                ui_primatives.chain(primatives).collect()
+            };
+
+            ((sprites, primatives), false)
         } else {
-            ui_primatives.chain(primatives).collect()
-        };
-
-        ((sprites, primatives), false)
+            ((vec![], vec![]), false)
+        }
     }
 
     pub(super) fn take_input_manager(self) -> crate::input::GameInputManager {

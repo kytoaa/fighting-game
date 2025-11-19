@@ -96,7 +96,7 @@ impl GameState {
                 (connected_text, vec![])
             }
             GameStateInner::Game(mut game) => {
-                let (mut r, reset) = game.update(&self.asset_manager);
+                let (mut r, reset) = game.update(Some(&self.asset_manager));
                 if reset {
                     let mut input = game.take_input_manager();
                     input.update();

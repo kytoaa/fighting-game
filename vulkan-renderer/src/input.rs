@@ -7,6 +7,7 @@ use gilrs::{self, Gilrs};
 enum InputDevice {
     Keyboard(KeyboardState),
     Gamepad(gilrs::GamepadId),
+    Remote(fighting_game::input::InputState),
     None,
 }
 impl InputDevice {
@@ -64,6 +65,7 @@ impl From<GameInputManager> for CharacterSelectInputManager {
                 InputDevice::None => InputDevice::None,
                 g @ InputDevice::Gamepad(_) => g,
                 InputDevice::Keyboard(_) => InputDevice::Keyboard(KeyboardState::new()),
+                InputDevice::Remote(_) => InputDevice::Remote(Default::default()),
             }),
         }
     }
@@ -272,6 +274,7 @@ impl InputDevice {
 
         match self {
             Self::None => Ok(fighting_game::input::InputState::default()),
+            Self::Remote(state) => Ok(state.clone()),
             Self::Keyboard(keyboard_state) => Ok(fighting_game::input::InputState {
                 dir: Vector2::new(
                     0.0 - button_state(KeyCode::KeyD, &keyboard_state.keys)
@@ -380,6 +383,9 @@ impl InputDevice {
                 .flatten()
                 .unwrap_or_default(),
             Self::None => false,
+            Self::Remote(state) => {
+                state.button_states.mid == fighting_game::input::ButtonState::Down
+            }
         }
     }
 }
