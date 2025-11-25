@@ -27,10 +27,18 @@ pub fn ask_connection_type() -> ConnectionType {
                     .read_line(&mut buf)
                     .expect("failed to get input");
 
-                let addr = SocketAddr::V4(SocketAddrV4::new(
+                let addr = buf
+                    .trim()
+                    .to_socket_addrs()
+                    .map(|mut a| a.next())
+                    .ok()
+                    .flatten()
+                    .expect("invalid address");
+
+                /*let addr = SocketAddr::V4(SocketAddrV4::new(
                     Ipv4Addr::LOCALHOST,
                     buf.trim().parse::<u16>().ok().expect("invalid address"),
-                ));
+                ));*/
 
                 println!("[HOST] -- hosting at {}", addr.to_string());
 
@@ -211,6 +219,7 @@ impl CharacterSelectConnection {
             addr: self.addr,
             connection,
             frames_to_wait: 0,
+            most_recent_packet: None.into(),
         })
     }
 }
@@ -219,6 +228,7 @@ pub struct GameConnection {
     addr: ConnectionAddr,
     connection: UdpSocket,
     frames_to_wait: usize,
+    most_recent_packet: std::cell::Cell<Option<GamePacket>>,
 }
 
 impl GameConnection {
@@ -245,8 +255,15 @@ impl GameConnection {
 
                     _ = most_recent_packet.insert(packet);
                 }
-                Err(_) => return most_recent_packet,
-                //Err(e) => panic!("connection error: {e:?}"),
+                Err(_) => {
+                    return most_recent_packet
+                        .clone()
+                        .or(if most_recent_packet.is_some() {
+                            self.most_recent_packet.replace(most_recent_packet)
+                        } else {
+                            most_recent_packet
+                        });
+                } //Err(e) => panic!("connection error: {e:?}"),
             }
         }
     }
