@@ -1,8 +1,9 @@
 use std::io::{prelude::*, BufReader};
-use std::net::{Ipv4Addr, SocketAddrV4, TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 
 pub struct Connection {
-    stream: TcpStream,
+    pub stream: TcpStream,
+    pub addr: SocketAddr,
 }
 
 #[derive(Debug)]
@@ -12,8 +13,8 @@ pub enum ConnectionError {
     NotPacket,
 }
 
-pub fn host(port: u16) -> std::io::Result<Connection> {
-    let listener = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port))?;
+pub fn host(addr: &SocketAddr) -> std::io::Result<Connection> {
+    let listener = TcpListener::bind(addr)?;
 
     let mut stream = None;
     for connection in listener.incoming() {
@@ -27,8 +28,14 @@ pub fn host(port: u16) -> std::io::Result<Connection> {
         }
     }
     let stream = stream.unwrap();
+    stream.set_nonblocking(true).unwrap();
 
-    Ok(Connection { stream })
+    let remote = stream.peer_addr().unwrap();
+
+    Ok(Connection {
+        stream,
+        addr: remote,
+    })
 }
 
 fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError> {
@@ -53,7 +60,7 @@ fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError
     Ok(stream)
 }
 
-pub fn connect_to<A: std::net::ToSocketAddrs>(addr: A) -> Result<Connection, ConnectionError> {
+pub fn connect_to(addr: &SocketAddr) -> Result<Connection, ConnectionError> {
     let mut stream = TcpStream::connect(addr).map_err(ConnectionError::IO)?;
     stream
         .write_all(ConnectionPacket::ClientConnection.as_str().as_bytes())
@@ -62,23 +69,33 @@ pub fn connect_to<A: std::net::ToSocketAddrs>(addr: A) -> Result<Connection, Con
     let mut buf = Vec::with_capacity(ConnectionPacket::REQUEST_START_GAME.len());
 
     let mut buf_reader = BufReader::new(&stream);
-    buf_reader
-        .read_until(ConnectionPacket::PACKET_END_CHAR as u8, &mut buf)
-        .map_err(ConnectionError::IO)?;
+    loop {
+        let Ok(b) = buf_reader.read_until(ConnectionPacket::PACKET_END_CHAR as u8, &mut buf) else {
+            continue;
+        };
+        if b == 0 {
+            continue;
+        }
 
-    let packet = str::from_utf8(&buf).map_err(ConnectionError::Utf8)?;
+        let Ok(packet) = str::from_utf8(&buf) else {
+            continue;
+        };
 
-    let Ok(ConnectionPacket::HostConfirmConnection) = ConnectionPacket::from_str(packet) else {
-        return Err(ConnectionError::NotPacket);
-    };
+        println!("received {}", packet);
 
-    Ok(Connection { stream })
-}
+        if let Ok(ConnectionPacket::HostConfirmConnection) =
+            ConnectionPacket::from_str(packet.trim())
+        {
+            break;
+        }
+        buf.clear();
+    }
 
-enum PacketType {
-    ClientConnection,
-    HostConfirmConnection,
-    Request,
+    stream.set_nonblocking(true).unwrap();
+
+    let addr = stream.local_addr().unwrap();
+
+    Ok(Connection { stream, addr })
 }
 
 pub enum ConnectionPacket {
@@ -88,13 +105,13 @@ pub enum ConnectionPacket {
     StartGame,
 }
 impl ConnectionPacket {
-    const PACKET_END_CHAR: char = '\0';
+    pub(super) const PACKET_END_CHAR: char = '\0';
     const CLIENT_CONNECTION: &str = "CONNECTED\0";
     const HOST_CONFIRM_CONNECTION: &str = "HOSTCONNECTED\0";
     const REQUEST_START_GAME: &str = "REQUESTSTARTGAME\0";
     const START_GAME: &str = "STARTGAME\0";
 
-    fn as_str(&self) -> std::borrow::Cow<'static, str> {
+    pub fn as_str(&self) -> std::borrow::Cow<'static, str> {
         match self {
             Self::ClientConnection => Self::CLIENT_CONNECTION.into(),
             Self::HostConfirmConnection => Self::HOST_CONFIRM_CONNECTION.into(),
@@ -102,7 +119,7 @@ impl ConnectionPacket {
             Self::StartGame => Self::START_GAME.into(),
         }
     }
-    fn from_str(s: &str) -> Result<Self, ()> {
+    pub fn from_str(s: &str) -> Result<Self, ()> {
         let packet_type = s.lines().next().ok_or(())?.trim();
         match packet_type {
             Self::CLIENT_CONNECTION => Ok(Self::ClientConnection),

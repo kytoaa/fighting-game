@@ -8,6 +8,7 @@ use versus_game::Game;
 pub struct GameState {
     asset_manager: asset_manager::AssetManager,
     state: Option<GameStateInner>,
+    connection_type: crate::netcode::ConnectionType,
 }
 
 impl GameState {
@@ -22,15 +23,20 @@ impl GameState {
                     input_manager: crate::input::CharacterSelectInputManager::offline(),
                     connection: None,
                 },
-                crate::netcode::ConnectionType::Host(_) => CharacterSelect {
+                crate::netcode::ConnectionType::Host(addr) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::host(),
-                    connection: None,
+                    connection: Some(
+                        crate::netcode::CharacterSelectConnection::host(addr).unwrap(),
+                    ),
                 },
-                crate::netcode::ConnectionType::Client(_) => CharacterSelect {
+                crate::netcode::ConnectionType::Client(addr) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::client(),
-                    connection: None,
+                    connection: Some(
+                        crate::netcode::CharacterSelectConnection::join(addr).unwrap(),
+                    ),
                 },
             })),
+            connection_type,
         }
     }
     pub fn asset_manager(&self) -> &asset_manager::AssetManager {
@@ -54,6 +60,15 @@ impl GameState {
     ) {
         match self.state.take().unwrap() {
             GameStateInner::CharacterSelect(mut char_select) => {
+                char_select
+                    .input_manager
+                    .set_keyboard_key_state(KeyCode::KeyJ, ElementState::Pressed);
+                char_select
+                    .input_manager
+                    .set_keyboard_key_state(KeyCode::KeyJ, ElementState::Released);
+
+                char_select.input_manager.remote_request_start();
+
                 let connected_text = char_select
                     .input_manager
                     .connected_input_devices()
@@ -91,8 +106,23 @@ impl GameState {
                     )
                     .collect();
 
-                if char_select.input_manager.should_start() {
+                /*if (char_select.input_manager.should_start()
+                && (matches!(
+                    &self.connection_type,
+                    crate::netcode::ConnectionType::Offline,
+                ) || (matches!(
+                    &self.connection_type,
+                    crate::netcode::ConnectionType::Host(_)
+                ) && char_select.input_manager.remote_has_requested_start())))
+                || (matches!(
+                    &self.connection_type,
+                    crate::netcode::ConnectionType::Client(_),
+                ) && char_select.input_manager.remote_has_requested_start())*/
+                if true {
                     println!("updated");
+                    if let crate::netcode::ConnectionType::Host(_) = &self.connection_type {
+                        char_select.connection.as_mut().unwrap().send_start();
+                    }
                     self.state = Some(GameStateInner::Game(
                         Game::init(
                             (
@@ -107,6 +137,17 @@ impl GameState {
                             .map(|connection| connection.into_game_connection().unwrap()),
                     ))
                 } else {
+                    if let Some(true) = char_select.connection.as_mut().map(|c| c.requested_start())
+                    {
+                        char_select.input_manager.remote_request_start();
+                    }
+                    /*if matches!(
+                        &self.connection_type,
+                        crate::netcode::ConnectionType::Client(_),
+                    ) {
+                        char_select.connection.as_mut().unwrap().request_start();
+                    }*/
+                    char_select.connection.as_mut().map(|c| c.request_start());
                     char_select.input_manager.update();
                     _ = self
                         .state
@@ -114,7 +155,18 @@ impl GameState {
                 }
                 (connected_text, vec![])
             }
-            GameStateInner::Game(mut game, connection) => {
+            GameStateInner::Game(mut game, mut connection) => {
+                let should_skip_frame = !connection
+                    .as_mut()
+                    .map(|c| c.can_continue())
+                    .unwrap_or(true);
+
+                if !should_skip_frame {
+                    game.input_manager()
+                        .update()
+                        .map(|packet| connection.as_ref().unwrap().send_packet(packet));
+                }
+
                 if let Some(rollback) = connection
                     .as_ref()
                     .map(|c| c.get_packet())
@@ -122,18 +174,40 @@ impl GameState {
                     .map(|packet| game.set_remote_key_state(packet))
                     .flatten()
                 {
+                    println!("rollback! {} frames", rollback.frames());
+
                     let inputs: Vec<_> = rollback
                         .player_inputs()
                         .zip(rollback.remote_inputs())
-                        .map(|(l, r)| [l.to_input_state().unwrap(), r.to_input_state().unwrap()])
+                        .map(|(l, r)| {
+                            if matches!(
+                                self.connection_type,
+                                crate::netcode::ConnectionType::Client(_)
+                            ) {
+                                [r.to_input_state().unwrap(), l.to_input_state().unwrap()]
+                            } else {
+                                [l.to_input_state().unwrap(), r.to_input_state().unwrap()]
+                            }
+                        })
                         .collect();
 
                     let frames = rollback.frames();
+                    let frame = rollback.current_frame();
 
                     game.rollback_and_resimulate(frames, inputs.into_iter());
+
+                    if frame % 6 == 0 && frames > 1 {
+                        connection.as_mut().unwrap().set_frames_to_wait(1);
+                    }
                 }
 
-                let (mut r, reset) = game.update(Some(&self.asset_manager));
+                let (mut r, reset) = if !should_skip_frame {
+                    game.update(Some(&self.asset_manager))
+                } else {
+                    println!("skipped a frame");
+                    (game.get_render_info(&self.asset_manager), false)
+                };
+
                 if reset {
                     let mut input = game.take_input_manager();
                     input.update();

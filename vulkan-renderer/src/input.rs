@@ -7,7 +7,7 @@ use gilrs::{self, Gilrs};
 enum InputDevice {
     Keyboard(KeyboardState),
     Gamepad(gilrs::GamepadId),
-    Remote(crate::netcode::InputHistory),
+    Remote(Option<crate::netcode::InputHistory>),
     None,
 }
 impl InputDevice {
@@ -187,12 +187,18 @@ impl CharacterSelectInputManager {
             _ => return,
         }
     }
-    pub fn set_remote_input_state(&mut self, packet: crate::netcode::FrameState) {
+    pub fn remote_request_start(&mut self) {
         match &mut self.active_input_sources {
-            [InputDevice::Remote(s), _] => s.process_local_input(Default::default(), packet),
-            [_, InputDevice::Remote(s)] => s.process_local_input(Default::default(), packet),
+            [InputDevice::Remote(s), _] => _ = s.get_or_insert_default(),
+            [_, InputDevice::Remote(s)] => _ = s.get_or_insert_default(),
             _ => (),
         }
+    }
+    pub fn remote_has_requested_start(&mut self) -> bool {
+        matches!(
+            &self.active_input_sources,
+            [InputDevice::Remote(Some(_)), _] | [_, InputDevice::Remote(Some(_))]
+        )
     }
     fn try_add_input_device(&mut self, device: InputDevice) {
         println!("requested to add {:?}", device);
@@ -203,13 +209,15 @@ impl CharacterSelectInputManager {
         }
         println!("devices: {:?}", self.active_input_sources);
     }
-    fn try_remove_input_device(&mut self, device: InputDevice) {
-        println!("requested to remove {:?}", device);
-        _ = self
-            .active_input_sources
-            .iter_mut()
-            .find(|d| **d == device)
-            .map(|s| *s = InputDevice::None)
+    fn try_remove_input_device(&mut self, _device: InputDevice) {
+        /*
+                println!("requested to remove {:?}", device);
+                _ = self
+                    .active_input_sources
+                    .iter_mut()
+                    .find(|d| **d == device)
+                    .map(|s| *s = InputDevice::None)
+        */
     }
     pub fn should_start(&self) -> bool {
         self.active_input_sources
@@ -225,12 +233,7 @@ impl CharacterSelectInputManager {
             [Dev::Gamepad(a), Dev::Gamepad(b)] if a == b => unreachable!(),
             _ => Ok(GameInputManager {
                 gilrs: self.gilrs,
-                active_input_sources: self.active_input_sources.map(|mut source| {
-                    if let Dev::Remote(history) = &mut source {
-                        history.reset();
-                    }
-                    source
-                }),
+                active_input_sources: self.active_input_sources,
             }),
         }
     }
@@ -263,29 +266,41 @@ impl GameInputManager {
                 _ => (),
             })
     }
-    pub fn set_remote_input_state(
-        &mut self,
-        local: crate::netcode::FrameState,
-        predicted: crate::netcode::FrameState,
-    ) {
-        match &mut self.active_input_sources {
-            [InputDevice::Remote(s), _] => s.process_local_input(local, predicted),
-            [_, InputDevice::Remote(s)] => s.process_local_input(local, predicted),
-            _ => (),
-        }
-    }
     pub fn update_remote_input_state(
         &mut self,
         packet: crate::netcode::GamePacket,
     ) -> Option<crate::netcode::Rollback> {
         match &mut self.active_input_sources {
-            [InputDevice::Remote(s), _] => s.process_remote_input(packet),
-            [_, InputDevice::Remote(s)] => s.process_remote_input(packet),
+            [InputDevice::Remote(s), _] => s.as_mut().unwrap().process_remote_input(packet),
+            [_, InputDevice::Remote(s)] => s.as_mut().unwrap().process_remote_input(packet),
             _ => None,
         }
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> Option<crate::netcode::GamePacket> {
         while let Some(_) = self.gilrs.next_event() {}
+
+        if let [InputDevice::Remote(s), state] | [state, InputDevice::Remote(s)] =
+            &mut self.active_input_sources
+        {
+            assert!(
+                matches!(state, InputDevice::Keyboard(_)),
+                "{state:?} is not a keyboard"
+            );
+
+            let history = s.as_mut().unwrap();
+            let local_state = state.get_state(&self.gilrs).unwrap();
+
+            //println!("local state: {:?}", local_state);
+
+            let remote = history
+                .most_recent_remote_real()
+                .expect("connection timeout");
+            history.process_local_input(local_state, remote);
+
+            Some(history.local_as_packet())
+        } else {
+            None
+        }
     }
 }
 
@@ -324,8 +339,9 @@ impl InputDevice {
         match self {
             Self::None => Ok(fighting_game::input::InputState::default()),
             Self::Remote(state) => state
-                .most_recent_remote_real()
-                .map_err(|_| InputManagerGetStateError::Remote),
+                .as_ref()
+                .map(|state| state.most_recent_remote_real().unwrap())
+                .ok_or(InputManagerGetStateError::Remote),
             Self::Keyboard(keyboard_state) => Ok(fighting_game::input::InputState {
                 dir: Vector2::new(
                     0.0 - button_state(KeyCode::KeyD, &keyboard_state.keys)
@@ -434,9 +450,7 @@ impl InputDevice {
                 .flatten()
                 .unwrap_or_default(),
             Self::None => false,
-            Self::Remote(state) => state
-                .remote_inputs()
-                .any(|state| state.button_states.mid == fighting_game::input::ButtonState::Down),
+            Self::Remote(_state) => false,
         }
     }
 }

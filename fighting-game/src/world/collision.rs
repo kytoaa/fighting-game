@@ -44,6 +44,9 @@ impl World {
             .into_values()
             .collect();
 
+        // `into_values` is unordered, sort to make sure order is deterministic
+        collisions.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+
         let both_hit = collisions
             .iter()
             .map(|(_, hurtbox_index)| &self.hurtboxes[*hurtbox_index].0.owner)

@@ -2,6 +2,8 @@ use std::collections::{vec_deque::Iter as VecDequeIter, VecDeque};
 
 use fighting_game::input::{ButtonState, ButtonStates, InputDir, InputState};
 
+const INPUT_HISTORY_LENGTH: usize = 60;
+
 #[derive(Debug)]
 pub struct InputHistory {
     player_inputs: VecDeque<FrameState>,
@@ -11,8 +13,14 @@ pub struct InputHistory {
 impl Default for InputHistory {
     fn default() -> Self {
         Self {
-            player_inputs: VecDeque::from_iter(std::iter::repeat_n(FrameState::default(), 60)),
-            remote_inputs: VecDeque::from_iter(std::iter::repeat_n(FrameState::default(), 60)),
+            player_inputs: VecDeque::from_iter(std::iter::repeat_n(
+                FrameState::default(),
+                INPUT_HISTORY_LENGTH,
+            )),
+            remote_inputs: VecDeque::from_iter(std::iter::repeat_n(
+                FrameState::default(),
+                INPUT_HISTORY_LENGTH,
+            )),
             last_processed_frame: 0,
         }
     }
@@ -28,10 +36,13 @@ impl Rollback<'_> {
         self.player_inputs.clone().map(|i| i.input_state)
     }
     pub fn remote_inputs(&self) -> impl Iterator<Item = PacketInputState> + use<'_> {
-        self.player_inputs.clone().map(|i| i.input_state)
+        self.remote_inputs.clone().map(|i| i.input_state)
     }
     pub fn frames(&self) -> usize {
         self.frames
+    }
+    pub fn current_frame(&self) -> usize {
+        self.player_inputs.clone().next().unwrap().frame as usize
     }
 }
 
@@ -43,10 +54,12 @@ impl InputHistory {
             .input_state
             .to_input_state()
     }
+    pub fn local_frame(&self) -> u32 {
+        self.player_inputs.front().unwrap().frame
+    }
     pub fn most_recent_remote_real(&self) -> Result<InputState, ()> {
         self.remote_inputs
-            .iter()
-            .find(|p| p.frame == self.last_processed_frame)
+            .get((self.remote_inputs[0].frame - self.last_processed_frame) as usize)
             .ok_or(())?
             .input_state
             .to_input_state()
@@ -71,45 +84,103 @@ impl InputHistory {
             .iter_mut()
             .for_each(|i| *i = FrameState::default());
     }
-    pub fn process_local_input(&mut self, local: FrameState, predicted: FrameState) {
+    pub fn local_as_packet(&self) -> GamePacket {
+        let mut inputs = self.player_inputs.iter().cloned();
+        GamePacket {
+            states: std::array::from_fn(|_| inputs.next().unwrap()),
+        }
+    }
+    pub fn process_local_input(&mut self, local: InputState, predicted: InputState) {
+        let frame = self.player_inputs.front().unwrap().frame + 1;
+
+        let local = FrameState {
+            input_state: PacketInputState::from_input_state(&local),
+            frame,
+        };
         self.player_inputs.pop_back();
         self.player_inputs.push_front(local);
 
+        let predicted = FrameState {
+            input_state: PacketInputState::from_input_state(&predicted),
+            frame,
+        };
         self.remote_inputs.pop_back();
-        self.player_inputs.push_front(predicted);
+        self.remote_inputs.push_front(predicted);
     }
     pub fn process_remote_input(&mut self, packet: GamePacket) -> Option<Rollback> {
         let remote_frame = packet.states[0].frame;
+        let predicted_remote_frame = self.remote_inputs.front().unwrap().frame;
+
+        println!("remote: {remote_frame}, most recent predicted: {predicted_remote_frame}, last processed: {}", self.last_processed_frame);
+
+        assert!(self
+            .player_inputs
+            .iter()
+            .map(|input| input.frame)
+            .take_while(|frame| *frame != 0)
+            .zip(self.remote_inputs.iter().map(|input| input.frame))
+            .zip((0..).map(|i| predicted_remote_frame - i))
+            .all(|((remote, player), expected)| remote == expected && player == expected));
 
         if remote_frame < self.last_processed_frame {
             return None;
         }
+        let unsimulated_frames = remote_frame.saturating_sub(predicted_remote_frame) as usize;
         let skipped_remote_frames = remote_frame - self.last_processed_frame;
-        let inputs_to_check = &packet.states[..(skipped_remote_frames as usize)];
+        let inputs_to_check = &packet.states[unsimulated_frames..(skipped_remote_frames as usize)];
 
-        let last_processed_index = self.remote_inputs.front().unwrap().frame - remote_frame;
+        let last_processed_index = predicted_remote_frame - self.last_processed_frame;
 
         let last_correct_index = self
             .remote_inputs
             .iter()
             .enumerate()
+            .take(last_processed_index as usize)
             .rev()
-            .skip(self.remote_inputs.len() - last_processed_index as usize)
-            .zip(inputs_to_check.iter())
+            .zip(inputs_to_check.iter().rev())
             .skip_while(|((_, predicted), remote)| remote == predicted)
             .next()
-            .map(|((i, _), _)| i + 1)
-            .unwrap();
+            .map(|((i, _), _)| i + 1);
 
-        for input in inputs_to_check {
-            let index = (self.remote_inputs[0].frame - input.frame) as usize;
+        for input in inputs_to_check
+            .iter()
+            .filter(|i| i.frame <= predicted_remote_frame)
+        {
+            let index = (predicted_remote_frame - input.frame) as usize;
+            assert_eq!(self.remote_inputs[index].frame, input.frame);
+            assert!(!(last_correct_index.is_none() && &self.remote_inputs[index] != input));
             self.remote_inputs[index] = input.clone();
         }
+        for input in self
+            .remote_inputs
+            .iter_mut()
+            .take(last_correct_index.unwrap_or(0))
+        {
+            input.input_state = inputs_to_check[0].input_state;
+        }
 
-        self.last_processed_frame = remote_frame;
+        self.last_processed_frame = remote_frame - unsimulated_frames as u32;
+
+        let last_correct_index = last_correct_index?;
+
+        assert!(
+            packet
+                .states
+                .iter()
+                .skip_while(|state| state.frame > predicted_remote_frame)
+                .zip(
+                    self.remote_inputs
+                        .iter()
+                        .skip_while(|state| state.frame > remote_frame)
+                )
+                .all(|(remote, predicted)| remote == predicted),
+            "different input histories\n\tremote: {:?}\n\n\tpredicted: {:?}",
+            &packet.states,
+            &self.remote_inputs
+        );
 
         Some(Rollback {
-            frames: last_correct_index - 1,
+            frames: last_correct_index,
             player_inputs: self.player_inputs.iter().take(last_correct_index).rev(),
             remote_inputs: self.remote_inputs.iter().take(last_correct_index).rev(),
         })
@@ -118,7 +189,7 @@ impl InputHistory {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GamePacket {
-    states: [FrameState; 60],
+    states: [FrameState; INPUT_HISTORY_LENGTH],
 }
 
 #[repr(C)]
@@ -127,6 +198,7 @@ pub struct FrameState {
     frame: u32,
     input_state: PacketInputState,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PacketInputState(u32);
 impl PacketInputState {
@@ -159,10 +231,10 @@ impl PacketInputState {
         Ok(InputState {
             dir: InputDir::from(dir),
             button_states: ButtonStates {
-                light: button(self.0 & 0b00010000 == 1),
-                mid: button(self.0 & 0b00100000 == 1),
-                heavy: button(self.0 & 0b01000000 == 1),
-                utility: button(self.0 & 0b10000000 == 1),
+                light: button(self.0 & 0b00010000 != 0),
+                mid: button(self.0 & 0b00100000 != 0),
+                heavy: button(self.0 & 0b01000000 != 0),
+                utility: button(self.0 & 0b10000000 != 0),
             },
         })
     }
@@ -170,5 +242,83 @@ impl PacketInputState {
 impl Default for PacketInputState {
     fn default() -> Self {
         Self::from_input_state(&InputState::default())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! input_state {
+        (@button u) => {
+            ButtonState::Up
+        };
+        (@button d) => {
+            ButtonState::Down
+        };
+        ($d:literal, $l:ident, $m:ident, $h:ident, $u:ident) => {
+            InputState {
+                dir: InputDir::from($d),
+                button_states: ButtonStates {
+                    light: input_state!(@button $l),
+                    mid: input_state!(@button $m),
+                    heavy: input_state!(@button $h),
+                    utility: input_state!(@button $u),
+                },
+            }
+        };
+        () => {
+            input_state!(5, u, u, u, u)
+        };
+    }
+
+    #[test]
+    fn rollback_test() {
+        let mut input_history = InputHistory::default();
+
+        input_history.process_local_input(
+            input_state!(),
+            input_history.most_recent_remote_real().unwrap(),
+        );
+        input_history.process_local_input(
+            input_state!(6, u, d, u, u),
+            input_history.most_recent_remote_real().unwrap(),
+        );
+        input_history.process_local_input(
+            input_state!(5, u, d, u, u),
+            input_history.most_recent_remote_real().unwrap(),
+        );
+
+        let rollback = input_history
+            .process_remote_input(GamePacket {
+                states: {
+                    let mut iter = [(2, input_state!(6, d, u, u, u)), (1, input_state!())]
+                        .into_iter()
+                        .chain(std::iter::repeat((0, input_state!())))
+                        .map(|(frame, input)| FrameState {
+                            frame,
+                            input_state: PacketInputState::from_input_state(&input),
+                        });
+                    std::array::from_fn(|_| iter.next().unwrap())
+                },
+            })
+            .unwrap();
+
+        assert_eq!(rollback.frames, 2);
+
+        assert_eq!(
+            rollback.player_inputs().collect::<Vec<_>>(),
+            vec![
+                PacketInputState::from_input_state(&input_state!(6, u, d, u, u)),
+                PacketInputState::from_input_state(&input_state!(5, u, d, u, u))
+            ]
+        );
+        assert_eq!(
+            rollback.remote_inputs().collect::<Vec<_>>(),
+            vec![
+                PacketInputState::from_input_state(&input_state!(6, d, u, u, u)),
+                PacketInputState::from_input_state(&input_state!(6, d, u, u, u)),
+            ]
+        );
     }
 }

@@ -73,8 +73,6 @@ impl winit::application::ApplicationHandler for App {
             )
             .unwrap(),
         );
-
-        self.cycle_size();
     }
     fn window_event(
         &mut self,
@@ -129,15 +127,13 @@ impl winit::application::ApplicationHandler for App {
 
 impl App {
     pub fn init() {
-        netcode::ask_connection_type();
+        let connection_type = netcode::ask_connection_type();
 
         let event_loop = winit::event_loop::EventLoop::new().unwrap();
 
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
         let asset_manager = STATIC_ASSETS.into_asset_manager();
-
-        let connection_type = netcode::ConnectionType::Offline;
 
         event_loop
             .run_app(&mut App {
@@ -147,7 +143,7 @@ impl App {
                 game_state: GameState::new(asset_manager, connection_type),
 
                 previous_time: std::time::SystemTime::now(),
-                size: WindowSize::Size720p,
+                size: WindowSize::Size360p,
 
                 connection_type,
             })

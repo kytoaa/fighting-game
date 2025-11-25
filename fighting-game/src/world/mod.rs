@@ -190,27 +190,41 @@ impl World {
         let mut non_player_entities: std::collections::HashMap<
             usize,
             Box<dyn crate::characters::NonPlayerEntity>,
-        > = self
-            .non_player_entities
-            .take()
-            .unwrap()
-            .into_iter()
-            .filter_map(|(hashmap_id, mut entity)| {
-                let id = entity.id();
-                let input_handler = match id.1 {
-                    EntityType::Owned(player) if player < 2 => Some(&input_providers[player]),
-                    EntityType::Owned(p) => panic!("entity {} is owned by {}", id.0, p),
-                    EntityType::Unique => None,
-                };
-                let result = entity.update(self, input_handler);
+        > = {
+            // sort required to ensure deterministic iteration order, maybe replace
+            // with different data structure in future
+            let mut entities: Vec<_> = self
+                .non_player_entities
+                .take()
+                .unwrap()
+                .into_iter()
+                .collect();
 
-                match result {
-                    crate::characters::EntityUpdateResult::Continue => Some((hashmap_id, entity)),
-                    crate::characters::EntityUpdateResult::Remove => None,
-                    crate::characters::EntityUpdateResult::ReplaceWith(e) => Some((e.id().id(), e)),
-                }
-            })
-            .collect();
+            entities.sort_by_key(|(id, _)| *id);
+
+            entities
+                .into_iter()
+                .filter_map(|(hashmap_id, mut entity)| {
+                    let id = entity.id();
+                    let input_handler = match id.1 {
+                        EntityType::Owned(player) if player < 2 => Some(&input_providers[player]),
+                        EntityType::Owned(p) => panic!("entity {} is owned by {}", id.0, p),
+                        EntityType::Unique => None,
+                    };
+                    let result = entity.update(self, input_handler);
+
+                    match result {
+                        crate::characters::EntityUpdateResult::Continue => {
+                            Some((hashmap_id, entity))
+                        }
+                        crate::characters::EntityUpdateResult::Remove => None,
+                        crate::characters::EntityUpdateResult::ReplaceWith(e) => {
+                            Some((e.id().id(), e))
+                        }
+                    }
+                })
+                .collect()
+        };
 
         if let Some(e) = self.non_player_entities.take() {
             e.into_iter().for_each(|(id, entity)| {
