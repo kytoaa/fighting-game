@@ -161,12 +161,6 @@ impl GameState {
                     .map(|c| c.can_continue())
                     .unwrap_or(true);
 
-                if !should_skip_frame {
-                    game.input_manager()
-                        .update()
-                        .map(|packet| connection.as_ref().unwrap().send_packet(packet));
-                }
-
                 if let Some(rollback) = connection
                     .as_ref()
                     .map(|c| c.get_packet())
@@ -199,6 +193,12 @@ impl GameState {
                     if frame % 6 == 0 && frames > 1 {
                         connection.as_mut().unwrap().set_frames_to_wait(1);
                     }
+                }
+
+                if !should_skip_frame {
+                    game.input_manager()
+                        .update()
+                        .map(|packet| connection.as_ref().unwrap().send_packet(packet));
                 }
 
                 let (mut r, reset) = if !should_skip_frame {

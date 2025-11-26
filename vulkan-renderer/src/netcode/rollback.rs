@@ -120,64 +120,81 @@ impl InputHistory {
             .take_while(|frame| *frame != 0)
             .zip(self.remote_inputs.iter().map(|input| input.frame))
             .zip((0..).map(|i| predicted_remote_frame - i))
-            .all(|((remote, player), expected)| remote == expected && player == expected));
+            .all(|((player, remote), expected)| remote == expected && player == expected));
 
+        // should have already processed all inputs
         if remote_frame < self.last_processed_frame {
             return None;
         }
-        let unsimulated_frames = remote_frame.saturating_sub(predicted_remote_frame) as usize;
-        let skipped_remote_frames = remote_frame - self.last_processed_frame;
-        let inputs_to_check = &packet.states[unsimulated_frames..(skipped_remote_frames as usize)];
 
+        // gets first processable frame, remote may be ahead of local by more than latency
+        let remote_frame = remote_frame.min(predicted_remote_frame);
+        // trim data to processable
+        let packet_states = &packet.states[(packet.states[0].frame - remote_frame) as usize..];
+
+        // number of unprocessed frames, `remote_frame >= self.last_processed_frame`
+        let skipped_remote_frames = remote_frame - self.last_processed_frame;
+        // gather inputs that have not been processed yet
+        let inputs_to_check = &packet_states[..(skipped_remote_frames as usize)];
+
+        // index of `self.last_processed_frame`
         let last_processed_index = predicted_remote_frame - self.last_processed_frame;
 
         let last_correct_index = self
             .remote_inputs
             .iter()
-            .enumerate()
-            .take(last_processed_index as usize)
-            .rev()
-            .zip(inputs_to_check.iter().rev())
-            .skip_while(|((_, predicted), remote)| remote == predicted)
-            .next()
-            .map(|((i, _), _)| i + 1);
+            .enumerate() // groups input with vec index
+            .take(last_processed_index as usize) // takes up to not including last processed
+            .rev() // first item is now frame after last processed
+            .zip(inputs_to_check.iter().rev()) // frames should be in sync
+            .skip_while(|((_, predicted), remote)| {
+                assert!(predicted.frame == remote.frame);
+                remote == predicted
+            })
+            .next() // first incorrectly predicted frame
+            .map(|((i, _), _)| i + 1); // iter reversed so +1 is prev index (last correct frame)
 
-        for input in inputs_to_check
-            .iter()
-            .filter(|i| i.frame <= predicted_remote_frame)
-        {
+        for input in inputs_to_check {
             let index = (predicted_remote_frame - input.frame) as usize;
             assert_eq!(self.remote_inputs[index].frame, input.frame);
+
+            // if `last_correct_index.is_none()` everything should be synced
             assert!(!(last_correct_index.is_none() && &self.remote_inputs[index] != input));
+
             self.remote_inputs[index] = input.clone();
         }
+
+        // re-predicts all future inputs with new most recent input
         for input in self
             .remote_inputs
             .iter_mut()
-            .take(last_correct_index.unwrap_or(0))
+            .take((predicted_remote_frame - remote_frame) as usize)
         {
             input.input_state = inputs_to_check[0].input_state;
         }
 
-        self.last_processed_frame = remote_frame - unsimulated_frames as u32;
-
-        let last_correct_index = last_correct_index?;
+        if inputs_to_check.len() > 0 {
+            assert_eq!(remote_frame, inputs_to_check[0].frame);
+        }
+        self.last_processed_frame = remote_frame;
 
         assert!(
-            packet
-                .states
+            packet_states
                 .iter()
-                .skip_while(|state| state.frame > predicted_remote_frame)
                 .zip(
                     self.remote_inputs
                         .iter()
                         .skip_while(|state| state.frame > remote_frame)
                 )
                 .all(|(remote, predicted)| remote == predicted),
-            "different input histories\n\tremote: {:?}\n\n\tpredicted: {:?}",
-            &packet.states,
-            &self.remote_inputs
+            "different input histories\n\trmt: {:?}\n\n\tprd: {:?}\n\titc: {:?}",
+            &packet_states,
+            &self.remote_inputs,
+            inputs_to_check,
         );
+
+        // returns `None` if no rollback
+        let last_correct_index = last_correct_index?;
 
         Some(Rollback {
             frames: last_correct_index,
