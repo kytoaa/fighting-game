@@ -208,6 +208,11 @@ impl InputHistory {
 pub struct GamePacket {
     states: [FrameState; INPUT_HISTORY_LENGTH],
 }
+impl GamePacket {
+    pub fn most_recent_frame(&self) -> u32 {
+        self.states[0].frame
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, Default, Clone, PartialEq)]

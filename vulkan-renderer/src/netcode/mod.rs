@@ -220,6 +220,7 @@ impl CharacterSelectConnection {
             connection,
             frames_to_wait: 0,
             most_recent_packet: None.into(),
+            most_recent_sent_frame: 0.into(),
         })
     }
 }
@@ -229,6 +230,7 @@ pub struct GameConnection {
     connection: UdpSocket,
     frames_to_wait: usize,
     most_recent_packet: std::cell::Cell<Option<GamePacket>>,
+    most_recent_sent_frame: std::cell::Cell<u32>,
 }
 
 impl GameConnection {
@@ -268,6 +270,7 @@ impl GameConnection {
         }
     }
     pub fn send_packet(&self, packet: GamePacket) {
+        self.most_recent_sent_frame.set(packet.most_recent_frame());
         let packet: [u8; size_of::<GamePacket>()] = unsafe { std::mem::transmute(packet) };
         _ = self.connection.send(&packet);
     }
@@ -281,5 +284,17 @@ impl GameConnection {
             self.frames_to_wait -= 1;
             false
         }
+    }
+    pub fn current_desync(&mut self) -> u32 {
+        self.most_recent_sent_frame.get().saturating_sub(
+            self.most_recent_packet
+                .get_mut()
+                .as_ref()
+                .map(|p| p.most_recent_frame())
+                .unwrap_or(self.most_recent_sent_frame.get()),
+        )
+    }
+    pub fn current_frame(&self) -> u32 {
+        self.most_recent_sent_frame.get()
     }
 }

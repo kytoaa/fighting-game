@@ -186,12 +186,12 @@ impl GameState {
                         .collect();
 
                     let frames = rollback.frames();
-                    let frame = rollback.current_frame();
 
                     game.rollback_and_resimulate(frames, inputs.into_iter());
-
-                    if frame % 6 == 0 && frames > 1 {
-                        connection.as_mut().unwrap().set_frames_to_wait(1);
+                }
+                if let Some(connection) = connection.as_mut() {
+                    if connection.current_desync() > 1 && connection.current_frame() % 6 == 0 {
+                        connection.set_frames_to_wait(1);
                     }
                 }
 
