@@ -7,13 +7,15 @@ mod netcode;
 mod renderer;
 mod ui;
 
+pub use netcode::{ConnectionError, ConnectionType};
+
 use game_state::GameState;
 
 const WINDOW_WIDTH: u32 = 640 * 2;
 const WINDOW_HEIGHT: u32 = 360 * 2;
 
 #[derive(Clone, Copy)]
-enum WindowSize {
+pub enum WindowSize {
     Size720p,
     Size1080p,
     Size360p,
@@ -135,8 +137,11 @@ impl winit::application::ApplicationHandler for App {
 }
 
 impl App {
-    pub fn run() -> Result<(), netcode::ConnectionError> {
-        let connection_type = netcode::ask_connection_type();
+    pub fn run(config: AppConfig) -> Result<(), ConnectionError> {
+        let AppConfig {
+            connection_type,
+            size,
+        } = config;
 
         let event_loop = winit::event_loop::EventLoop::new().unwrap();
 
@@ -149,10 +154,10 @@ impl App {
                 renderer: None,
                 window: None,
 
-                game_state: GameState::new(asset_manager, connection_type?)?,
+                game_state: GameState::new(asset_manager, connection_type)?,
 
                 previous_time: std::time::SystemTime::now(),
-                size: WindowSize::Size360p,
+                size,
             })
             .unwrap();
 
@@ -185,5 +190,30 @@ impl App {
             )
             .unwrap(),
         );
+    }
+}
+
+pub struct AppConfig {
+    connection_type: ConnectionType,
+    size: WindowSize,
+}
+
+impl AppConfig {
+    pub fn with_connection(self, connection_type: ConnectionType) -> Self {
+        Self {
+            connection_type,
+            ..self
+        }
+    }
+    pub fn with_size(self, size: WindowSize) -> Self {
+        Self { size, ..self }
+    }
+}
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            connection_type: ConnectionType::Offline,
+            size: WindowSize::Size720p,
+        }
     }
 }

@@ -1,5 +1,5 @@
 use std::io::prelude::*;
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
+use std::net::{SocketAddr, TcpStream, UdpSocket};
 
 mod connection;
 mod rollback;
@@ -16,70 +16,6 @@ pub enum ConnectionError {
     Timeout(TimeoutError),
     InvalidAddress,
     NotPacket,
-}
-
-pub fn ask_connection_type() -> Result<ConnectionType, ConnectionError> {
-    let mut buf = String::new();
-    loop {
-        print!("[0] offline (default)\n[1] host\n[2] join\n> ");
-        _ = std::io::stdout().flush();
-
-        std::io::stdin()
-            .read_line(&mut buf)
-            .expect("failed to get input");
-
-        return match buf.trim() {
-            "0" | "" => Ok(ConnectionType::Offline),
-            "1" => {
-                print!("\n[HOST] -- enter address\n> ");
-                _ = std::io::stdout().flush();
-                buf.clear();
-
-                std::io::stdin()
-                    .read_line(&mut buf)
-                    .map_err(ConnectionError::Io)?;
-
-                let Some(addr) = buf
-                    .trim()
-                    .to_socket_addrs()
-                    .map_err(|_| ConnectionError::InvalidAddress)
-                    .map(|mut a| a.next())?
-                else {
-                    continue;
-                };
-
-                println!("[HOST] -- hosting at {}", addr.to_string());
-
-                Ok(ConnectionType::Host(addr))
-            }
-            "2" => {
-                print!("\n[JOIN] -- enter address\n> ");
-                _ = std::io::stdout().flush();
-                buf.clear();
-
-                std::io::stdin()
-                    .read_line(&mut buf)
-                    .map_err(ConnectionError::Io)?;
-
-                let Some(addr) = buf
-                    .trim()
-                    .to_socket_addrs()
-                    .map_err(|_| ConnectionError::InvalidAddress)
-                    .map(|mut a| a.next())?
-                else {
-                    continue;
-                };
-
-                println!("[JOIN] -- trying to join {}", addr);
-
-                Ok(ConnectionType::Client(addr))
-            }
-            _ => {
-                buf.clear();
-                continue;
-            }
-        };
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,7 +60,6 @@ enum CharacterSelectConnectionData {
         should_start: bool,
     },
     Client {
-        has_requested_start: bool,
         should_start: bool,
     },
 }
@@ -173,7 +108,6 @@ impl CharacterSelectConnection {
             addr,
             connection: stream,
             connection_data: CharacterSelectConnectionData::Client {
-                has_requested_start: false,
                 should_start: false,
             },
         })
