@@ -1,4 +1,7 @@
-use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use crate::{
+    netcode::{CharacterSelectConnection, ConnectionType},
+    WINDOW_HEIGHT, WINDOW_WIDTH,
+};
 use fighting_game::datatypes::Vector2;
 use winit::{event::ElementState, keyboard::KeyCode};
 
@@ -8,28 +11,28 @@ use versus_game::Game;
 pub struct GameState {
     asset_manager: asset_manager::AssetManager,
     state: Option<GameStateInner>,
-    connection_type: crate::netcode::ConnectionType,
+    connection_type: ConnectionType,
 }
 
 impl GameState {
     pub fn new(
         asset_manager: asset_manager::AssetManager,
-        connection_type: crate::netcode::ConnectionType,
+        connection_type: ConnectionType,
     ) -> Self {
         GameState {
             asset_manager,
             state: Some(GameStateInner::CharacterSelect(match connection_type {
-                crate::netcode::ConnectionType::Offline => CharacterSelect {
+                ConnectionType::Offline => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::offline(),
                     connection: None,
                 },
-                crate::netcode::ConnectionType::Host(addr) => CharacterSelect {
+                ConnectionType::Host(addr) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::host(),
                     connection: Some(
                         crate::netcode::CharacterSelectConnection::host(addr).unwrap(),
                     ),
                 },
-                crate::netcode::ConnectionType::Client(addr) => CharacterSelect {
+                ConnectionType::Client(addr) => CharacterSelect {
                     input_manager: crate::input::CharacterSelectInputManager::client(),
                     connection: Some(
                         crate::netcode::CharacterSelectConnection::join(addr).unwrap(),
@@ -60,15 +63,6 @@ impl GameState {
     ) {
         match self.state.take().unwrap() {
             GameStateInner::CharacterSelect(mut char_select) => {
-                char_select
-                    .input_manager
-                    .set_keyboard_key_state(KeyCode::KeyJ, ElementState::Pressed);
-                char_select
-                    .input_manager
-                    .set_keyboard_key_state(KeyCode::KeyJ, ElementState::Released);
-
-                char_select.input_manager.remote_request_start();
-
                 let connected_text = char_select
                     .input_manager
                     .connected_input_devices()
@@ -109,20 +103,25 @@ impl GameState {
                 /*if (char_select.input_manager.should_start()
                 && (matches!(
                     &self.connection_type,
-                    crate::netcode::ConnectionType::Offline,
+                    ConnectionType::Offline,
                 ) || (matches!(
                     &self.connection_type,
-                    crate::netcode::ConnectionType::Host(_)
+                    ConnectionType::Host(_)
                 ) && char_select.input_manager.remote_has_requested_start())))
                 || (matches!(
                     &self.connection_type,
-                    crate::netcode::ConnectionType::Client(_),
+                    ConnectionType::Client(_),
                 ) && char_select.input_manager.remote_has_requested_start())*/
-                if true {
+
+                if char_select.input_manager.should_start()
+                    && char_select
+                        .connection
+                        .as_ref()
+                        .map(|c| dbg!(c.should_start()))
+                        .unwrap_or(matches!(self.connection_type, ConnectionType::Offline))
+                {
                     println!("updated");
-                    if let crate::netcode::ConnectionType::Host(_) = &self.connection_type {
-                        char_select.connection.as_mut().unwrap().send_start();
-                    }
+
                     self.state = Some(GameStateInner::Game(
                         Game::init(
                             (
@@ -137,17 +136,18 @@ impl GameState {
                             .map(|connection| connection.into_game_connection().unwrap()),
                     ))
                 } else {
-                    if let Some(true) = char_select.connection.as_mut().map(|c| c.requested_start())
+                    if let Some(true) = char_select
+                        .connection
+                        .as_mut()
+                        .map(CharacterSelectConnection::has_start_been_requested)
                     {
                         char_select.input_manager.remote_request_start();
                     }
-                    /*if matches!(
-                        &self.connection_type,
-                        crate::netcode::ConnectionType::Client(_),
-                    ) {
+
+                    if char_select.input_manager.should_start() {
                         char_select.connection.as_mut().unwrap().request_start();
-                    }*/
-                    char_select.connection.as_mut().map(|c| c.request_start());
+                    }
+
                     char_select.input_manager.update();
                     _ = self
                         .state
@@ -174,10 +174,7 @@ impl GameState {
                         .player_inputs()
                         .zip(rollback.remote_inputs())
                         .map(|(l, r)| {
-                            if matches!(
-                                self.connection_type,
-                                crate::netcode::ConnectionType::Client(_)
-                            ) {
+                            if matches!(self.connection_type, ConnectionType::Client(_)) {
                                 [r.to_input_state().unwrap(), l.to_input_state().unwrap()]
                             } else {
                                 [l.to_input_state().unwrap(), r.to_input_state().unwrap()]
@@ -215,7 +212,15 @@ impl GameState {
                         .state
                         .insert(GameStateInner::CharacterSelect(CharacterSelect {
                             input_manager: crate::input::CharacterSelectInputManager::from(input),
-                            connection: None,
+                            connection: match &self.connection_type {
+                                ConnectionType::Host(_) => connection.map(|c| {
+                                    CharacterSelectConnection::host(c.addr().local()).unwrap()
+                                }),
+                                ConnectionType::Client(_) => connection.map(|c| {
+                                    CharacterSelectConnection::join(c.addr().remote()).unwrap()
+                                }),
+                                ConnectionType::Offline => None,
+                            },
                         }));
                     r = self.update();
                 } else {

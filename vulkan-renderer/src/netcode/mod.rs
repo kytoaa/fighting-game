@@ -100,16 +100,34 @@ fn create_game_connection(addr: &ConnectionAddr) -> Result<UdpSocket, GameConnec
     Ok(connection)
 }
 
-struct ConnectionAddr {
+#[derive(Clone)]
+pub struct ConnectionAddr {
     local: SocketAddr,
     remote: SocketAddr,
+}
+impl ConnectionAddr {
+    pub fn local(&self) -> SocketAddr {
+        self.local.clone()
+    }
+    pub fn remote(&self) -> SocketAddr {
+        self.remote.clone()
+    }
+}
+enum CharacterSelectConnectionData {
+    Host {
+        has_received_start_request: bool,
+        should_start: bool,
+    },
+    Client {
+        has_requested_start: bool,
+        should_start: bool,
+    },
 }
 
 pub struct CharacterSelectConnection {
     addr: ConnectionAddr,
     connection: TcpStream,
-    has_requested_start: bool,
-    is_host: bool,
+    connection_data: CharacterSelectConnectionData,
 }
 
 impl CharacterSelectConnection {
@@ -129,8 +147,10 @@ impl CharacterSelectConnection {
         Ok(CharacterSelectConnection {
             addr,
             connection: stream,
-            has_requested_start: false,
-            is_host: true,
+            connection_data: CharacterSelectConnectionData::Host {
+                has_received_start_request: false,
+                should_start: false,
+            },
         })
     }
     pub fn join(remote: SocketAddr) -> Result<CharacterSelectConnection, GameConnectionError> {
@@ -147,13 +167,22 @@ impl CharacterSelectConnection {
         Ok(CharacterSelectConnection {
             addr,
             connection: stream,
-            has_requested_start: false,
-            is_host: false,
+            connection_data: CharacterSelectConnectionData::Client {
+                has_requested_start: false,
+                should_start: false,
+            },
         })
     }
-    pub fn requested_start(&mut self) -> bool {
-        if self.has_requested_start {
-            return true;
+    pub fn has_start_been_requested(&mut self) -> bool {
+        match &self.connection_data {
+            CharacterSelectConnectionData::Host {
+                has_received_start_request,
+                ..
+            } if *has_received_start_request => return true,
+            CharacterSelectConnectionData::Client { should_start, .. } if *should_start => {
+                return true
+            }
+            _ => (),
         }
 
         match self.connection.peek(&mut []) {
@@ -165,48 +194,81 @@ impl CharacterSelectConnection {
 
         let mut buffer = Vec::with_capacity(64);
 
-        if let Err(_) = buf.read_until(
-            connection::ConnectionPacket::PACKET_END_CHAR as u8,
-            &mut buffer,
-        ) {
-            return false;
-        }
-
-        if self.is_host {
-            match std::str::from_utf8(&buffer).map(connection::ConnectionPacket::from_str) {
-                Ok(Ok(connection::ConnectionPacket::RequestStartGame)) => {
-                    self.has_requested_start = true;
-                    true
-                }
-                _ => false,
+        loop {
+            match buf.read_until(
+                connection::ConnectionPacket::PACKET_END_CHAR as u8,
+                &mut buffer,
+            ) {
+                Err(_) => continue,
+                Ok(0) => return false,
+                _ => (),
             }
-        } else {
-            println!("received {:?}", &buffer);
-            match std::str::from_utf8(&buffer).map(connection::ConnectionPacket::from_str) {
-                Ok(Ok(connection::ConnectionPacket::StartGame)) => {
-                    self.has_requested_start = true;
-                    true
+            let Ok(s) = std::str::from_utf8(&buffer) else {
+                continue;
+            };
+
+            let Ok(packet) = connection::ConnectionPacket::from_str(s) else {
+                continue;
+            };
+
+            match packet {
+                connection::ConnectionPacket::RequestStartGame => {
+                    if let CharacterSelectConnectionData::Host {
+                        has_received_start_request,
+                        ..
+                    } = &mut self.connection_data
+                    {
+                        *has_received_start_request = true;
+                        return true;
+                    }
                 }
-                _ => false,
+                connection::ConnectionPacket::StartGame => {
+                    if let CharacterSelectConnectionData::Client { should_start, .. } =
+                        &mut self.connection_data
+                    {
+                        *should_start = true;
+                        return true;
+                    }
+                }
+                _ => continue,
             }
         }
     }
-    pub fn send_start(&mut self) {
+    fn send_start(&mut self) {
         println!("sent start");
         self.connection
-            .write(connection::ConnectionPacket::StartGame.as_str().as_bytes())
+            .write_all(connection::ConnectionPacket::StartGame.as_str().as_bytes())
             .expect("network error");
 
         self.connection.flush().expect("network error");
     }
     pub fn request_start(&mut self) {
-        _ = self.connection.write(
-            connection::ConnectionPacket::RequestStartGame
-                .as_str()
-                .as_bytes(),
-        );
+        match &mut self.connection_data {
+            CharacterSelectConnectionData::Host {
+                has_received_start_request,
+                should_start,
+            } => {
+                if *has_received_start_request && !*should_start {
+                    *should_start = true;
+                    self.send_start();
+                }
+            }
+            CharacterSelectConnectionData::Client { .. } => {
+                _ = self.connection.write_all(
+                    connection::ConnectionPacket::RequestStartGame
+                        .as_str()
+                        .as_bytes(),
+                );
 
-        _ = self.connection.flush();
+                _ = self.connection.flush();
+            }
+        }
+    }
+    pub fn should_start(&self) -> bool {
+        match &self.connection_data {
+            CharacterSelectConnectionData::Host { should_start, .. }
+            | CharacterSelectConnectionData::Client { should_start, .. } => *should_start,
+        }
     }
     pub fn into_game_connection(self) -> Result<GameConnection, GameConnectionError> {
         /*self.connection
@@ -296,5 +358,8 @@ impl GameConnection {
     }
     pub fn current_frame(&self) -> u32 {
         self.most_recent_sent_frame.get()
+    }
+    pub fn addr(&self) -> ConnectionAddr {
+        self.addr.clone()
     }
 }
