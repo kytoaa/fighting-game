@@ -1,20 +1,15 @@
 use std::io::{prelude::*, BufReader};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 
+use super::ConnectionError;
+
 pub struct Connection {
     pub stream: TcpStream,
     pub addr: SocketAddr,
 }
 
-#[derive(Debug)]
-pub enum ConnectionError {
-    IO(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    NotPacket,
-}
-
-pub fn host(addr: &SocketAddr) -> std::io::Result<Connection> {
-    let listener = TcpListener::bind(addr)?;
+pub fn host(addr: &SocketAddr) -> Result<Connection, ConnectionError> {
+    let listener = TcpListener::bind(addr).map_err(ConnectionError::Io)?;
 
     let mut stream = None;
     for connection in listener.incoming() {
@@ -28,9 +23,9 @@ pub fn host(addr: &SocketAddr) -> std::io::Result<Connection> {
         }
     }
     let stream = stream.unwrap();
-    stream.set_nonblocking(true).unwrap();
+    stream.set_nonblocking(true).map_err(ConnectionError::Io)?;
 
-    let remote = stream.peer_addr().unwrap();
+    let remote = stream.peer_addr().map_err(ConnectionError::Io)?;
 
     Ok(Connection {
         stream,
@@ -45,7 +40,7 @@ fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError
 
     buf_reader
         .read_until(ConnectionPacket::PACKET_END_CHAR as u8, &mut buf)
-        .map_err(ConnectionError::IO)?;
+        .map_err(ConnectionError::Io)?;
 
     let packet = str::from_utf8(&buf).map_err(ConnectionError::Utf8)?;
 
@@ -55,16 +50,16 @@ fn handle_connection(mut stream: TcpStream) -> Result<TcpStream, ConnectionError
 
     stream
         .write_all(ConnectionPacket::HostConfirmConnection.as_str().as_bytes())
-        .map_err(ConnectionError::IO)?;
+        .map_err(ConnectionError::Io)?;
 
     Ok(stream)
 }
 
 pub fn connect_to(addr: &SocketAddr) -> Result<Connection, ConnectionError> {
-    let mut stream = TcpStream::connect(addr).map_err(ConnectionError::IO)?;
+    let mut stream = TcpStream::connect(addr).map_err(ConnectionError::Io)?;
     stream
         .write_all(ConnectionPacket::ClientConnection.as_str().as_bytes())
-        .map_err(ConnectionError::IO)?;
+        .map_err(ConnectionError::Io)?;
 
     let mut buf = Vec::with_capacity(ConnectionPacket::REQUEST_START_GAME.len());
 
@@ -91,9 +86,9 @@ pub fn connect_to(addr: &SocketAddr) -> Result<Connection, ConnectionError> {
         buf.clear();
     }
 
-    stream.set_nonblocking(true).unwrap();
+    stream.set_nonblocking(true).map_err(ConnectionError::Io)?;
 
-    let addr = stream.local_addr().unwrap();
+    let addr = stream.local_addr().map_err(ConnectionError::Io)?;
 
     Ok(Connection { stream, addr })
 }

@@ -1,5 +1,6 @@
 use crate::{
-    netcode::{CharacterSelectConnection, ConnectionType},
+    input::CharacterSelectInputManager,
+    netcode::{CharacterSelectConnection, ConnectionError, ConnectionType, GameConnection},
     WINDOW_HEIGHT, WINDOW_WIDTH,
 };
 use fighting_game::datatypes::Vector2;
@@ -18,29 +19,25 @@ impl GameState {
     pub fn new(
         asset_manager: asset_manager::AssetManager,
         connection_type: ConnectionType,
-    ) -> Self {
-        GameState {
+    ) -> Result<Self, ConnectionError> {
+        Ok(GameState {
             asset_manager,
             state: Some(GameStateInner::CharacterSelect(match connection_type {
                 ConnectionType::Offline => CharacterSelect {
-                    input_manager: crate::input::CharacterSelectInputManager::offline(),
+                    input_manager: CharacterSelectInputManager::offline(),
                     connection: None,
                 },
                 ConnectionType::Host(addr) => CharacterSelect {
-                    input_manager: crate::input::CharacterSelectInputManager::host(),
-                    connection: Some(
-                        crate::netcode::CharacterSelectConnection::host(addr).unwrap(),
-                    ),
+                    input_manager: CharacterSelectInputManager::host(),
+                    connection: Some(CharacterSelectConnection::host(addr)?),
                 },
                 ConnectionType::Client(addr) => CharacterSelect {
-                    input_manager: crate::input::CharacterSelectInputManager::client(),
-                    connection: Some(
-                        crate::netcode::CharacterSelectConnection::join(addr).unwrap(),
-                    ),
+                    input_manager: CharacterSelectInputManager::client(),
+                    connection: Some(CharacterSelectConnection::join(addr)?),
                 },
             })),
             connection_type,
-        }
+        })
     }
     pub fn asset_manager(&self) -> &asset_manager::AssetManager {
         &self.asset_manager
@@ -57,10 +54,13 @@ impl GameState {
     }
     pub fn update(
         &mut self,
-    ) -> (
-        Vec<crate::renderer::Sprite>,
-        Vec<crate::renderer::Primative>,
-    ) {
+    ) -> Result<
+        (
+            Vec<crate::renderer::Sprite>,
+            Vec<crate::renderer::Primative>,
+        ),
+        ConnectionError,
+    > {
         match self.state.take().unwrap() {
             GameStateInner::CharacterSelect(mut char_select) => {
                 let connected_text = char_select
@@ -100,24 +100,11 @@ impl GameState {
                     )
                     .collect();
 
-                /*if (char_select.input_manager.should_start()
-                && (matches!(
-                    &self.connection_type,
-                    ConnectionType::Offline,
-                ) || (matches!(
-                    &self.connection_type,
-                    ConnectionType::Host(_)
-                ) && char_select.input_manager.remote_has_requested_start())))
-                || (matches!(
-                    &self.connection_type,
-                    ConnectionType::Client(_),
-                ) && char_select.input_manager.remote_has_requested_start())*/
-
                 if char_select.input_manager.should_start()
                     && char_select
                         .connection
                         .as_ref()
-                        .map(|c| dbg!(c.should_start()))
+                        .map(|c| c.should_start())
                         .unwrap_or(matches!(self.connection_type, ConnectionType::Offline))
                 {
                     println!("updated");
@@ -153,7 +140,7 @@ impl GameState {
                         .state
                         .insert(GameStateInner::CharacterSelect(char_select));
                 }
-                (connected_text, vec![])
+                Ok((connected_text, vec![]))
             }
             GameStateInner::Game(mut game, mut connection) => {
                 let should_skip_frame = !connection
@@ -184,7 +171,8 @@ impl GameState {
 
                     let frames = rollback.frames();
 
-                    game.rollback_and_resimulate(frames, inputs.into_iter());
+                    game.rollback_and_resimulate(frames, inputs.into_iter())
+                        .map_err(ConnectionError::Timeout)?;
                 }
                 if let Some(connection) = connection.as_mut() {
                     if connection.current_desync() > 1 && connection.current_frame() % 6 == 0 {
@@ -193,9 +181,9 @@ impl GameState {
                 }
 
                 if !should_skip_frame {
-                    game.input_manager()
-                        .update()
-                        .map(|packet| connection.as_ref().unwrap().send_packet(packet));
+                    if let Some(packet) = game.input_manager().update() {
+                        connection.as_ref().unwrap().send_packet(packet?);
+                    }
                 }
 
                 let (mut r, reset) = if !should_skip_frame {
@@ -211,7 +199,7 @@ impl GameState {
                     _ = self
                         .state
                         .insert(GameStateInner::CharacterSelect(CharacterSelect {
-                            input_manager: crate::input::CharacterSelectInputManager::from(input),
+                            input_manager: CharacterSelectInputManager::from(input),
                             connection: match &self.connection_type {
                                 ConnectionType::Host(_) => connection.map(|c| {
                                     CharacterSelectConnection::host(c.addr().local()).unwrap()
@@ -222,22 +210,22 @@ impl GameState {
                                 ConnectionType::Offline => None,
                             },
                         }));
-                    r = self.update();
+                    r = self.update()?;
                 } else {
                     _ = self.state.insert(GameStateInner::Game(game, connection));
                 }
-                r
+                Ok(r)
             }
         }
     }
 }
 
 enum GameStateInner {
-    Game(Game, Option<crate::netcode::GameConnection>),
+    Game(Game, Option<GameConnection>),
     CharacterSelect(CharacterSelect),
 }
 
 struct CharacterSelect {
-    input_manager: crate::input::CharacterSelectInputManager,
-    connection: Option<crate::netcode::CharacterSelectConnection>,
+    input_manager: CharacterSelectInputManager,
+    connection: Option<CharacterSelectConnection>,
 }

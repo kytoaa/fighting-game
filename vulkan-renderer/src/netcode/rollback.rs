@@ -111,8 +111,6 @@ impl InputHistory {
         let remote_frame = packet.states[0].frame;
         let predicted_remote_frame = self.remote_inputs.front().unwrap().frame;
 
-        println!("remote: {remote_frame}, most recent predicted: {predicted_remote_frame}, last processed: {}", self.last_processed_frame);
-
         assert!(self
             .player_inputs
             .iter()

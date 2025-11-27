@@ -276,7 +276,9 @@ impl GameInputManager {
             _ => None,
         }
     }
-    pub fn update(&mut self) -> Option<crate::netcode::GamePacket> {
+    pub fn update(
+        &mut self,
+    ) -> Option<Result<crate::netcode::GamePacket, crate::netcode::ConnectionError>> {
         while let Some(_) = self.gilrs.next_event() {}
 
         if let [InputDevice::Remote(s), state] | [state, InputDevice::Remote(s)] =
@@ -288,16 +290,29 @@ impl GameInputManager {
             );
 
             let history = s.as_mut().unwrap();
-            let local_state = state.get_state(&self.gilrs).unwrap();
+            let local_state = match state.get_state(&self.gilrs) {
+                Err(InputManagerGetStateError::Remote) => {
+                    return Some(Err(crate::netcode::ConnectionError::Timeout(
+                        crate::netcode::TimeoutError,
+                    )))
+                }
+                Err(e) => panic!("gilrs error: {:?}", e),
+                Ok(s) => s,
+            };
 
             //println!("local state: {:?}", local_state);
 
-            let remote = history
+            let remote = match history
                 .most_recent_remote_real()
-                .expect("connection timeout");
+                .map_err(|_| crate::netcode::ConnectionError::Timeout(crate::netcode::TimeoutError))
+            {
+                Err(e) => return Some(Err(e)),
+                Ok(state) => state,
+            };
+
             history.process_local_input(local_state, remote);
 
-            Some(history.local_as_packet())
+            Some(Ok(history.local_as_packet()))
         } else {
             None
         }
@@ -340,8 +355,9 @@ impl InputDevice {
             Self::None => Ok(fighting_game::input::InputState::default()),
             Self::Remote(state) => state
                 .as_ref()
-                .map(|state| state.most_recent_remote_real().unwrap())
-                .ok_or(InputManagerGetStateError::Remote),
+                .map(|state| state.most_recent_remote_real())
+                .ok_or(InputManagerGetStateError::Remote)?
+                .map_err(|_| InputManagerGetStateError::Remote),
             Self::Keyboard(keyboard_state) => Ok(fighting_game::input::InputState {
                 dir: Vector2::new(
                     0.0 - button_state(KeyCode::KeyD, &keyboard_state.keys)

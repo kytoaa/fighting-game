@@ -1,12 +1,24 @@
 use std::io::prelude::*;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, ToSocketAddrs, UdpSocket};
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 
 mod connection;
 mod rollback;
 
 pub use rollback::{GamePacket, InputHistory, Rollback};
 
-pub fn ask_connection_type() -> ConnectionType {
+#[derive(Debug, PartialEq)]
+pub struct TimeoutError;
+
+#[derive(Debug)]
+pub enum ConnectionError {
+    Io(std::io::Error),
+    Utf8(std::str::Utf8Error),
+    Timeout(TimeoutError),
+    InvalidAddress,
+    NotPacket,
+}
+
+pub fn ask_connection_type() -> Result<ConnectionType, ConnectionError> {
     let mut buf = String::new();
     loop {
         print!("[0] offline (default)\n[1] host\n[2] join\n> ");
@@ -17,7 +29,7 @@ pub fn ask_connection_type() -> ConnectionType {
             .expect("failed to get input");
 
         return match buf.trim() {
-            "0" | "" => ConnectionType::Offline,
+            "0" | "" => Ok(ConnectionType::Offline),
             "1" => {
                 print!("\n[HOST] -- enter address\n> ");
                 _ = std::io::stdout().flush();
@@ -25,24 +37,20 @@ pub fn ask_connection_type() -> ConnectionType {
 
                 std::io::stdin()
                     .read_line(&mut buf)
-                    .expect("failed to get input");
+                    .map_err(ConnectionError::Io)?;
 
-                let addr = buf
+                let Some(addr) = buf
                     .trim()
                     .to_socket_addrs()
-                    .map(|mut a| a.next())
-                    .ok()
-                    .flatten()
-                    .expect("invalid address");
-
-                /*let addr = SocketAddr::V4(SocketAddrV4::new(
-                    Ipv4Addr::LOCALHOST,
-                    buf.trim().parse::<u16>().ok().expect("invalid address"),
-                ));*/
+                    .map_err(|_| ConnectionError::InvalidAddress)
+                    .map(|mut a| a.next())?
+                else {
+                    continue;
+                };
 
                 println!("[HOST] -- hosting at {}", addr.to_string());
 
-                ConnectionType::Host(addr)
+                Ok(ConnectionType::Host(addr))
             }
             "2" => {
                 print!("\n[JOIN] -- enter address\n> ");
@@ -51,19 +59,20 @@ pub fn ask_connection_type() -> ConnectionType {
 
                 std::io::stdin()
                     .read_line(&mut buf)
-                    .expect("failed to get input");
+                    .map_err(ConnectionError::Io)?;
 
-                let addr = buf
+                let Some(addr) = buf
                     .trim()
                     .to_socket_addrs()
-                    .map(|mut a| a.next())
-                    .ok()
-                    .flatten()
-                    .expect("invalid address");
+                    .map_err(|_| ConnectionError::InvalidAddress)
+                    .map(|mut a| a.next())?
+                else {
+                    continue;
+                };
 
                 println!("[JOIN] -- trying to join {}", addr);
 
-                ConnectionType::Client(addr)
+                Ok(ConnectionType::Client(addr))
             }
             _ => {
                 buf.clear();
@@ -82,20 +91,16 @@ pub enum ConnectionType {
 
 pub const MAX_ROLLBACK_FRAMES: usize = 20;
 
-#[derive(Debug)]
-pub enum GameConnectionError {
-    Io(std::io::Error),
-}
-fn create_game_connection(addr: &ConnectionAddr) -> Result<UdpSocket, GameConnectionError> {
-    let connection = UdpSocket::bind(addr.local).map_err(GameConnectionError::Io)?;
+fn create_game_connection(addr: &ConnectionAddr) -> Result<UdpSocket, ConnectionError> {
+    let connection = UdpSocket::bind(addr.local).map_err(ConnectionError::Io)?;
 
     connection
         .set_nonblocking(true)
-        .map_err(GameConnectionError::Io)?;
+        .map_err(ConnectionError::Io)?;
 
     connection
         .connect(addr.remote)
-        .map_err(GameConnectionError::Io)?;
+        .map_err(ConnectionError::Io)?;
 
     Ok(connection)
 }
@@ -131,11 +136,11 @@ pub struct CharacterSelectConnection {
 }
 
 impl CharacterSelectConnection {
-    pub fn host(addr: SocketAddr) -> Result<CharacterSelectConnection, GameConnectionError> {
+    pub fn host(addr: SocketAddr) -> Result<CharacterSelectConnection, ConnectionError> {
         let connection::Connection {
             stream,
             addr: remote,
-        } = connection::host(&addr).map_err(GameConnectionError::Io)?;
+        } = connection::host(&addr)?;
 
         let addr = ConnectionAddr {
             local: addr,
@@ -153,7 +158,7 @@ impl CharacterSelectConnection {
             },
         })
     }
-    pub fn join(remote: SocketAddr) -> Result<CharacterSelectConnection, GameConnectionError> {
+    pub fn join(remote: SocketAddr) -> Result<CharacterSelectConnection, ConnectionError> {
         let connection::Connection { stream, addr } =
             connection::connect_to(&remote).expect("connection error");
 
@@ -235,7 +240,6 @@ impl CharacterSelectConnection {
         }
     }
     fn send_start(&mut self) {
-        println!("sent start");
         self.connection
             .write_all(connection::ConnectionPacket::StartGame.as_str().as_bytes())
             .expect("network error");
@@ -270,11 +274,7 @@ impl CharacterSelectConnection {
             | CharacterSelectConnectionData::Client { should_start, .. } => *should_start,
         }
     }
-    pub fn into_game_connection(self) -> Result<GameConnection, GameConnectionError> {
-        /*self.connection
-        .shutdown(std::net::Shutdown::Both)
-        .map_err(GameConnectionError::Io)?;*/
-
+    pub fn into_game_connection(self) -> Result<GameConnection, ConnectionError> {
         let connection = create_game_connection(&self.addr)?;
 
         Ok(GameConnection {
@@ -305,13 +305,6 @@ impl GameConnection {
             match self.connection.recv(&mut buf) {
                 Ok(bytes) => {
                     assert_eq!(bytes, buf.len());
-
-                    println!("got packet {:?}", unsafe {
-                        std::mem::transmute_copy::<
-                            [u8; size_of::<GamePacket>()],
-                            [rollback::FrameState; 2],
-                        >(&buf)
-                    });
 
                     // SAFETY: the buffer is the length of a `GamePacket` so should be safe to
                     // transmute to a `GamePacket`

@@ -46,8 +46,6 @@ pub struct App {
 
     previous_time: std::time::SystemTime,
     size: WindowSize,
-
-    connection_type: netcode::ConnectionType,
 }
 
 impl winit::application::ApplicationHandler for App {
@@ -77,7 +75,7 @@ impl winit::application::ApplicationHandler for App {
     fn window_event(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
-        window_id: winit::window::WindowId,
+        _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
         match event {
@@ -91,6 +89,10 @@ impl winit::application::ApplicationHandler for App {
                         if event.state == winit::event::ElementState::Pressed =>
                     {
                         self.cycle_size();
+                        return;
+                    }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape) => {
+                        event_loop.exit();
                         return;
                     }
                     winit::keyboard::PhysicalKey::Code(k) => k,
@@ -110,7 +112,14 @@ impl winit::application::ApplicationHandler for App {
                 );
                 self.previous_time = std::time::SystemTime::now();
 
-                let (sprite_data, primatives) = self.game_state.update();
+                let (sprite_data, primatives) = match self.game_state.update() {
+                    Ok(r) => r,
+                    Err(e) => {
+                        println!("{:?}", e);
+                        event_loop.exit();
+                        return;
+                    }
+                };
 
                 self.renderer.as_mut().unwrap().draw_frame(
                     &self.game_state.asset_manager(),
@@ -126,7 +135,7 @@ impl winit::application::ApplicationHandler for App {
 }
 
 impl App {
-    pub fn init() {
+    pub fn run() -> Result<(), netcode::ConnectionError> {
         let connection_type = netcode::ask_connection_type();
 
         let event_loop = winit::event_loop::EventLoop::new().unwrap();
@@ -140,14 +149,14 @@ impl App {
                 renderer: None,
                 window: None,
 
-                game_state: GameState::new(asset_manager, connection_type),
+                game_state: GameState::new(asset_manager, connection_type?)?,
 
                 previous_time: std::time::SystemTime::now(),
                 size: WindowSize::Size360p,
-
-                connection_type,
             })
             .unwrap();
+
+        Ok(())
     }
     fn cycle_size(&mut self) {
         self.size = self.size.cycle();

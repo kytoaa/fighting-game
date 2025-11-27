@@ -1,3 +1,4 @@
+use crate::netcode::TimeoutError;
 use fighting_game::datatypes::Vector2;
 use fighting_game::initialization::Character as Char;
 
@@ -69,13 +70,13 @@ impl Game {
         &mut self,
         frames_to_rollback: usize,
         inputs: impl Iterator<Item = [fighting_game::input::InputState; 2]>,
-    ) {
+    ) -> Result<(), TimeoutError> {
         let previous_state_count = self.previous_game_states.len();
 
         for _ in 0..(frames_to_rollback - 1) {
             self.previous_game_states.pop_front();
         }
-        self.game = self.previous_game_states.pop_front().unwrap();
+        self.game = self.previous_game_states.pop_front().ok_or(TimeoutError)?;
 
         let mut input_count = 0;
         for input_state in inputs {
@@ -84,6 +85,8 @@ impl Game {
         }
         assert_eq!(input_count, frames_to_rollback);
         assert_eq!(previous_state_count, self.previous_game_states.len());
+
+        Ok(())
     }
 
     pub fn update(

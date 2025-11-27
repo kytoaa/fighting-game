@@ -1,3 +1,6 @@
 fn main() {
-    vulkan_renderer::App::init();
+    match vulkan_renderer::App::run() {
+        Ok(_) => {}
+        Err(e) => println!("[ERROR] - {:?}", e),
+    }
 }
